@@ -1,12 +1,4 @@
-// namespace CompanyChat.Api.WebSockets;
 
-// public class ChatMessage
-// {
-//     public string Type { get; set; } = "";
-//     public int ConversationId { get; set; }
-//     public int ReceiverId { get; set; }
-//     public string Content { get; set; } = "";
-// }
 
 namespace CompanyChat.Api.WebSockets;
 

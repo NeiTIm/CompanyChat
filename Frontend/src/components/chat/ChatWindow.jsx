@@ -11,7 +11,7 @@ import MessageComposer from "./MessageComposer";
 import DeleteMessageModal from "../modal/DeleteMessageModal";
 import DeleteHistoryModal from "../modal/DeleteHistoryModal";
 import Avatar from "../common/Avatar";
-
+import TypingIndicator from "./TypingIndicator";
 import {
   getPrivateConversation,
   getConversationMessages,
@@ -43,7 +43,8 @@ function ChatWindow({
 
   const [messages, setMessages] =
     useState([]);
-
+    const [isTyping, setIsTyping] =
+  useState(false);
   const [text, setText] =
     useState("");
 
@@ -82,22 +83,24 @@ function ChatWindow({
      LOAD CONVERSATION
   ===================================================== */
 
-  useEffect(() => {
-    if (!selectedUser) {
-      setConversation(null);
+    useEffect(() => {
+    setIsTyping(false);
 
-      conversationRef.current =
+    if (!selectedUser) {
+        setConversation(null);
+
+        conversationRef.current =
         null;
 
-      setMessages([]);
+        setMessages([]);
 
-      return;
+        return;
     }
 
     loadConversation(
-      selectedUser.id
+        selectedUser.id
     );
-  }, [selectedUser]);
+    }, [selectedUser]);
 
   async function loadConversation(
     userId
@@ -365,6 +368,40 @@ function ChatWindow({
 
       return;
     }
+    if (
+  socketEvent.type === "typing"
+) {
+  const currentConversation =
+    conversationRef.current;
+
+  if (!currentConversation) {
+    return;
+  }
+
+  if (
+    Number(
+      socketEvent.conversationId
+    ) !==
+    Number(
+      currentConversation.id
+    )
+  ) {
+    return;
+  }
+
+  if (
+    Number(socketEvent.userId) ===
+    Number(currentUser.id)
+  ) {
+    return;
+  }
+
+  setIsTyping(
+    socketEvent.isTyping === true
+  );
+
+  return;
+}
 
     /* ===================================================
        MESSAGE DELETED
@@ -827,7 +864,9 @@ function ChatWindow({
               )
             )
           )}
-
+            {isTyping && (
+                <TypingIndicator />
+)}
           <div
             ref={messagesEndRef}
           />
@@ -841,6 +880,8 @@ function ChatWindow({
             <MessageComposer
                 text={text}
                 selectedUser={selectedUser}
+                conversation={conversation}
+                websocket={websocket}
                 websocketConnected={
                     websocketConnected
                 }

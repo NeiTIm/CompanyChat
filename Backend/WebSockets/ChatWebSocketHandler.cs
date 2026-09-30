@@ -37,9 +37,6 @@ public class ChatWebSocketHandler(
             return;
         }
 
-        /*
-         * Đăng ký connection.
-         */
         connections.Add(
             userId,
             socket);
@@ -84,10 +81,6 @@ public class ChatWebSocketHandler(
         }
         finally
         {
-            /*
-             * Chỉ connection hiện tại mới được
-             * phép đưa user về Offline.
-             */
             var removed =
                 connections.Remove(
                     userId,
@@ -102,10 +95,6 @@ public class ChatWebSocketHandler(
 
                 await db.SaveChangesAsync();
 
-                /*
-                 * Thông báo cho tất cả client
-                 * rằng user đã offline.
-                 */
                 await BroadcastUserStatusAsync(
                     user,
                     false);
@@ -217,8 +206,35 @@ public class ChatWebSocketHandler(
                 continue;
             }
 
-            if (request is null ||
-                request.Type != "message")
+            if (request is null)
+            {
+                continue;
+            }
+
+            /*
+             * ==========================
+             * TYPING INDICATOR
+             * ==========================
+             */
+
+            if (request.Type == "typing_start" ||
+                request.Type == "typing_stop")
+            {
+                await HandleTypingAsync(
+                    senderId,
+                    request,
+                    cancellationToken);
+
+                continue;
+            }
+
+            /*
+             * ==========================
+             * MESSAGE
+             * ==========================
+             */
+
+            if (request.Type != "message")
             {
                 continue;
             }
@@ -481,6 +497,91 @@ public class ChatWebSocketHandler(
                 senderJson,
                 cancellationToken);
         }
+    }
+
+    private async Task HandleTypingAsync(
+        int senderId,
+        ChatMessage request,
+        CancellationToken cancellationToken)
+    {
+        /*
+         * Kiểm tra người gửi có thuộc
+         * conversation hay không.
+         */
+
+        var senderIsMember =
+            await db.ConversationMembers
+                .AnyAsync(
+                    x =>
+                        x.ConversationId ==
+                            request.ConversationId &&
+                        x.UserId ==
+                            senderId,
+                    cancellationToken);
+
+        if (!senderIsMember)
+        {
+            await SendErrorAsync(
+                senderId,
+                "You are not a member of this conversation.");
+
+            return;
+        }
+
+        /*
+         * Kiểm tra receiver có thuộc
+         * conversation hay không.
+         */
+
+        var receiverIsMember =
+            await db.ConversationMembers
+                .AnyAsync(
+                    x =>
+                        x.ConversationId ==
+                            request.ConversationId &&
+                        x.UserId ==
+                            request.ReceiverId,
+                    cancellationToken);
+
+        if (!receiverIsMember)
+        {
+            await SendErrorAsync(
+                senderId,
+                "Receiver is not a member of this conversation.");
+
+            return;
+        }
+
+        /*
+         * Gửi trạng thái typing
+         * cho receiver.
+         */
+
+        var response =
+            new
+            {
+                type = "typing",
+
+                conversationId =
+                    request.ConversationId,
+
+                userId =
+                    senderId,
+
+                isTyping =
+                    request.Type ==
+                        "typing_start"
+            };
+
+        var json =
+            JsonSerializer.Serialize(
+                response,
+                JsonOptions);
+
+        await connections.SendToUserAsync(
+            request.ReceiverId,
+            json,
+            cancellationToken);
     }
 
     private async Task SendErrorAsync(
