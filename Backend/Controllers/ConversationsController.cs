@@ -128,6 +128,27 @@ public class ConversationsController(
                 conversation.CreatedAt));
     }
 
+    [HttpGet("unread")]
+    public async Task<ActionResult<IEnumerable<UnreadConversationDto>>>
+        GetUnreadCounts()
+    {
+        var unreadCounts =
+            await db.MessageUserStates
+                .Where(x =>
+                    x.UserId == CurrentUserId &&
+                    !x.IsRead &&
+                    !x.IsDeletedForMe)
+                .GroupBy(x => x.Message.ConversationId)
+                .Select(x =>
+                    new UnreadConversationDto(
+                        x.Key,
+                        x.Select(s => s.Message.SenderId)
+                            .FirstOrDefault(),
+                        x.Count()))
+                .ToListAsync();
+
+        return Ok(unreadCounts);
+    }
 
     /*
      * ==================================================

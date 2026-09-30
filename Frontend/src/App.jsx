@@ -250,6 +250,7 @@ function UserList({
   users,
   selectedUser,
   onSelectUser,
+  unreadCounts,
 }) {
   const [search, setSearch] = useState("");
 
@@ -299,8 +300,11 @@ function UserList({
 
       <div className="user-list">
         {filteredUsers.map((user) => {
-          const selected =
-            selectedUser?.id === user.id;
+  const selected =
+    selectedUser?.id === user.id;
+
+  const unreadCount =
+    unreadCounts[user.id] || 0;
 
           return (
             <button
@@ -317,9 +321,17 @@ function UserList({
               />
 
               <div className="user-info">
+               <div className="user-name-row">
                 <div className="user-name">
                   {user.fullName || user.username}
                 </div>
+
+                {unreadCount > 0 && (
+                  <span className="unread-badge">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </div>
 
                 <div className="user-username">
                   @{user.username}
@@ -779,6 +791,8 @@ function ChatWindow({
   websocket,
   websocketConnected,
   socketEvent,
+  onConversationRead,
+  onConversationChange,
 }) {
   const [conversation, setConversation] =
     useState(null);
@@ -835,8 +849,12 @@ function ChatWindow({
 
       setConversation(currentConversation);
 
-      conversationRef.current =
-        currentConversation;
+        conversationRef.current =
+          currentConversation;
+
+        onConversationChange?.(
+          currentConversation.id
+        );
 
       const messagesResponse =
         await api.get(
@@ -1075,7 +1093,7 @@ function ChatWindow({
       await api.post(
         `/conversations/${conversationId}/read`
       );
-
+      onConversationRead?.();
       if (
         websocket &&
         websocket.readyState === WebSocket.OPEN
@@ -1471,6 +1489,8 @@ function ChatApp({
 
   const [selectedUser, setSelectedUser] =
     useState(null);
+  const [unreadCounts, setUnreadCounts] =
+    useState({});
 
   const [websocket, setWebsocket] =
     useState(null);
@@ -1482,14 +1502,17 @@ function ChatApp({
     useState(null);
 
   const websocketRef = useRef(null);
+  const activeConversationRef =
+  useRef(null);
 
   /* =====================================================
      LOAD USERS
   ===================================================== */
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+  loadUsers();
+  loadUnreadCounts();
+}, []);
 
   async function loadUsers() {
     try {
@@ -1504,7 +1527,26 @@ function ChatApp({
       );
     }
   }
+  async function loadUnreadCounts() {
+  try {
+    const response =
+      await api.get("/conversations/unread");
 
+    const counts = {};
+
+    response.data.forEach((item) => {
+      counts[item.userId] =
+        item.unreadCount;
+    });
+
+    setUnreadCounts(counts);
+  } catch (error) {
+    console.error(
+      "Load unread counts error:",
+      error
+    );
+  }
+}
   /* =====================================================
      WEBSOCKET CONNECTION
   ===================================================== */
@@ -1639,6 +1681,81 @@ function ChatApp({
     };
   }, [currentUser.id]);
 
+    function handleConversationChange(
+  conversationId
+) {
+  activeConversationRef.current =
+    conversationId;
+}
+
+function handleConversationRead() {
+  if (!selectedUser) {
+    return;
+  }
+
+  setUnreadCounts((current) => {
+    const copy = {
+      ...current,
+    };
+
+    delete copy[selectedUser.id];
+
+    return copy;
+  });
+}
+  
+  /* =====================================================
+     UNREAD MESSAGE
+  ===================================================== */
+
+  useEffect(() => {
+    if (!socketEvent) {
+      return;
+    }
+
+    if (socketEvent.type !== "message") {
+      return;
+    }
+
+    const message =
+      socketEvent.message ||
+      socketEvent.data ||
+      socketEvent;
+
+    if (!message) {
+      return;
+    }
+
+    // Tin nhắn do chính mình gửi không tính là unread
+    if (
+      Number(message.senderId) ===
+      Number(currentUser.id)
+    ) {
+      return;
+    }
+
+    const conversationId =
+      Number(message.conversationId);
+
+    // Nếu đang mở đúng cuộc trò chuyện này
+    // thì ChatWindow đã mark read rồi
+    if (
+      Number(activeConversationRef.current) ===
+      conversationId
+    ) {
+      return;
+    }
+
+    const senderId =
+      Number(message.senderId);
+
+    setUnreadCounts((current) => ({
+      ...current,
+      [senderId]:
+        (current[senderId] || 0) + 1,
+    }));
+  }, [socketEvent, currentUser.id]);
+
   /* =====================================================
      SELECT USER
   ===================================================== */
@@ -1716,6 +1833,7 @@ function ChatApp({
           users={users}
           selectedUser={selectedUser}
           onSelectUser={handleSelectUser}
+          unreadCounts={unreadCounts}
         />
 
         <ChatWindow
@@ -1726,6 +1844,12 @@ function ChatApp({
             websocketConnected
           }
           socketEvent={socketEvent}
+          onConversationRead={
+            handleConversationRead
+          }
+          onConversationChange={
+            handleConversationChange
+          }
         />
       </div>
     </div>
