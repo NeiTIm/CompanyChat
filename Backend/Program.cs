@@ -69,16 +69,13 @@ builder.Services.AddCors(options =>
     options.AddPolicy("Frontend", policy =>
     {
         policy
-              .WithOrigins(
+            .WithOrigins(
                 "http://localhost:5173",
-                "https://company-chat-eosin.vercel.app",
-                 "https://company-chat-xxx.vercel.app"//,
-                                                      // "https://YOUR-FRONTEND-NGROK.ngrok-free.app"
-                                                      // "https://8992-2405-4803-caee-e390-428f-4f9d-eeb6.ngrok-free.app"
-            )// lưu ý đoạn này 
+                "https://company-chat-eosin.vercel.app"
+            )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials(); //lưu ý 
+            .AllowCredentials();
     });
 });
 
