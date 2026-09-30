@@ -10,6 +10,7 @@ import useChat from "../hooks/useChat";
 
 function ChatPage({
   currentUser,
+  onGoToAdmin,
   onLogout,
 }) {
   /* =====================================================
@@ -77,35 +78,45 @@ function ChatPage({
 
         <div className="topbar-right">
 
-          <div className="current-user">
-            <div className="current-user-name">
-              {currentUser.fullName ||
-                currentUser.username}
+            <div className="current-user">
+                <div className="current-user-name">
+                {currentUser.fullName ||
+                    currentUser.username}
+                </div>
+
+                <div className="current-user-role">
+                <span
+                    className={`current-status-dot ${
+                    websocketConnected
+                        ? "online"
+                        : "offline"
+                    }`}
+                />
+
+                {websocketConnected
+                    ? "Đang online"
+                    : "Offline"}
+                </div>
             </div>
 
-            <div className="current-user-role">
-              <span
-                className={`current-status-dot ${
-                  websocketConnected
-                    ? "online"
-                    : "offline"
-                }`}
-              />
+            {/* CHỈ ADMIN MỚI THẤY */}
+            {currentUser?.role === "Admin" && (
+                <button
+                className="admin-dashboard-button"
+                onClick={onGoToAdmin}
+                >
+                ⚙ Admin Dashboard
+                </button>
+            )}
 
-              {websocketConnected
-                ? "Đang online"
-                : "Offline"}
+            <button
+                className="logout-button"
+                onClick={handleLogout}
+            >
+                Đăng xuất
+            </button>
+
             </div>
-          </div>
-
-          <button
-            className="logout-button"
-            onClick={handleLogout}
-          >
-            Đăng xuất
-          </button>
-
-        </div>
       </header>
 
       {/* =================================================

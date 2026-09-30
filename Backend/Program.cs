@@ -5,7 +5,7 @@ using CompanyChat.Api.WebSockets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-
+using CompanyChat.Api.Services.Admin;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -18,6 +18,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
             "DefaultConnection")));
 
 builder.Services.AddScoped<JwtService>();
+
+builder.Services.AddScoped<DashboardService>();
+
 builder.Services.AddScoped<ChatWebSocketHandler>();
 builder.Services.AddSingleton<ConnectionManager>();
 
