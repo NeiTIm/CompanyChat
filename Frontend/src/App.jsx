@@ -1559,12 +1559,27 @@ function ChatApp({
       return;
     }
 
-    const websocketUrl =
-      API_URL.replace(/^http/, "ws") +
-      `/ws/chat?access_token=${encodeURIComponent(
-        token
-      )}`;
+    // const websocketUrl =
+    //   API_URL.replace(/^http/, "ws") +
+    //   `/ws/chat?access_token=${encodeURIComponent(
+    //     token
+    //   )}`;
+    //sửa vì chuyển sang deploy lên FE vercel và BE ngork
 
+      const websocketProtocol = API_URL.startsWith("https://")
+            ? "wss://"
+            : "ws://";
+
+          const websocketHost = API_URL
+            .replace(/^https?:\/\//, "");
+
+          const websocketUrl =
+            websocketProtocol +
+            websocketHost +
+            `/ws/chat?access_token=${encodeURIComponent(
+              token
+            )}`;
+    
     console.log(
       "Connecting WebSocket:",
       websocketUrl

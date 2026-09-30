@@ -70,12 +70,15 @@ builder.Services.AddCors(options =>
     {
         policy
               .WithOrigins(
-                "http://localhost:5173" //,
-                                        // "https://YOUR-FRONTEND-NGROK.ngrok-free.app"
-                                        // "https://8992-2405-4803-caee-e390-428f-4f9d-eeb6.ngrok-free.app"
+                "http://localhost:5173",
+                "https://company-chat-eosin.vercel.app",
+                 "https://company-chat-xxx.vercel.app"//,
+                                                      // "https://YOUR-FRONTEND-NGROK.ngrok-free.app"
+                                                      // "https://8992-2405-4803-caee-e390-428f-4f9d-eeb6.ngrok-free.app"
             )// lưu ý đoạn này 
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials(); //lưu ý 
     });
 });
 
