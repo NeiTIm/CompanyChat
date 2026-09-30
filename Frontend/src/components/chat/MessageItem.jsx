@@ -21,6 +21,21 @@ function MessageItem({
   const isDeleted =
     message.isDeleted === true;
 
+  const isDeletedByHistory =
+    message.isDeletedByHistory === true;
+
+  const showDeletedPlaceholder =
+    isDeleted ||
+    isDeletedByHistory;
+
+  let deletedText =
+    "Tin nhắn đã bị xóa";
+
+  if (isDeletedByHistory && isMine) {
+    deletedText =
+      "Bạn đã xóa tin nhắn";
+  }
+
   return (
     <div
       className={`message-row ${
@@ -42,21 +57,28 @@ function MessageItem({
           type="button"
           className={`message-bubble ${
             isMine ? "mine" : "other"
-          } ${isDeleted ? "deleted" : ""}`}
+          } ${
+            showDeletedPlaceholder
+              ? "deleted"
+              : ""
+          }`}
           onClick={() => {
-            if (!message.pending) {
+            if (
+              !message.pending &&
+              !showDeletedPlaceholder
+            ) {
               onDelete(message);
             }
           }}
           title={
-            isDeleted
+            showDeletedPlaceholder
               ? ""
               : "Nhấn để xem tùy chọn"
           }
         >
-          {isDeleted ? (
+          {showDeletedPlaceholder ? (
             <span className="deleted-message">
-              Tin nhắn đã bị xóa
+              {deletedText}
             </span>
           ) : (
             <>
@@ -79,16 +101,17 @@ function MessageItem({
           )}
         </button>
 
-        {!isDeleted && !message.pending && (
-          <button
-            type="button"
-            className="reply-button"
-            onClick={() => onReply(message)}
-            title="Trả lời tin nhắn"
-          >
-            ↩
-          </button>
-        )}
+        {!showDeletedPlaceholder &&
+          !message.pending && (
+            <button
+              type="button"
+              className="reply-button"
+              onClick={() => onReply(message)}
+              title="Trả lời tin nhắn"
+            >
+              ↩
+            </button>
+          )}
 
         <div
           className={`message-meta ${
@@ -99,11 +122,12 @@ function MessageItem({
             {formatTime(message.sentAt)}
           </span>
 
-          {isMine && !isDeleted && (
-            <DeliveryStatus
-              status={deliveryStatus}
-            />
-          )}
+          {isMine &&
+            !showDeletedPlaceholder && (
+              <DeliveryStatus
+                status={deliveryStatus}
+              />
+            )}
         </div>
       </div>
     </div>

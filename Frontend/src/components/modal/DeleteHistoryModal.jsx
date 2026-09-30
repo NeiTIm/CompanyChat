@@ -22,16 +22,17 @@ function DeleteHistoryModal({
           🗑️
         </div>
 
-        <h3>Xóa toàn bộ lịch sử?</h3>
+        <h3>Xóa lịch sử cuộc trò chuyện?</h3>
 
         <p>
-          Bạn có chắc muốn xóa toàn bộ lịch sử của
-          cuộc trò chuyện này?
+          Bạn có chắc muốn xóa lịch sử cuộc trò
+          chuyện này ở phía bạn?
         </p>
 
         <p className="delete-warning">
-          ⚠️ Hành động này sẽ xóa toàn bộ tin nhắn
-          trong cuộc trò chuyện.
+          ⚠️ Lịch sử sẽ chỉ bị ẩn ở phía bạn.
+          Người còn lại vẫn có thể xem lịch sử
+          cuộc trò chuyện.
         </p>
 
         <div className="modal-actions">
