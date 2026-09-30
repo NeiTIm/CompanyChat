@@ -128,6 +128,7 @@ public class ConversationsController(
                 conversation.CreatedAt));
     }
 
+
     [HttpGet("unread")]
     public async Task<ActionResult<IEnumerable<UnreadConversationDto>>>
         GetUnreadCounts()
@@ -149,6 +150,7 @@ public class ConversationsController(
 
         return Ok(unreadCounts);
     }
+
 
     /*
      * ==================================================
@@ -183,6 +185,7 @@ public class ConversationsController(
             return Forbid();
         }
 
+
         /*
          * ==================================================
          * QUAN TRỌNG
@@ -203,6 +206,11 @@ public class ConversationsController(
             await db.Messages
                 .Include(x => x.UserStates)
                 .Include(x => x.Sender)
+
+                // Reply message
+                .Include(x => x.ReplyToMessage)
+                    .ThenInclude(x => x!.Sender)
+
                 .Where(
                     x =>
                         x.ConversationId ==
@@ -305,7 +313,19 @@ public class ConversationsController(
                         x.Content,
                         x.SentAt,
                         x.IsDeleted,
-                        deliveryStatus);
+                        deliveryStatus,
+
+                        // ID của message được reply
+                        x.ReplyToMessageId,
+
+                        // Thông tin message được reply
+                        x.ReplyToMessage is null
+                            ? null
+                            : new ReplyMessageDto(
+                                x.ReplyToMessage.Id,
+                                x.ReplyToMessage.SenderId,
+                                x.ReplyToMessage.Sender.FullName,
+                                x.ReplyToMessage.Content));
                 })
                 .ToList();
 

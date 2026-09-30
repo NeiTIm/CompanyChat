@@ -24,12 +24,3 @@ public record ConversationDto(
     UserDto OtherUser,
     DateTime CreatedAt);
 
-public record MessageDto(
-    long Id,
-    int ConversationId,
-    int SenderId,
-    string SenderName,
-    string Content,
-    DateTime SentAt,
-    bool IsDeleted,
-    string DeliveryStatus);

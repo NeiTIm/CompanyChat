@@ -3,14 +3,12 @@ import DeliveryStatus from "./DeliveryStatus";
 
 import { formatTime } from "../../utils/dateUtils";
 import { getDeliveryStatus } from "../../utils/messageUtils";
-/* =========================================================
-   MESSAGE ITEM
-========================================================= */
 
 function MessageItem({
   message,
   currentUser,
   onDelete,
+  onReply,
 }) {
   const isMine =
     Number(message.senderId) ===
@@ -61,9 +59,36 @@ function MessageItem({
               Tin nhắn đã bị xóa
             </span>
           ) : (
-            message.content
+            <>
+              {message.replyTo && (
+                <div className="reply-preview">
+                  <div className="reply-preview-name">
+                    {message.replyTo.senderName}
+                  </div>
+
+                  <div className="reply-preview-content">
+                    {message.replyTo.content}
+                  </div>
+                </div>
+              )}
+
+              <div className="message-content">
+                {message.content}
+              </div>
+            </>
           )}
         </button>
+
+        {!isDeleted && !message.pending && (
+          <button
+            type="button"
+            className="reply-button"
+            onClick={() => onReply(message)}
+            title="Trả lời tin nhắn"
+          >
+            ↩
+          </button>
+        )}
 
         <div
           className={`message-meta ${

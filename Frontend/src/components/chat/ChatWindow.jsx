@@ -12,6 +12,7 @@ import DeleteMessageModal from "../modal/DeleteMessageModal";
 import DeleteHistoryModal from "../modal/DeleteHistoryModal";
 import Avatar from "../common/Avatar";
 import TypingIndicator from "./TypingIndicator";
+
 import {
   getPrivateConversation,
   getConversationMessages,
@@ -23,7 +24,6 @@ import {
   deleteMessageForMe,
   deleteMessageForEveryone,
 } from "../../services/messageService";
-
 
 /* =========================================================
    CHAT WINDOW
@@ -43,13 +43,22 @@ function ChatWindow({
 
   const [messages, setMessages] =
     useState([]);
-    const [isTyping, setIsTyping] =
-  useState(false);
+
+  const [isTyping, setIsTyping] =
+    useState(false);
+
   const [text, setText] =
     useState("");
 
   const [loading, setLoading] =
     useState(false);
+
+  /* =====================================================
+     REPLY
+  ===================================================== */
+
+  const [replyingTo, setReplyingTo] =
+    useState(null);
 
   const [
     showDeleteHistoryModal,
@@ -83,24 +92,30 @@ function ChatWindow({
      LOAD CONVERSATION
   ===================================================== */
 
-    useEffect(() => {
+  useEffect(() => {
     setIsTyping(false);
 
-    if (!selectedUser) {
-        setConversation(null);
+    /* -----------------------------------------------
+       Khi đổi người chat thì bỏ Reply cũ
+    ------------------------------------------------ */
 
-        conversationRef.current =
+    setReplyingTo(null);
+
+    if (!selectedUser) {
+      setConversation(null);
+
+      conversationRef.current =
         null;
 
-        setMessages([]);
+      setMessages([]);
 
-        return;
+      return;
     }
 
     loadConversation(
-        selectedUser.id
+      selectedUser.id
     );
-    }, [selectedUser]);
+  }, [selectedUser]);
 
   async function loadConversation(
     userId
@@ -368,40 +383,45 @@ function ChatWindow({
 
       return;
     }
+
+    /* ===================================================
+       TYPING
+    =================================================== */
+
     if (
-  socketEvent.type === "typing"
-) {
-  const currentConversation =
-    conversationRef.current;
+      socketEvent.type === "typing"
+    ) {
+      const currentConversation =
+        conversationRef.current;
 
-  if (!currentConversation) {
-    return;
-  }
+      if (!currentConversation) {
+        return;
+      }
 
-  if (
-    Number(
-      socketEvent.conversationId
-    ) !==
-    Number(
-      currentConversation.id
-    )
-  ) {
-    return;
-  }
+      if (
+        Number(
+          socketEvent.conversationId
+        ) !==
+        Number(
+          currentConversation.id
+        )
+      ) {
+        return;
+      }
 
-  if (
-    Number(socketEvent.userId) ===
-    Number(currentUser.id)
-  ) {
-    return;
-  }
+      if (
+        Number(socketEvent.userId) ===
+        Number(currentUser.id)
+      ) {
+        return;
+      }
 
-  setIsTyping(
-    socketEvent.isTyping === true
-  );
+      setIsTyping(
+        socketEvent.isTyping === true
+      );
 
-  return;
-}
+      return;
+    }
 
     /* ===================================================
        MESSAGE DELETED
@@ -537,6 +557,26 @@ function ChatWindow({
   }, [messages]);
 
   /* =====================================================
+     REPLY
+  ===================================================== */
+
+  function handleReply(message) {
+    if (!message) {
+      return;
+    }
+
+    if (message.isDeleted) {
+      return;
+    }
+
+    setReplyingTo(message);
+  }
+
+  function cancelReply() {
+    setReplyingTo(null);
+  }
+
+  /* =====================================================
      SEND MESSAGE
   ===================================================== */
 
@@ -559,6 +599,13 @@ function ChatWindow({
     ) {
       return;
     }
+
+    /* ===================================================
+       LƯU REPLY HIỆN TẠI
+    =================================================== */
+
+    const currentReply =
+      replyingTo;
 
     /* ===================================================
        OPTIMISTIC MESSAGE
@@ -591,6 +638,26 @@ function ChatWindow({
         "pending",
 
       isDeleted: false,
+
+      replyToMessageId:
+        currentReply?.id || null,
+
+      replyTo:
+        currentReply
+          ? {
+              id:
+                currentReply.id,
+
+              senderId:
+                currentReply.senderId,
+
+              senderName:
+                currentReply.senderName,
+
+              content:
+                currentReply.content,
+            }
+          : null,
     };
 
     setMessages((current) => [
@@ -599,6 +666,12 @@ function ChatWindow({
     ]);
 
     setText("");
+
+    /* ===================================================
+       SAU KHI GỬI THÌ THOÁT REPLY MODE
+    =================================================== */
+
+    setReplyingTo(null);
 
     /* ===================================================
        SEND THROUGH WEBSOCKET
@@ -615,6 +688,9 @@ function ChatWindow({
           selectedUser.id,
 
         content,
+
+        replyToMessageId:
+          currentReply?.id || null,
       })
     );
   }
@@ -860,13 +936,18 @@ function ChatWindow({
                   onDelete={
                     setDeleteMessage
                   }
+                  onReply={
+                    handleReply
+                  }
                 />
               )
             )
           )}
-            {isTyping && (
-                <TypingIndicator />
-)}
+
+          {isTyping && (
+            <TypingIndicator />
+          )}
+
           <div
             ref={messagesEndRef}
           />
@@ -877,19 +958,23 @@ function ChatWindow({
             COMPOSER
         ================================================= */}
 
-            <MessageComposer
-                text={text}
-                selectedUser={selectedUser}
-                conversation={conversation}
-                websocket={websocket}
-                websocketConnected={
-                    websocketConnected
-                }
-                onChange={(e) =>
-                    setText(e.target.value)
-                }
-                onSubmit={handleSubmit}
-                />
+        <MessageComposer
+          text={text}
+          selectedUser={selectedUser}
+          conversation={conversation}
+          websocket={websocket}
+          websocketConnected={
+            websocketConnected
+          }
+          replyingTo={replyingTo}
+          onCancelReply={
+            cancelReply
+          }
+          onChange={(e) =>
+            setText(e.target.value)
+          }
+          onSubmit={handleSubmit}
+        />
 
       </main>
 

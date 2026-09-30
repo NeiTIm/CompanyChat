@@ -290,6 +290,34 @@ public class ChatWebSocketHandler(
             }
 
             /*
+            * ==========================
+            * REPLY SECURITY CHECK
+            * ==========================
+            */
+
+            if (request.ReplyToMessageId.HasValue)
+            {
+                var replyMessageExists =
+                    await db.Messages
+                        .AnyAsync(
+                            x =>
+                                x.Id ==
+                                    request.ReplyToMessageId.Value &&
+                                x.ConversationId ==
+                                    request.ConversationId,
+                            cancellationToken);
+
+                if (!replyMessageExists)
+                {
+                    await SendErrorAsync(
+                        senderId,
+                        "Reply message does not belong to this conversation.");
+
+                    continue;
+                }
+            }
+
+            /*
              * ==========================
              * CREATE MESSAGE
              * ==========================
@@ -308,7 +336,10 @@ public class ChatWebSocketHandler(
                         request.Content.Trim(),
 
                     SentAt =
-                        DateTime.UtcNow
+                        DateTime.UtcNow,
+
+                    ReplyToMessageId =
+                        request.ReplyToMessageId
                 };
 
             db.Messages.Add(message);
@@ -384,6 +415,41 @@ public class ChatWebSocketHandler(
                         cancellationToken);
 
             /*
+            * ==========================
+            * GET REPLY MESSAGE
+            * ==========================
+            */
+
+            var replyMessage = request.ReplyToMessageId.HasValue
+                ? await db.Messages
+                    .AsNoTracking()
+                    .Include(x => x.Sender)
+                    .FirstOrDefaultAsync(
+                        x =>
+                            x.Id ==
+                                request.ReplyToMessageId.Value &&
+                            x.ConversationId ==
+                                request.ConversationId,
+                        cancellationToken)
+                : null;
+
+            var replyTo =
+                replyMessage is null
+                    ? null
+                    : new
+                    {
+                        id = replyMessage.Id,
+
+                        senderId =
+                            replyMessage.SenderId,
+
+                        senderName =
+                            replyMessage.Sender.FullName,
+
+                        content =
+                            replyMessage.Content
+                    };
+            /*
              * ==========================
              * SEND TO RECEIVER
              * ==========================
@@ -411,6 +477,12 @@ public class ChatWebSocketHandler(
 
                             content =
                                 message.Content,
+
+                            replyToMessageId =
+                                message.ReplyToMessageId,
+
+                            replyTo =
+                                replyTo,
 
                             sentAt =
                                 message.SentAt,
@@ -476,6 +548,12 @@ public class ChatWebSocketHandler(
 
                             content =
                                 message.Content,
+
+                            replyToMessageId =
+                                message.ReplyToMessageId,
+
+                            replyTo =
+                                replyTo,
 
                             sentAt =
                                 message.SentAt,

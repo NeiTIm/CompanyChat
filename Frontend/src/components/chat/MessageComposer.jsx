@@ -13,6 +13,8 @@ function MessageComposer({
   websocketConnected,
   onChange,
   onSubmit,
+  replyingTo,
+  onCancelReply,
 }) {
   const typingTimeoutRef =
     useRef(null);
@@ -158,6 +160,31 @@ function MessageComposer({
   return (
     <div className="composer-container">
       <DeliveryLegend />
+
+      {replyingTo && (
+        <div className="replying-banner">
+          <div className="replying-content-wrapper">
+            <div className="replying-label">
+              Đang trả lời{" "}
+              {replyingTo.senderName ||
+                "tin nhắn"}
+            </div>
+
+            <div className="replying-message">
+              {replyingTo.content}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="cancel-reply-button"
+            onClick={onCancelReply}
+            title="Hủy trả lời"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <form
         className="message-composer"

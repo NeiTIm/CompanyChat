@@ -48,6 +48,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(x => x.Messages)
             .HasForeignKey(x => x.SenderId)
             .OnDelete(DeleteBehavior.Restrict);
+            
+        modelBuilder.Entity<Message>()
+            .HasOne(x => x.ReplyToMessage)
+            .WithMany()
+            .HasForeignKey(x => x.ReplyToMessageId)
+            .OnDelete(DeleteBehavior.NoAction);
 
         modelBuilder.Entity<MessageUserState>()
             .HasIndex(x => new

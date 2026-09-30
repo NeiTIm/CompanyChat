@@ -18,9 +18,13 @@ public class Message
 
     public int? DeletedBy { get; set; }
 
+    public long? ReplyToMessageId { get; set; }
+
     public Conversation Conversation { get; set; } = null!;
 
     public User Sender { get; set; } = null!;
+
+    public Message? ReplyToMessage { get; set; }
 
     public ICollection<MessageUserState> UserStates { get; set; }
         = new List<MessageUserState>();
