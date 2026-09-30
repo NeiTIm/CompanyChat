@@ -1,18 +1,30 @@
-import api, { API_URL } from "../../api";
 import {
   useEffect,
   useRef,
   useState,
 } from "react";
+
 import ChatHeader from "./ChatHeader";
 import MessageItem from "./MessageItem";
-import DeliveryLegend from "./DeliveryLegend";
+import MessageComposer from "./MessageComposer";
+
 import DeleteMessageModal from "../modal/DeleteMessageModal";
 import DeleteHistoryModal from "../modal/DeleteHistoryModal";
 import Avatar from "../common/Avatar";
 
-import { formatTime } from "../../utils/dateUtils";
-import { getDeliveryStatus } from "../../utils/messageUtils";
+import {
+  getPrivateConversation,
+  getConversationMessages,
+  markConversationAsRead,
+  deleteConversationHistory as deleteConversationHistoryService,
+} from "../../services/conversationService";
+
+import {
+  deleteMessageForMe,
+  deleteMessageForEveryone,
+} from "../../services/messageService";
+
+
 /* =========================================================
    CHAT WINDOW
 ========================================================= */
@@ -29,27 +41,41 @@ function ChatWindow({
   const [conversation, setConversation] =
     useState(null);
 
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] =
+    useState([]);
 
-  const [text, setText] = useState("");
+  const [text, setText] =
+    useState("");
 
-  const [loading, setLoading] = useState(false);
-
-  const [showDeleteHistoryModal, setShowDeleteHistoryModal] =
+  const [loading, setLoading] =
     useState(false);
 
-  const [deletingHistory, setDeletingHistory] =
-    useState(false);
+  const [
+    showDeleteHistoryModal,
+    setShowDeleteHistoryModal,
+  ] = useState(false);
+
+  const [
+    deletingHistory,
+    setDeletingHistory,
+  ] = useState(false);
 
   const [deleteMessage, setDeleteMessage] =
     useState(null);
 
-  const conversationRef = useRef(null);
+  const conversationRef =
+    useRef(null);
 
-  const messagesEndRef = useRef(null);
+  const messagesEndRef =
+    useRef(null);
+
+  /* =====================================================
+     CONVERSATION REF
+  ===================================================== */
 
   useEffect(() => {
-    conversationRef.current = conversation;
+    conversationRef.current =
+      conversation;
   }, [conversation]);
 
   /* =====================================================
@@ -59,45 +85,65 @@ function ChatWindow({
   useEffect(() => {
     if (!selectedUser) {
       setConversation(null);
-      conversationRef.current = null;
+
+      conversationRef.current =
+        null;
+
       setMessages([]);
+
       return;
     }
 
-    loadConversation(selectedUser.id);
+    loadConversation(
+      selectedUser.id
+    );
   }, [selectedUser]);
 
-  async function loadConversation(userId) {
+  async function loadConversation(
+    userId
+  ) {
     try {
       setLoading(true);
 
-      const conversationResponse =
-        await api.post(
-          `/conversations/private/${userId}`
-        );
+      /* =================================================
+         GET / CREATE PRIVATE CONVERSATION
+      ================================================= */
 
       const currentConversation =
-        conversationResponse.data;
+        await getPrivateConversation(
+          userId
+        );
 
-      setConversation(currentConversation);
+      setConversation(
+        currentConversation
+      );
 
-        conversationRef.current =
-          currentConversation;
+      conversationRef.current =
+        currentConversation;
 
-        onConversationChange?.(
+      onConversationChange?.(
+        currentConversation.id
+      );
+
+      /* =================================================
+         LOAD MESSAGES
+      ================================================= */
+
+      const messages =
+        await getConversationMessages(
           currentConversation.id
         );
 
-      const messagesResponse =
-        await api.get(
-          `/conversations/${currentConversation.id}/messages`
-        );
+      setMessages(messages);
 
-      setMessages(messagesResponse.data);
+      /* =================================================
+         MARK READ
+      ================================================= */
 
-      await markConversationAsRead(
+      await markConversationRead(
         currentConversation.id
       );
+
     } catch (error) {
       console.error(
         "Load conversation error:",
@@ -105,6 +151,7 @@ function ChatWindow({
       );
 
       setMessages([]);
+
     } finally {
       setLoading(false);
     }
@@ -119,128 +166,178 @@ function ChatWindow({
       return;
     }
 
-    /* MESSAGE */
+    /* ===================================================
+       MESSAGE
+    =================================================== */
 
-    if (socketEvent.type === "message") {
-  const incomingMessage =
-    socketEvent.message ||
-    socketEvent.data ||
-    socketEvent;
+    if (
+      socketEvent.type === "message"
+    ) {
+      const incomingMessage =
+        socketEvent.message ||
+        socketEvent.data ||
+        socketEvent;
 
-  if (!incomingMessage) {
-    return;
-  }
-
-  const currentConversation =
-    conversationRef.current;
-
-  if (!currentConversation) {
-    return;
-  }
-
-  if (
-    Number(incomingMessage.conversationId) !==
-    Number(currentConversation.id)
-  ) {
-    return;
-  }
-
-  // Tin nhắn do chính mình gửi
-  if (
-    Number(incomingMessage.senderId) ===
-    Number(currentUser.id)
-  ) {
-    setMessages((current) => {
-      // Tìm tin nhắn optimistic đang chờ
-      const pendingIndex =
-        current.findIndex(
-          (message) =>
-            message.pending &&
-            message.content ===
-              incomingMessage.content
-        );
-
-      // Nếu tìm thấy tin nhắn tạm
-      // => thay nó bằng message thật từ server
-      if (pendingIndex !== -1) {
-        const copy = [...current];
-
-        copy[pendingIndex] = {
-          ...incomingMessage,
-          pending: false,
-          deliveryStatus:
-            incomingMessage.deliveryStatus ||
-            (incomingMessage.isDelivered
-              ? "delivered"
-              : "sent"),
-        };
-
-        return copy;
+      if (!incomingMessage) {
+        return;
       }
 
-      // Nếu message thật đã tồn tại
-      // => không thêm lần nữa
+      const currentConversation =
+        conversationRef.current;
+
+      if (!currentConversation) {
+        return;
+      }
+
       if (
-        current.some(
-          (message) =>
-            Number(message.id) ===
-            Number(incomingMessage.id)
+        Number(
+          incomingMessage.conversationId
+        ) !==
+        Number(
+          currentConversation.id
         )
       ) {
-        return current;
+        return;
       }
 
-      // Trường hợp không còn optimistic message
-      return [
-        ...current,
-        {
-          ...incomingMessage,
-          pending: false,
-          deliveryStatus:
-            incomingMessage.deliveryStatus ||
-            (incomingMessage.isDelivered
-              ? "delivered"
-              : "sent"),
-        },
-      ];
-    });
+      /* ================================================
+         MESSAGE DO CHÍNH MÌNH GỬI
+      ================================================= */
 
-    return;
-  }
+      if (
+        Number(
+          incomingMessage.senderId
+        ) ===
+        Number(currentUser.id)
+      ) {
+        setMessages((current) => {
 
-  // Tin nhắn do người khác gửi
-  setMessages((current) => {
-    // Nếu đã có message này thì không thêm lại
-    if (
-      current.some(
-        (message) =>
-          Number(message.id) ===
-          Number(incomingMessage.id)
-      )
-    ) {
-      return current;
+          /* --------------------------------------------
+             TÌM OPTIMISTIC MESSAGE
+          -------------------------------------------- */
+
+          const pendingIndex =
+            current.findIndex(
+              (message) =>
+                message.pending &&
+                message.content ===
+                  incomingMessage.content
+            );
+
+          /* --------------------------------------------
+             THAY OPTIMISTIC BẰNG MESSAGE THẬT
+          -------------------------------------------- */
+
+          if (pendingIndex !== -1) {
+            const copy = [
+              ...current,
+            ];
+
+            copy[pendingIndex] = {
+              ...incomingMessage,
+
+              pending: false,
+
+              deliveryStatus:
+                incomingMessage.deliveryStatus ||
+                (incomingMessage.isDelivered
+                  ? "delivered"
+                  : "sent"),
+            };
+
+            return copy;
+          }
+
+          /* --------------------------------------------
+             MESSAGE ĐÃ TỒN TẠI
+          -------------------------------------------- */
+
+          if (
+            current.some(
+              (message) =>
+                Number(message.id) ===
+                Number(
+                  incomingMessage.id
+                )
+            )
+          ) {
+            return current;
+          }
+
+          /* --------------------------------------------
+             TRƯỜNG HỢP KHÔNG CÒN OPTIMISTIC
+          -------------------------------------------- */
+
+          return [
+            ...current,
+
+            {
+              ...incomingMessage,
+
+              pending: false,
+
+              deliveryStatus:
+                incomingMessage.deliveryStatus ||
+                (incomingMessage.isDelivered
+                  ? "delivered"
+                  : "sent"),
+            },
+          ];
+        });
+
+        return;
+      }
+
+      /* =================================================
+         MESSAGE DO NGƯỜI KHÁC GỬI
+      ================================================= */
+
+      setMessages((current) => {
+
+        /* ----------------------------------------------
+           CHỐNG DUPLICATE
+        ---------------------------------------------- */
+
+        if (
+          current.some(
+            (message) =>
+              Number(message.id) ===
+              Number(
+                incomingMessage.id
+              )
+          )
+        ) {
+          return current;
+        }
+
+        return [
+          ...current,
+
+          {
+            ...incomingMessage,
+            pending: false,
+          },
+        ];
+      });
+
+      /* ----------------------------------------------
+         MARK READ
+      ---------------------------------------------- */
+
+      markConversationRead(
+        currentConversation.id
+      );
+
+      return;
     }
 
-    return [
-      ...current,
-      {
-        ...incomingMessage,
-        pending: false,
-      },
-    ];
-  });
-
-  markConversationAsRead(
-    currentConversation.id
-  );
-
-  return;
-}
-
-    /* MESSAGE STATUS */
+    /* ===================================================
+       MESSAGE STATUS
+    =================================================== */
 
     if (
-      socketEvent.type === "message_status"
+      socketEvent.type ===
+      "message_status"
     ) {
       const messageId =
         socketEvent.messageId;
@@ -258,7 +355,8 @@ function ChatWindow({
           Number(messageId)
             ? {
                 ...message,
-                deliveryStatus: status,
+                deliveryStatus:
+                  status,
                 pending: false,
               }
             : message
@@ -268,7 +366,9 @@ function ChatWindow({
       return;
     }
 
-    /* MESSAGE DELETED */
+    /* ===================================================
+       MESSAGE DELETED
+    =================================================== */
 
     if (
       socketEvent.type ===
@@ -284,6 +384,10 @@ function ChatWindow({
         return;
       }
 
+      /* ----------------------------------------------
+         DELETE FOR ME
+      ---------------------------------------------- */
+
       if (mode === "me") {
         setMessages((current) =>
           current.filter(
@@ -296,18 +400,23 @@ function ChatWindow({
         return;
       }
 
+      /* ----------------------------------------------
+         DELETE FOR EVERYONE
+      ---------------------------------------------- */
+
       if (mode === "everyone") {
         setMessages((current) =>
-          current.map((message) =>
-            Number(message.id) ===
-            Number(messageId)
-              ? {
-                  ...message,
-                  isDeleted: true,
-                  content:
-                    "Tin nhắn đã bị xóa",
-                }
-              : message
+          current.map(
+            (message) =>
+              Number(message.id) ===
+              Number(messageId)
+                ? {
+                    ...message,
+                    isDeleted: true,
+                    content:
+                      "Tin nhắn đã bị xóa",
+                  }
+                : message
           )
         );
       }
@@ -321,7 +430,7 @@ function ChatWindow({
      MARK READ
   ===================================================== */
 
-  async function markConversationAsRead(
+  async function markConversationRead(
     conversationId
   ) {
     if (!conversationId) {
@@ -329,13 +438,20 @@ function ChatWindow({
     }
 
     try {
-      await api.post(
-        `/conversations/${conversationId}/read`
+      await markConversationAsRead(
+        conversationId
       );
+
       onConversationRead?.();
+
+      /* ----------------------------------------------
+         SEND READ EVENT THROUGH WEBSOCKET
+      ---------------------------------------------- */
+
       if (
         websocket &&
-        websocket.readyState === WebSocket.OPEN
+        websocket.readyState ===
+          WebSocket.OPEN
       ) {
         websocket.send(
           JSON.stringify({
@@ -344,6 +460,10 @@ function ChatWindow({
           })
         );
       }
+
+      /* ----------------------------------------------
+         UPDATE LOCAL MESSAGES
+      ---------------------------------------------- */
 
       setMessages((current) =>
         current.map((message) => {
@@ -360,6 +480,7 @@ function ChatWindow({
           return message;
         })
       );
+
     } catch (error) {
       console.error(
         "Mark conversation read error:",
@@ -383,7 +504,8 @@ function ChatWindow({
   ===================================================== */
 
   function sendMessage() {
-    const content = text.trim();
+    const content =
+      text.trim();
 
     if (!content) {
       return;
@@ -395,23 +517,42 @@ function ChatWindow({
 
     if (
       !websocket ||
-      websocket.readyState !== WebSocket.OPEN
+      websocket.readyState !==
+        WebSocket.OPEN
     ) {
       return;
     }
 
+    /* ===================================================
+       OPTIMISTIC MESSAGE
+    =================================================== */
+
     const optimisticMessage = {
       id: `temp-${Date.now()}`,
-      conversationId: conversation.id,
-      senderId: currentUser.id,
+
+      conversationId:
+        conversation.id,
+
+      senderId:
+        currentUser.id,
+
       senderName:
         currentUser.fullName ||
         currentUser.username,
-      receiverId: selectedUser.id,
+
+      receiverId:
+        selectedUser.id,
+
       content,
-      sentAt: new Date().toISOString(),
+
+      sentAt:
+        new Date().toISOString(),
+
       pending: true,
-      deliveryStatus: "pending",
+
+      deliveryStatus:
+        "pending",
+
       isDeleted: false,
     };
 
@@ -422,11 +563,20 @@ function ChatWindow({
 
     setText("");
 
+    /* ===================================================
+       SEND THROUGH WEBSOCKET
+    =================================================== */
+
     websocket.send(
       JSON.stringify({
         type: "message",
-        conversationId: conversation.id,
-        receiverId: selectedUser.id,
+
+        conversationId:
+          conversation.id,
+
+        receiverId:
+          selectedUser.id,
+
         content,
       })
     );
@@ -434,6 +584,7 @@ function ChatWindow({
 
   function handleSubmit(e) {
     e.preventDefault();
+
     sendMessage();
   }
 
@@ -446,18 +597,23 @@ function ChatWindow({
       return;
     }
 
+    /* ----------------------------------------------
+       OPTIMISTIC MESSAGE
+    ---------------------------------------------- */
+
     if (
-      String(deleteMessage.id).startsWith(
-        "temp-"
-      )
+      String(
+        deleteMessage.id
+      ).startsWith("temp-")
     ) {
       setDeleteMessage(null);
+
       return;
     }
 
     try {
-      await api.delete(
-        `/messages/${deleteMessage.id}/me`
+      await deleteMessageForMe(
+        deleteMessage.id
       );
 
       setMessages((current) =>
@@ -469,6 +625,7 @@ function ChatWindow({
       );
 
       setDeleteMessage(null);
+
     } catch (error) {
       console.error(
         "Delete message for me error:",
@@ -486,35 +643,42 @@ function ChatWindow({
       return;
     }
 
+    /* ----------------------------------------------
+       OPTIMISTIC MESSAGE
+    ---------------------------------------------- */
+
     if (
-      String(deleteMessage.id).startsWith(
-        "temp-"
-      )
+      String(
+        deleteMessage.id
+      ).startsWith("temp-")
     ) {
       setDeleteMessage(null);
+
       return;
     }
 
     try {
-      await api.delete(
-        `/messages/${deleteMessage.id}/everyone`
+      await deleteMessageForEveryone(
+        deleteMessage.id
       );
 
       setMessages((current) =>
-        current.map((message) =>
-          Number(message.id) ===
-          Number(deleteMessage.id)
-            ? {
-                ...message,
-                isDeleted: true,
-                content:
-                  "Tin nhắn đã bị xóa",
-              }
-            : message
+        current.map(
+          (message) =>
+            Number(message.id) ===
+            Number(deleteMessage.id)
+              ? {
+                  ...message,
+                  isDeleted: true,
+                  content:
+                    "Tin nhắn đã bị xóa",
+                }
+              : message
         )
       );
 
       setDeleteMessage(null);
+
     } catch (error) {
       console.error(
         "Delete message for everyone error:",
@@ -532,7 +696,9 @@ function ChatWindow({
       return;
     }
 
-    setShowDeleteHistoryModal(true);
+    setShowDeleteHistoryModal(
+      true
+    );
   }
 
   async function confirmDeleteConversation() {
@@ -543,13 +709,16 @@ function ChatWindow({
     try {
       setDeletingHistory(true);
 
-      await api.delete(
-        `/conversations/${conversation.id}/messages`
+      await deleteConversationHistoryService(
+        conversation.id
       );
 
       setMessages([]);
 
-      setShowDeleteHistoryModal(false);
+      setShowDeleteHistoryModal(
+        false
+      );
+
     } catch (error) {
       console.error(
         "Delete conversation history error:",
@@ -559,6 +728,7 @@ function ChatWindow({
       alert(
         "Không thể xóa lịch sử cuộc trò chuyện."
       );
+
     } finally {
       setDeletingHistory(false);
     }
@@ -571,16 +741,20 @@ function ChatWindow({
   if (!selectedUser) {
     return (
       <main className="chat-empty">
+
         <div className="chat-empty-logo">
           C
         </div>
 
-        <h2>Company Chat</h2>
+        <h2>
+          Company Chat
+        </h2>
 
         <p>
-          Chọn một nhân viên ở bên trái để bắt đầu
-          trò chuyện.
+          Chọn một nhân viên ở bên trái
+          để bắt đầu trò chuyện.
         </p>
+
       </main>
     );
   }
@@ -592,8 +766,11 @@ function ChatWindow({
   return (
     <>
       <main className="chat-container">
+
         <ChatHeader
-          selectedUser={selectedUser}
+          selectedUser={
+            selectedUser
+          }
           websocketConnected={
             websocketConnected
           }
@@ -603,13 +780,16 @@ function ChatWindow({
         />
 
         <div className="messages-container">
+
           {loading ? (
             <div className="messages-loading">
               <span className="loading-spinner" />
               Đang tải tin nhắn...
             </div>
+
           ) : messages.length === 0 ? (
             <div className="no-messages">
+
               <div className="no-message-avatar">
                 <Avatar
                   user={selectedUser}
@@ -625,72 +805,63 @@ function ChatWindow({
               </h3>
 
               <p>
-                Gửi tin nhắn đầu tiên để bắt đầu cuộc
-                trò chuyện.
+                Gửi tin nhắn đầu tiên để bắt đầu
+                cuộc trò chuyện.
               </p>
+
             </div>
+
           ) : (
-            messages.map((message) => (
-              <MessageItem
-                key={message.id}
-                message={message}
-                currentUser={currentUser}
-                onDelete={setDeleteMessage}
-              />
-            ))
+            messages.map(
+              (message) => (
+                <MessageItem
+                  key={message.id}
+                  message={message}
+                  currentUser={
+                    currentUser
+                  }
+                  onDelete={
+                    setDeleteMessage
+                  }
+                />
+              )
+            )
           )}
 
-          <div ref={messagesEndRef} />
+          <div
+            ref={messagesEndRef}
+          />
+
         </div>
 
-        <div className="composer-container">
-          <DeliveryLegend />
+        {/* =================================================
+            COMPOSER
+        ================================================= */}
 
-          <form
-            className="message-composer"
-            onSubmit={handleSubmit}
-          >
-            <input
-              value={text}
-              onChange={(e) =>
-                setText(e.target.value)
-              }
-              placeholder={`Nhắn tin cho ${
-                selectedUser.fullName ||
-                selectedUser.username
-              }...`}
-              disabled={!websocketConnected}
-            />
+            <MessageComposer
+                text={text}
+                selectedUser={selectedUser}
+                websocketConnected={
+                    websocketConnected
+                }
+                onChange={(e) =>
+                    setText(e.target.value)
+                }
+                onSubmit={handleSubmit}
+                />
 
-            <button
-              type="submit"
-              className="send-button"
-              disabled={
-                !text.trim() ||
-                !websocketConnected
-              }
-              title="Gửi tin nhắn"
-            >
-              <span>➤</span>
-            </button>
-          </form>
-
-          {!websocketConnected && (
-            <div className="connection-warning">
-              <span className="warning-dot" />
-              Mất kết nối realtime. Vui lòng chờ kết
-              nối lại.
-            </div>
-          )}
-        </div>
       </main>
 
-      {/* DELETE MESSAGE MODAL */}
+      {/* ===================================================
+          DELETE MESSAGE MODAL
+      =================================================== */}
 
-     <DeleteMessageModal
+      <DeleteMessageModal
         message={deleteMessage}
         currentUser={currentUser}
-        onClose={() => setDeleteMessage(null)}
+        onClose={() =>
+          setDeleteMessage(null)
+        }
         onDeleteForMe={
           handleDeleteForMe
         }
@@ -699,20 +870,27 @@ function ChatWindow({
         }
       />
 
-      {/* DELETE HISTORY MODAL */}
+      {/* ===================================================
+          DELETE HISTORY MODAL
+      =================================================== */}
 
       {showDeleteHistoryModal && (
         <DeleteHistoryModal
           onClose={() =>
-            setShowDeleteHistoryModal(false)
+            setShowDeleteHistoryModal(
+              false
+            )
           }
           onConfirm={
             confirmDeleteConversation
           }
-          loading={deletingHistory}
+          loading={
+            deletingHistory
+          }
         />
       )}
     </>
   );
 }
+
 export default ChatWindow;

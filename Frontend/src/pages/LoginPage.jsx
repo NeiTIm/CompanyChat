@@ -1,43 +1,65 @@
 import { useState } from "react";
-import api from "../api";
 
-import "../style.css";
-/* =========================================================
-   LOGIN
-========================================================= */
+import { login } from "../services/authService";
 
 function LoginPage({ onLogin }) {
-  const [username, setUsername] = useState("tien");
-  const [password, setPassword] = useState("123456");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [username, setUsername] =
+    useState("tien");
+
+  const [password, setPassword] =
+    useState("123456");
+
+  const [error, setError] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
 
     setError("");
 
-    if (!username.trim() || !password.trim()) {
-      setError("Vui lòng nhập đầy đủ thông tin.");
+    if (
+      !username.trim() ||
+      !password.trim()
+    ) {
+      setError(
+        "Vui lòng nhập đầy đủ thông tin."
+      );
+
       return;
     }
 
     try {
       setLoading(true);
 
-      const response = await api.post("/auth/login", {
-        username: username.trim(),
-        password,
-      });
+      const data = await login(
+        username.trim(),
+        password
+      );
 
-      const { token, user } = response.data;
+      const {
+        token,
+        user,
+      } = data;
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem(
+        "token",
+        token
+      );
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(user)
+      );
 
       onLogin(user);
     } catch (error) {
-      console.error("Login error:", error);
+      console.error(
+        "Login error:",
+        error
+      );
 
       setError(
         error?.response?.data?.message ||
@@ -50,62 +72,84 @@ function LoginPage({ onLogin }) {
 
   return (
     <div className="login-page">
-      <div className="login-decoration decoration-1" />
-      <div className="login-decoration decoration-2" />
+      <div className="login-card">
 
-      <form className="login-card" onSubmit={handleSubmit}>
-        <div className="login-logo">C</div>
+        <div className="login-logo">
+          C
+        </div>
 
-        <h1>Company Chat</h1>
+        <h1>
+          Company Chat
+        </h1>
 
         <p className="login-subtitle">
-          Hệ thống trò chuyện nội bộ
+          Đăng nhập để tiếp tục
         </p>
 
-        <div className="login-field">
-          <label>Tên đăng nhập</label>
-
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Nhập tên đăng nhập"
-            autoComplete="username"
-          />
-        </div>
-
-        <div className="login-field">
-          <label>Mật khẩu</label>
-
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Nhập mật khẩu"
-            autoComplete="current-password"
-          />
-        </div>
-
-        {error && (
-          <div className="login-error">
-            {error}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          className="login-button"
-          disabled={loading}
+        <form
+          className="login-form"
+          onSubmit={handleSubmit}
         >
-          {loading ? (
-            <>
-              <span className="button-spinner" />
-              Đang đăng nhập...
-            </>
-          ) : (
-            "Đăng nhập"
+
+          <div className="login-field">
+            <label>
+              Tên đăng nhập
+            </label>
+
+            <input
+              type="text"
+              value={username}
+              onChange={(e) =>
+                setUsername(
+                  e.target.value
+                )
+              }
+              placeholder="Nhập tên đăng nhập"
+              disabled={loading}
+            />
+          </div>
+
+          <div className="login-field">
+            <label>
+              Mật khẩu
+            </label>
+
+            <input
+              type="password"
+              value={password}
+              onChange={(e) =>
+                setPassword(
+                  e.target.value
+                )
+              }
+              placeholder="Nhập mật khẩu"
+              disabled={loading}
+            />
+          </div>
+
+          {error && (
+            <div className="login-error">
+              {error}
+            </div>
           )}
-        </button>
-      </form>
+
+          <button
+            type="submit"
+            className="login-button"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="button-spinner" />
+                Đang đăng nhập...
+              </>
+            ) : (
+              "Đăng nhập"
+            )}
+          </button>
+
+        </form>
+      </div>
     </div>
   );
 }
