@@ -108,8 +108,21 @@ function MessageItem({
               className="reply-button"
               onClick={() => onReply(message)}
               title="Trả lời tin nhắn"
+              aria-label="Trả lời tin nhắn"
             >
-              ↩
+              <svg
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 17 4 12l5-5" />
+                <path d="M4 12h10a6 6 0 0 1 6 6v1" />
+              </svg>
             </button>
           )}
 

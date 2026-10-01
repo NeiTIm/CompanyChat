@@ -706,4 +706,225 @@ public class ConversationsController(
                     "Conversation history deleted."
             });
     }
+
+    /*
+ * ==================================================
+ * GET OR CREATE DEPARTMENT CONVERSATION
+ * ==================================================
+ */
+
+    [HttpPost("department")]
+    public async Task<ActionResult<DepartmentConversationDto>>
+        GetOrCreateDepartment()
+    {
+        /*
+         * =================================================
+         * LẤY CURRENT USER
+         * =================================================
+         */
+
+        var currentUser =
+            await db.Users
+                .Include(x => x.Department)
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == CurrentUserId &&
+                        x.IsActive);
+
+        if (currentUser is null)
+        {
+            return Unauthorized(
+                new
+                {
+                    message =
+                        "Current user not found."
+                });
+        }
+
+
+        /*
+         * =================================================
+         * USER PHẢI THUỘC DEPARTMENT
+         * =================================================
+         */
+
+        if (currentUser.DepartmentId is null)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "You are not assigned to a department."
+                });
+        }
+
+        var departmentId =
+            currentUser.DepartmentId.Value;
+
+
+        /*
+         * =================================================
+         * DEPARTMENT PHẢI ACTIVE
+         * =================================================
+         */
+
+        var department =
+            currentUser.Department;
+
+        if (department is null ||
+            !department.IsActive)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "Your department is not active."
+                });
+        }
+
+
+        /*
+         * =================================================
+         * TÌM DEPARTMENT CONVERSATION
+         * =================================================
+         */
+
+        var conversation =
+            await db.Conversations
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Type == "Department" &&
+                        x.DepartmentId ==
+                            departmentId);
+
+
+        /*
+         * =================================================
+         * CHƯA CÓ → TẠO CONVERSATION
+         * =================================================
+         */
+
+        if (conversation is null)
+        {
+            conversation =
+                new Conversation
+                {
+                    Type =
+                        "Department",
+
+                    DepartmentId =
+                        departmentId
+                };
+
+            db.Conversations.Add(
+                conversation);
+
+            await db.SaveChangesAsync();
+        }
+
+
+        /*
+         * =================================================
+         * ĐẢM BẢO CURRENT USER LÀ MEMBER
+         * =================================================
+         */
+
+        var isMember =
+            await db.ConversationMembers
+                .AnyAsync(
+                    x =>
+                        x.ConversationId ==
+                            conversation.Id &&
+
+                        x.UserId ==
+                            CurrentUserId);
+
+        if (!isMember)
+        {
+            db.ConversationMembers.Add(
+                new ConversationMember
+                {
+                    ConversationId =
+                        conversation.Id,
+
+                    UserId =
+                        CurrentUserId
+                });
+
+            await db.SaveChangesAsync();
+        }
+
+
+        /*
+         * =================================================
+         * ĐẢM BẢO CÁC USER ACTIVE TRONG DEPARTMENT
+         * LÀ MEMBER CỦA DEPARTMENT CHAT
+         * =================================================
+         */
+
+        var departmentUserIds =
+            await db.Users
+                .Where(
+                    x =>
+                        x.IsActive &&
+                        x.DepartmentId ==
+                            departmentId)
+                .Select(
+                    x =>
+                        x.Id)
+                .ToListAsync();
+
+        var existingMemberIds =
+            await db.ConversationMembers
+                .Where(
+                    x =>
+                        x.ConversationId ==
+                            conversation.Id)
+                .Select(
+                    x =>
+                        x.UserId)
+                .ToListAsync();
+
+        var newMemberIds =
+            departmentUserIds
+                .Except(existingMemberIds)
+                .ToList();
+
+        if (newMemberIds.Count > 0)
+        {
+            foreach (
+                var userId
+                in newMemberIds)
+            {
+                db.ConversationMembers.Add(
+                    new ConversationMember
+                    {
+                        ConversationId =
+                            conversation.Id,
+
+                        UserId =
+                            userId
+                    });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+
+        /*
+         * =================================================
+         * TRẢ RESPONSE
+         * =================================================
+         */
+
+        return Ok(
+            new DepartmentConversationDto(
+                conversation.Id,
+                conversation.Type,
+                department.Id,
+                department.Name,
+                conversation.CreatedAt));
+    }
+
+
 }

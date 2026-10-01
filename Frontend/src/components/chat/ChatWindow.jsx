@@ -31,6 +31,7 @@ import {
 
 function ChatWindow({
   selectedUser,
+  departmentConversation,
   currentUser,
   websocket,
   websocketConnected,
@@ -60,6 +61,10 @@ function ChatWindow({
   const [replyingTo, setReplyingTo] =
     useState(null);
 
+  /* =====================================================
+     DELETE HISTORY
+  ===================================================== */
+
   const [
     showDeleteHistoryModal,
     setShowDeleteHistoryModal,
@@ -70,14 +75,29 @@ function ChatWindow({
     setDeletingHistory,
   ] = useState(false);
 
+  /* =====================================================
+     DELETE MESSAGE
+  ===================================================== */
+
   const [deleteMessage, setDeleteMessage] =
     useState(null);
+
+  /* =====================================================
+     REFS
+  ===================================================== */
 
   const conversationRef =
     useRef(null);
 
   const messagesEndRef =
     useRef(null);
+
+  /* =====================================================
+     CURRENT CHAT TYPE
+  ===================================================== */
+
+  const isDepartmentChat =
+    Boolean(departmentConversation);
 
   /* =====================================================
      CONVERSATION REF
@@ -89,19 +109,22 @@ function ChatWindow({
   }, [conversation]);
 
   /* =====================================================
-     LOAD CONVERSATION
+     RESET WHEN CHAT TARGET CHANGES
   ===================================================== */
 
   useEffect(() => {
     setIsTyping(false);
-
-    /* -----------------------------------------------
-       Khi đổi người chat thì bỏ Reply cũ
-    ------------------------------------------------ */
-
     setReplyingTo(null);
+    setText("");
 
-    if (!selectedUser) {
+    /*
+     * Không có Private User
+     * và không có Department Conversation
+     */
+    if (
+      !selectedUser &&
+      !departmentConversation
+    ) {
       setConversation(null);
 
       conversationRef.current =
@@ -112,12 +135,38 @@ function ChatWindow({
       return;
     }
 
-    loadConversation(
-      selectedUser.id
-    );
-  }, [selectedUser]);
+    /*
+     * Nếu đang chọn Department
+     */
+    if (
+      departmentConversation &&
+      !selectedUser
+    ) {
+      loadDepartmentConversation(
+        departmentConversation
+      );
 
-  async function loadConversation(
+      return;
+    }
+
+    /*
+     * Nếu đang chọn Private User
+     */
+    if (selectedUser) {
+      loadPrivateConversation(
+        selectedUser.id
+      );
+    }
+  }, [
+    selectedUser,
+    departmentConversation,
+  ]);
+
+  /* =====================================================
+     LOAD PRIVATE CONVERSATION
+  ===================================================== */
+
+  async function loadPrivateConversation(
     userId
   ) {
     try {
@@ -164,7 +213,84 @@ function ChatWindow({
 
     } catch (error) {
       console.error(
-        "Load conversation error:",
+        "Load private conversation error:",
+        error
+      );
+
+      setMessages([]);
+
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* =====================================================
+     LOAD DEPARTMENT CONVERSATION
+  ===================================================== */
+
+  async function loadDepartmentConversation(
+    department
+  ) {
+    if (!department?.id) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      /*
+       * Department Conversation đã được
+       * tạo/lấy từ useChat.
+       *
+       * Không cần gọi lại API tạo conversation.
+       */
+
+      const currentConversation = {
+        id: department.id,
+        type:
+          department.type ||
+          "Department",
+        departmentId:
+          department.departmentId,
+        departmentName:
+          department.departmentName,
+        createdAt:
+          department.createdAt,
+      };
+
+      setConversation(
+        currentConversation
+      );
+
+      conversationRef.current =
+        currentConversation;
+
+      onConversationChange?.(
+        currentConversation.id
+      );
+
+      /* =================================================
+         LOAD MESSAGES
+      ================================================= */
+
+      const messages =
+        await getConversationMessages(
+          currentConversation.id
+        );
+
+      setMessages(messages);
+
+      /* =================================================
+         MARK READ
+      ================================================= */
+
+      await markConversationRead(
+        currentConversation.id
+      );
+
+    } catch (error) {
+      console.error(
+        "Load department conversation error:",
         error
       );
 
@@ -608,6 +734,23 @@ function ChatWindow({
       replyingTo;
 
     /* ===================================================
+       RECEIVER ID
+    =================================================== */
+
+    /*
+     * Private:
+     * receiverId = selectedUser.id
+     *
+     * Department:
+     * không có một receiver cụ thể
+     * nên receiverId = null.
+     */
+    const receiverId =
+      selectedUser
+        ? selectedUser.id
+        : null;
+
+    /* ===================================================
        OPTIMISTIC MESSAGE
     =================================================== */
 
@@ -624,8 +767,7 @@ function ChatWindow({
         currentUser.fullName ||
         currentUser.username,
 
-      receiverId:
-        selectedUser.id,
+      receiverId,
 
       content,
 
@@ -684,8 +826,7 @@ function ChatWindow({
         conversationId:
           conversation.id,
 
-        receiverId:
-          selectedUser.id,
+        receiverId,
 
         content,
 
@@ -848,10 +989,13 @@ function ChatWindow({
   }
 
   /* =====================================================
-     NO USER SELECTED
+     NO CHAT SELECTED
   ===================================================== */
 
-  if (!selectedUser) {
+  if (
+    !selectedUser &&
+    !departmentConversation
+  ) {
     return (
       <main className="chat-empty">
 
@@ -864,7 +1008,7 @@ function ChatWindow({
         </h2>
 
         <p>
-          Chọn một nhân viên ở bên trái
+          Chọn một nhân viên hoặc phòng ban
           để bắt đầu trò chuyện.
         </p>
 
@@ -873,7 +1017,267 @@ function ChatWindow({
   }
 
   /* =====================================================
-     MAIN CHAT
+     DEPARTMENT CHAT
+  ===================================================== */
+
+  if (
+    departmentConversation &&
+    !selectedUser
+  ) {
+    return (
+      <>
+        <main className="chat-container">
+
+          {/* =================================================
+              DEPARTMENT HEADER
+          ================================================= */}
+
+          <div className="chat-header department-chat-header">
+
+          <div className="chat-header-user">
+
+            <div className="department-header-icon">
+              <svg
+                viewBox="0 0 24 24"
+                width="22"
+                height="22"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 21V5.5C4 4.67 4.67 4 5.5 4h8c.83 0 1.5.67 1.5 1.5V21" />
+                <path d="M15 9h3.5c.83 0 1.5.67 1.5 1.5V21" />
+                <path d="M8 8h3" />
+                <path d="M8 12h3" />
+                <path d="M8 16h3" />
+                <path d="M18 13h.01" />
+                <path d="M18 17h.01" />
+                <path d="M2.5 21h19" />
+              </svg>
+            </div>
+
+            <div className="chat-header-info">
+
+              <div className="chat-header-name">
+                {departmentConversation.departmentName ||
+                  "Phòng ban"}
+              </div>
+
+              <div className="department-header-status">
+                <span className="department-status-dot" />
+                Phòng chat nội bộ
+              </div>
+
+            </div>
+
+          </div>
+
+  <div className="chat-header-actions">
+
+    <div className="department-header-label">
+      Internal
+    </div>
+
+    <button
+      type="button"
+      className="header-delete-button"
+      onClick={
+        deleteConversationHistory
+      }
+      title="Xóa lịch sử trò chuyện"
+      aria-label="Xóa lịch sử trò chuyện"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="18"
+        height="18"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M4 7h16" />
+        <path d="M9 7V4h6v3" />
+        <path d="M6.5 7 7 20h10l.5-13" />
+        <path d="M10 11v5" />
+        <path d="M14 11v5" />
+      </svg>
+    </button>
+
+  </div>
+
+</div>
+
+          {/* =================================================
+              MESSAGES
+          ================================================= */}
+
+          <div className="messages-container">
+
+            {loading ? (
+              <div className="messages-loading">
+                <span className="loading-spinner" />
+                Đang tải tin nhắn...
+              </div>
+
+            ) : messages.length === 0 ? (
+              <div className="no-messages">
+
+                <div className="no-message-avatar department-empty-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="26"
+                    height="26"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M4 21V5.5C4 4.67 4.67 4 5.5 4h8c.83 0 1.5.67 1.5 1.5V21" />
+                    <path d="M15 9h3.5c.83 0 1.5.67 1.5 1.5V21" />
+                    <path d="M8 8h3" />
+                    <path d="M8 12h3" />
+                    <path d="M8 16h3" />
+                    <path d="M18 13h.01" />
+                    <path d="M18 17h.01" />
+                    <path d="M2.5 21h19" />
+                  </svg>
+                </div>
+
+                <h3>
+                  {departmentConversation.departmentName ||
+                    "Phòng ban"}
+                </h3>
+
+                <p>
+                  Gửi tin nhắn đầu tiên cho
+                  phòng ban.
+                </p>
+
+              </div>
+
+            ) : (
+              messages.map(
+                (message) => (
+                  <MessageItem
+                    key={message.id}
+                    message={message}
+                    currentUser={
+                      currentUser
+                    }
+                    onDelete={
+                      setDeleteMessage
+                    }
+                    onReply={
+                      handleReply
+                    }
+                  />
+                )
+              )
+            )}
+
+            {isTyping && (
+              <TypingIndicator />
+            )}
+
+            <div
+              ref={messagesEndRef}
+            />
+
+          </div>
+
+          {/* =================================================
+              DEPARTMENT COMPOSER
+          ================================================= */}
+
+          <MessageComposer
+            text={text}
+            selectedUser={{
+              id: null,
+              fullName:
+                departmentConversation.departmentName ||
+                "Phòng ban",
+              username:
+                departmentConversation.departmentName ||
+                "Phòng ban",
+              isOnline: true,
+            }}
+            conversation={
+              conversation
+            }
+            websocket={
+              websocket
+            }
+            websocketConnected={
+              websocketConnected
+            }
+            replyingTo={
+              replyingTo
+            }
+            onCancelReply={
+              cancelReply
+            }
+            onChange={(e) =>
+              setText(e.target.value)
+            }
+            onSubmit={
+              handleSubmit
+            }
+          />
+
+        </main>
+
+        {/* ===================================================
+            DELETE MESSAGE MODAL
+        =================================================== */}
+
+        <DeleteMessageModal
+          message={
+            deleteMessage
+          }
+          currentUser={
+            currentUser
+          }
+          onClose={() =>
+            setDeleteMessage(null)
+          }
+          onDeleteForMe={
+            handleDeleteForMe
+          }
+          onDeleteForEveryone={
+            handleDeleteForEveryone
+          }
+        />
+
+        {/* ===================================================
+            DELETE HISTORY MODAL
+        =================================================== */}
+
+        {showDeleteHistoryModal && (
+          <DeleteHistoryModal
+            onClose={() =>
+              setShowDeleteHistoryModal(
+                false
+              )
+            }
+            onConfirm={
+              confirmDeleteConversation
+            }
+            loading={
+              deletingHistory
+            }
+          />
+        )}
+      </>
+    );
+  }
+
+  /* =====================================================
+     PRIVATE CHAT
   ===================================================== */
 
   return (
@@ -905,7 +1309,9 @@ function ChatWindow({
 
               <div className="no-message-avatar">
                 <Avatar
-                  user={selectedUser}
+                  user={
+                    selectedUser
+                  }
                   size="large"
                   showStatus
                 />
@@ -955,25 +1361,35 @@ function ChatWindow({
         </div>
 
         {/* =================================================
-            COMPOSER
+            PRIVATE COMPOSER
         ================================================= */}
 
         <MessageComposer
           text={text}
-          selectedUser={selectedUser}
-          conversation={conversation}
-          websocket={websocket}
+          selectedUser={
+            selectedUser
+          }
+          conversation={
+            conversation
+          }
+          websocket={
+            websocket
+          }
           websocketConnected={
             websocketConnected
           }
-          replyingTo={replyingTo}
+          replyingTo={
+            replyingTo
+          }
           onCancelReply={
             cancelReply
           }
           onChange={(e) =>
             setText(e.target.value)
           }
-          onSubmit={handleSubmit}
+          onSubmit={
+            handleSubmit
+          }
         />
 
       </main>
@@ -983,8 +1399,12 @@ function ChatWindow({
       =================================================== */}
 
       <DeleteMessageModal
-        message={deleteMessage}
-        currentUser={currentUser}
+        message={
+          deleteMessage
+        }
+        currentUser={
+          currentUser
+        }
         onClose={() =>
           setDeleteMessage(null)
         }

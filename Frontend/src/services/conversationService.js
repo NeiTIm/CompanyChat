@@ -53,3 +53,17 @@ export async function deleteConversationHistory(conversationId) {
 
   return response.data;
 }
+
+/**
+ * Tạo hoặc lấy Department Conversation
+ *
+ * - Không cần truyền departmentId từ Frontend.
+ * - Backend tự xác định Department dựa trên user đang đăng nhập.
+ * - Nếu Department Conversation chưa tồn tại thì Backend sẽ tạo mới.
+ * - Đồng thời Backend đảm bảo user thuộc Department được thêm vào Conversation.
+ */
+export async function getOrCreateDepartmentConversation() {
+  const response = await api.post("/conversations/department");
+
+  return response.data;
+}
