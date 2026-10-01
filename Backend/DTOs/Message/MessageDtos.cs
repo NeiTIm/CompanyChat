@@ -1,4 +1,4 @@
-namespace CompanyChat.Api.DTOs;
+namespace CompanyChat.Api.DTOs.Message;
 
 public record ReplyMessageDto(
     long Id,
@@ -15,5 +15,5 @@ public record MessageDto(
     DateTime SentAt,
     bool IsDeleted,
     string DeliveryStatus,
-    long? ReplyToMessageId = null,
-    ReplyMessageDto? ReplyTo = null);
+    long? ReplyToMessageId,
+    ReplyMessageDto? ReplyTo);

@@ -1,5 +1,6 @@
 using CompanyChat.Api.Data;
-using CompanyChat.Api.DTOs;
+using CompanyChat.Api.DTOs.Auth;
+using CompanyChat.Api.DTOs.User;
 using CompanyChat.Api.Models;
 using CompanyChat.Api.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -84,6 +85,11 @@ public class AuthController(
             user.Email,
             user.Role,
             user.IsOnline,
-            user.LastSeen);
+            user.LastSeen,
+            user.IsActive,
+            user.DepartmentId,
+            user.Department != null
+                ? user.Department.Name
+                : null);
     }
 }

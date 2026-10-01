@@ -4,6 +4,7 @@ using CompanyChat.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CompanyChat.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261001143144_AddDepartment")]
+    partial class AddDepartment
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,16 +36,11 @@ namespace CompanyChat.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("DepartmentId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DepartmentId");
 
                     b.ToTable("Conversations");
                 });
@@ -240,16 +238,6 @@ namespace CompanyChat.Api.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("CompanyChat.Api.Models.Conversation", b =>
-                {
-                    b.HasOne("CompanyChat.Api.Models.Department", "Department")
-                        .WithMany("Conversations")
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Department");
-                });
-
             modelBuilder.Entity("CompanyChat.Api.Models.ConversationMember", b =>
                 {
                     b.HasOne("CompanyChat.Api.Models.Conversation", "Conversation")
@@ -333,8 +321,6 @@ namespace CompanyChat.Api.Migrations
 
             modelBuilder.Entity("CompanyChat.Api.Models.Department", b =>
                 {
-                    b.Navigation("Conversations");
-
                     b.Navigation("Users");
                 });
 

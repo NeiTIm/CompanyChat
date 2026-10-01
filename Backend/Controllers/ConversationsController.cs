@@ -1,6 +1,8 @@
-using System.Security.Claims;
+using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
-using CompanyChat.Api.DTOs;
+using CompanyChat.Api.DTOs.Conversation;
+using CompanyChat.Api.DTOs.User;
+using CompanyChat.Api.DTOs.Message;
 using CompanyChat.Api.Models;
 using CompanyChat.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -14,12 +16,11 @@ namespace CompanyChat.Api.Controllers;
 [Authorize]
 public class ConversationsController(
     AppDbContext db,
-    ConnectionManager connections) : ControllerBase
+    ConnectionManager connections,
+    ConversationAccessService conversationAccess) : ControllerBase
 {
     private int CurrentUserId =>
-        int.Parse(
-            User.FindFirstValue(
-                ClaimTypes.NameIdentifier)!);
+        conversationAccess.GetUserId(User);
 
 
     /*
@@ -45,6 +46,7 @@ public class ConversationsController(
 
         var other =
             await db.Users
+                .Include(x => x.Department)
                 .FirstOrDefaultAsync(
                     x =>
                         x.Id == otherUserId &&
@@ -86,6 +88,12 @@ public class ConversationsController(
                 {
                     Type = "Private",
 
+                    /*
+                     * Private conversation không thuộc
+                     * Department.
+                     */
+                    DepartmentId = null,
+
                     Members =
                     [
                         new ConversationMember
@@ -120,7 +128,12 @@ public class ConversationsController(
                     other.Email,
                     other.Role,
                     other.IsOnline,
-                    other.LastSeen),
+                    other.LastSeen,
+                    other.IsActive,
+                    other.DepartmentId,
+                    other.Department != null
+                        ? other.Department.Name
+                        : null),
 
                 conversation.CreatedAt));
     }
@@ -205,20 +218,46 @@ public class ConversationsController(
 
 
         /*
-         * ==================================================
+         * =================================================
+         * KIỂM TRA QUYỀN TRUY CẬP
+         * =================================================
+         *
+         * ConversationAccessService kiểm tra:
+         *
+         * Private:
+         *     -> phải là member
+         *
+         * Department:
+         *     -> phải là member
+         *     -> phải thuộc đúng Department
+         *
+         * Admin không tự động được bypass.
+         */
+
+        var canAccess =
+            await conversationAccess.CanAccessAsync(
+                User,
+                conversationId);
+
+        if (!canAccess)
+        {
+            return Forbid();
+        }
+
+
+        /*
+         * =================================================
          * LẤY MEMBER CỦA CURRENT USER
-         * ==================================================
+         * =================================================
+         *
+         * Vẫn lấy ConversationMember riêng để sử dụng
+         * HistoryDeletedAt.
          */
 
         var currentMember =
-            await db.ConversationMembers
-                .FirstOrDefaultAsync(
-                    x =>
-                        x.ConversationId ==
-                            conversationId &&
-
-                        x.UserId ==
-                            CurrentUserId);
+            await conversationAccess.GetMemberAsync(
+                User,
+                conversationId);
 
         if (currentMember is null)
         {
@@ -233,32 +272,6 @@ public class ConversationsController(
          * ==================================================
          * LẤY MESSAGES
          * ==================================================
-         *
-         * Nếu CurrentUser chưa từng xóa lịch sử:
-         *
-         *     historyDeletedAt == null
-         *
-         *     -> lấy toàn bộ message.
-         *
-         *
-         * Nếu CurrentUser đã xóa lịch sử:
-         *
-         *     x.SentAt <= historyDeletedAt
-         *
-         *     -> message cũ không trả về nữa.
-         *
-         *
-         *     x.SentAt > historyDeletedAt
-         *
-         *     -> message mới vẫn trả về.
-         *
-         *
-         * Quan trọng:
-         *
-         * Message KHÔNG bị xóa khỏi database.
-         *
-         * Chỉ là CurrentUser không nhìn thấy
-         * những message trước thời điểm xóa lịch sử.
          */
 
         var messages =
@@ -292,26 +305,14 @@ public class ConversationsController(
                                 s.IsDeletedForMe) &&
 
                         /*
-                         * =========================================
                          * HISTORY DELETE
-                         * =========================================
-                         *
-                         * Chưa xóa lịch sử:
-                         *
-                         *     lấy tất cả.
-                         *
-                         * Đã xóa lịch sử:
-                         *
-                         *     chỉ lấy message mới hơn
-                         *     thời điểm xóa.
                          */
                         (
                             historyDeletedAt == null ||
 
                             x.SentAt >
                                 historyDeletedAt
-                        )
-                )
+                        ))
                 .OrderByDescending(
                     x =>
                         x.SentAt)
@@ -325,9 +326,6 @@ public class ConversationsController(
          * ==================================================
          * MARK MESSAGE AS DELIVERED
          * ==================================================
-         *
-         * Chỉ những message thực sự được load
-         * mới được đánh dấu delivered.
          */
 
         var undeliveredStates =
@@ -434,18 +432,31 @@ public class ConversationsController(
             int conversationId)
     {
         /*
-         * Lấy ConversationMember của CurrentUser.
+         * =================================================
+         * KIỂM TRA QUYỀN TRUY CẬP
+         * =================================================
+         */
+
+        var canAccess =
+            await conversationAccess.CanAccessAsync(
+                User,
+                conversationId);
+
+        if (!canAccess)
+        {
+            return Forbid();
+        }
+
+
+        /*
+         * Lấy ConversationMember để sử dụng
+         * HistoryDeletedAt.
          */
 
         var member =
-            await db.ConversationMembers
-                .FirstOrDefaultAsync(
-                    x =>
-                        x.ConversationId ==
-                            conversationId &&
-
-                        x.UserId ==
-                            CurrentUserId);
+            await conversationAccess.GetMemberAsync(
+                User,
+                conversationId);
 
         if (member is null)
         {
@@ -454,7 +465,9 @@ public class ConversationsController(
 
 
         /*
-         * Lấy những message chưa đọc.
+         * ==================================================
+         * LẤY NHỮNG MESSAGE CHƯA ĐỌC
+         * ==================================================
          */
 
         var unreadStates =
@@ -511,7 +524,6 @@ public class ConversationsController(
             /*
              * Đã đọc thì chắc chắn đã nhận.
              */
-
             state.IsDelivered = true;
 
             if (state.DeliveredAt is null)
@@ -630,32 +642,6 @@ public class ConversationsController(
      * =========================================================
      * XÓA LỊCH SỬ CUỘC TRÒ CHUYỆN
      * =========================================================
-     *
-     * Đây là:
-     *
-     *     "Xóa lịch sử cho tôi"
-     *
-     * Không phải:
-     *
-     *     "Xóa message cho mọi người"
-     *
-     *
-     * Logic:
-     *
-     *     ConversationMember.HistoryDeletedAt
-     *                         ↓
-     *                    DateTime.UtcNow
-     *
-     *
-     * Không:
-     *
-     * - Xóa Message
-     * - Message.IsDeleted = true
-     * - Xóa MessageUserState
-     * - Ảnh hưởng user còn lại
-     * - Ảnh hưởng Reply
-     *
-     * =========================================================
      */
 
     [HttpDelete("{conversationId:int}/history")]
@@ -664,18 +650,30 @@ public class ConversationsController(
             int conversationId)
     {
         /*
+         * =================================================
+         * KIỂM TRA QUYỀN TRUY CẬP
+         * =================================================
+         */
+
+        var canAccess =
+            await conversationAccess.CanAccessAsync(
+                User,
+                conversationId);
+
+        if (!canAccess)
+        {
+            return Forbid();
+        }
+
+
+        /*
          * Lấy ConversationMember của CurrentUser.
          */
 
         var member =
-            await db.ConversationMembers
-                .FirstOrDefaultAsync(
-                    x =>
-                        x.ConversationId ==
-                            conversationId &&
-
-                        x.UserId ==
-                            CurrentUserId);
+            await conversationAccess.GetMemberAsync(
+                User,
+                conversationId);
 
         if (member is null)
         {
@@ -687,8 +685,7 @@ public class ConversationsController(
          * Ghi nhận thời điểm CurrentUser
          * xóa lịch sử.
          *
-         * User còn lại có ConversationMember
-         * riêng nên hoàn toàn không bị ảnh hưởng.
+         * User còn lại không bị ảnh hưởng.
          */
 
         member.HistoryDeletedAt =

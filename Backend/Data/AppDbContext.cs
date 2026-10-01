@@ -3,27 +3,68 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CompanyChat.Api.Data;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options)
+    : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
+
+    public DbSet<Department> Departments => Set<Department>();
+
     public DbSet<Conversation> Conversations => Set<Conversation>();
-    public DbSet<ConversationMember> ConversationMembers => Set<ConversationMember>();
+
+    public DbSet<ConversationMember> ConversationMembers
+        => Set<ConversationMember>();
+
     public DbSet<Message> Messages => Set<Message>();
+
     public DbSet<MessageUserState> MessageUserStates
     {
         get;
         set;
     }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<User>().HasIndex(x => x.Username).IsUnique();
-        modelBuilder.Entity<User>().HasIndex(x => x.Email).IsUnique();
+        // =====================================================
+        // USER
+        // =====================================================
 
-        modelBuilder.Entity<ConversationMember>().HasKey(x => new
-        {
-            x.ConversationId,
-            x.UserId
-        });
+        modelBuilder.Entity<User>()
+            .HasIndex(x => x.Username)
+            .IsUnique();
+
+        modelBuilder.Entity<User>()
+            .HasIndex(x => x.Email)
+            .IsUnique();
+
+        // =====================================================
+        // DEPARTMENT
+        // =====================================================
+
+        modelBuilder.Entity<Department>()
+            .HasIndex(x => x.Name)
+            .IsUnique();
+
+        modelBuilder.Entity<User>()
+            .HasOne(x => x.Department)
+            .WithMany(x => x.Users)
+            .HasForeignKey(x => x.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Conversation>()
+            .HasOne(x => x.Department)
+            .WithMany(x => x.Conversations)
+            .HasForeignKey(x => x.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+        // =====================================================
+        // CONVERSATION MEMBER
+        // =====================================================
+
+        modelBuilder.Entity<ConversationMember>()
+            .HasKey(x => new
+            {
+                x.ConversationId,
+                x.UserId
+            });
 
         modelBuilder.Entity<ConversationMember>()
             .HasOne(x => x.Conversation)
@@ -37,6 +78,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // =====================================================
+        // MESSAGE
+        // =====================================================
+
         modelBuilder.Entity<Message>()
             .HasOne(x => x.Conversation)
             .WithMany(x => x.Messages)
@@ -48,12 +93,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(x => x.Messages)
             .HasForeignKey(x => x.SenderId)
             .OnDelete(DeleteBehavior.Restrict);
-            
+
         modelBuilder.Entity<Message>()
             .HasOne(x => x.ReplyToMessage)
             .WithMany()
             .HasForeignKey(x => x.ReplyToMessageId)
             .OnDelete(DeleteBehavior.NoAction);
+
+        // =====================================================
+        // MESSAGE USER STATE
+        // =====================================================
 
         modelBuilder.Entity<MessageUserState>()
             .HasIndex(x => new

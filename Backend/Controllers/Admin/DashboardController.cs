@@ -1,3 +1,4 @@
+using CompanyChat.Api.Authorization;
 using CompanyChat.Api.DTOs.Admin;
 using CompanyChat.Api.Services.Admin;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +8,7 @@ namespace CompanyChat.Api.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/dashboard")]
-[Authorize(Roles = "Admin")]
+[Authorize(Policy = Policies.ManageUsers)]
 public class DashboardController(
     DashboardService dashboardService) : ControllerBase
 {

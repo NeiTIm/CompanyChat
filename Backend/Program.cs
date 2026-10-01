@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using CompanyChat.Api.Services.Admin;
+using CompanyChat.Api.Authorization;
+using CompanyChat.Api.Services.Chat;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -18,7 +20,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
             "DefaultConnection")));
 
 builder.Services.AddScoped<JwtService>();
-
+builder.Services.AddScoped<ConversationAccessService>();
+builder.Services.AddScoped<ChatMessageService>();
 builder.Services.AddScoped<DashboardService>();
 
 builder.Services.AddScoped<ChatWebSocketHandler>();
@@ -65,7 +68,46 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // ============================================
+    // ADMIN
+    // ============================================
+
+    options.AddPolicy(
+        Policies.ManageUsers,
+        policy =>
+            policy.RequireRole("Admin"));
+
+    options.AddPolicy(
+        Policies.ManageDepartments,
+        policy =>
+            policy.RequireRole("Admin"));
+
+    // ============================================
+    // AUTHENTICATED USER
+    // ============================================
+
+    options.AddPolicy(
+        Policies.AccessConversation,
+        policy =>
+            policy.RequireAuthenticatedUser());
+
+    options.AddPolicy(
+        Policies.SendMessage,
+        policy =>
+            policy.RequireAuthenticatedUser());
+
+    options.AddPolicy(
+        Policies.DeleteOwnMessage,
+        policy =>
+            policy.RequireAuthenticatedUser());
+
+    options.AddPolicy(
+        Policies.DeleteMessageForEveryone,
+        policy =>
+            policy.RequireAuthenticatedUser());
+});
 
 builder.Services.AddCors(options =>
 {

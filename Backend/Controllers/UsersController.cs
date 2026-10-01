@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using CompanyChat.Api.Data;
-using CompanyChat.Api.DTOs;
+using CompanyChat.Api.DTOs.User;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +46,12 @@ public class UsersController(AppDbContext db) : ControllerBase
                 x.Email,
                 x.Role,
                 x.IsOnline,
-                x.LastSeen))
+                x.LastSeen,
+                x.IsActive,
+                x.DepartmentId,
+                x.Department != null
+                    ? x.Department.Name
+                    : null))
             .ToListAsync();
 
         return Ok(users);

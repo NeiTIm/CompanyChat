@@ -2,9 +2,11 @@ using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
 using CompanyChat.Api.Models;
 using CompanyChat.Api.Services;
+using CompanyChat.Api.Services.Chat;
 using Microsoft.EntityFrameworkCore;
 
 namespace CompanyChat.Api.WebSockets;
@@ -12,6 +14,8 @@ namespace CompanyChat.Api.WebSockets;
 public class ChatWebSocketHandler(
     AppDbContext db,
     ConnectionManager connections,
+    ConversationAccessService conversationAccess,
+    ChatMessageService chatMessageService,
     ILogger<ChatWebSocketHandler> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions =
@@ -65,6 +69,7 @@ public class ChatWebSocketHandler(
         try
         {
             await ReceiveLoopAsync(
+                context.User,
                 userId,
                 socket,
                 context.RequestAborted);
@@ -129,7 +134,8 @@ public class ChatWebSocketHandler(
                 {
                     type = "user_status",
 
-                    userId = user.Id,
+                    userId =
+                        user.Id,
 
                     isOnline,
 
@@ -145,6 +151,7 @@ public class ChatWebSocketHandler(
     }
 
     private async Task ReceiveLoopAsync(
+        ClaimsPrincipal currentUser,
         int senderId,
         WebSocket socket,
         CancellationToken cancellationToken)
@@ -221,6 +228,7 @@ public class ChatWebSocketHandler(
                 request.Type == "typing_stop")
             {
                 await HandleTypingAsync(
+                    currentUser,
                     senderId,
                     request,
                     cancellationToken);
@@ -245,374 +253,160 @@ public class ChatWebSocketHandler(
                 continue;
             }
 
-            /*
-             * ==========================
-             * SECURITY CHECK
-             * ==========================
-             */
-
-            var senderIsMember =
-                await db.ConversationMembers
-                    .AnyAsync(
-                        x =>
-                            x.ConversationId ==
-                                request.ConversationId &&
-                            x.UserId ==
-                                senderId,
-                        cancellationToken);
-
-            if (!senderIsMember)
-            {
-                await SendErrorAsync(
-                    senderId,
-                    "You are not a member of this conversation.");
-
-                continue;
-            }
-
-            var receiverIsMember =
-                await db.ConversationMembers
-                    .AnyAsync(
-                        x =>
-                            x.ConversationId ==
-                                request.ConversationId &&
-                            x.UserId ==
-                                request.ReceiverId,
-                        cancellationToken);
-
-            if (!receiverIsMember)
-            {
-                await SendErrorAsync(
-                    senderId,
-                    "Receiver is not a member of this conversation.");
-
-                continue;
-            }
-
-            /*
-            * ==========================
-            * REPLY SECURITY CHECK
-            * ==========================
-            */
-
-            if (request.ReplyToMessageId.HasValue)
-            {
-                var replyMessageExists =
-                    await db.Messages
-                        .AnyAsync(
-                            x =>
-                                x.Id ==
-                                    request.ReplyToMessageId.Value &&
-                                x.ConversationId ==
-                                    request.ConversationId,
-                            cancellationToken);
-
-                if (!replyMessageExists)
-                {
-                    await SendErrorAsync(
-                        senderId,
-                        "Reply message does not belong to this conversation.");
-
-                    continue;
-                }
-            }
-
-            /*
-             * ==========================
-             * CREATE MESSAGE
-             * ==========================
-             */
-
-            var message =
-                new Message
-                {
-                    ConversationId =
-                        request.ConversationId,
-
-                    SenderId =
-                        senderId,
-
-                    Content =
-                        request.Content.Trim(),
-
-                    SentAt =
-                        DateTime.UtcNow,
-
-                    ReplyToMessageId =
-                        request.ReplyToMessageId
-                };
-
-            db.Messages.Add(message);
-
-            await db.SaveChangesAsync(
-                cancellationToken);
-
-            /*
-             * ==========================
-             * CREATE MESSAGE STATES
-             * ==========================
-             */
-
-            var now =
-                DateTime.UtcNow;
-
-            var senderState =
-                new MessageUserState
-                {
-                    MessageId =
-                        message.Id,
-
-                    UserId =
-                        senderId,
-
-                    IsDelivered = true,
-
-                    DeliveredAt =
-                        now,
-
-                    IsRead = true,
-
-                    ReadAt =
-                        now
-                };
-
-            var receiverState =
-                new MessageUserState
-                {
-                    MessageId =
-                        message.Id,
-
-                    UserId =
-                        request.ReceiverId,
-
-                    IsDelivered = false,
-
-                    IsRead = false
-                };
-
-            db.MessageUserStates.Add(
-                senderState);
-
-            db.MessageUserStates.Add(
-                receiverState);
-
-            await db.SaveChangesAsync(
-                cancellationToken);
-
-            /*
-             * ==========================
-             * GET SENDER
-             * ==========================
-             */
-
-            var sender =
-                await db.Users
-                    .AsNoTracking()
-                    .FirstAsync(
-                        x =>
-                            x.Id ==
-                                senderId,
-                        cancellationToken);
-
-            /*
-            * ==========================
-            * GET REPLY MESSAGE
-            * ==========================
-            */
-
-            var replyMessage = request.ReplyToMessageId.HasValue
-                ? await db.Messages
-                    .AsNoTracking()
-                    .Include(x => x.Sender)
-                    .FirstOrDefaultAsync(
-                        x =>
-                            x.Id ==
-                                request.ReplyToMessageId.Value &&
-                            x.ConversationId ==
-                                request.ConversationId,
-                        cancellationToken)
-                : null;
-
-            var replyTo =
-                replyMessage is null
-                    ? null
-                    : new
-                    {
-                        id = replyMessage.Id,
-
-                        senderId =
-                            replyMessage.SenderId,
-
-                        senderName =
-                            replyMessage.Sender.FullName,
-
-                        content =
-                            replyMessage.Content
-                    };
-            /*
-             * ==========================
-             * SEND TO RECEIVER
-             * ==========================
-             */
-
-            var receiverResponse =
-                new
-                {
-                    type = "message",
-
-                    message =
-                        new
-                        {
-                            id =
-                                message.Id,
-
-                            conversationId =
-                                message.ConversationId,
-
-                            senderId =
-                                message.SenderId,
-
-                            senderName =
-                                sender.FullName,
-
-                            content =
-                                message.Content,
-
-                            replyToMessageId =
-                                message.ReplyToMessageId,
-
-                            replyTo =
-                                replyTo,
-
-                            sentAt =
-                                message.SentAt,
-
-                            deliveryStatus =
-                                "delivered"
-                        }
-                };
-
-            var receiverJson =
-                JsonSerializer.Serialize(
-                    receiverResponse,
-                    JsonOptions);
-
-            var delivered =
-                await connections.SendToUserAsync(
-                    request.ReceiverId,
-                    receiverJson,
-                    cancellationToken);
-
-            /*
-             * Nếu receiver đang online
-             * và WebSocket gửi thành công
-             * => Delivered.
-             */
-
-            if (delivered)
-            {
-                receiverState.IsDelivered = true;
-
-                receiverState.DeliveredAt =
-                    DateTime.UtcNow;
-
-                await db.SaveChangesAsync(
-                    cancellationToken);
-            }
-
-            /*
-             * ==========================
-             * SEND BACK TO SENDER
-             * ==========================
-             */
-
-            var senderResponse =
-                new
-                {
-                    type = "message",
-
-                    message =
-                        new
-                        {
-                            id =
-                                message.Id,
-
-                            conversationId =
-                                message.ConversationId,
-
-                            senderId =
-                                message.SenderId,
-
-                            senderName =
-                                sender.FullName,
-
-                            content =
-                                message.Content,
-
-                            replyToMessageId =
-                                message.ReplyToMessageId,
-
-                            replyTo =
-                                replyTo,
-
-                            sentAt =
-                                message.SentAt,
-
-                            deliveryStatus =
-                                delivered
-                                    ? "delivered"
-                                    : "sent"
-                        }
-                };
-
-            var senderJson =
-                JsonSerializer.Serialize(
-                    senderResponse,
-                    JsonOptions);
-
-            await connections.SendToUserAsync(
+            await HandleMessageAsync(
+                currentUser,
                 senderId,
-                senderJson,
+                request,
                 cancellationToken);
         }
     }
 
+    private async Task HandleMessageAsync(
+        ClaimsPrincipal currentUser,
+        int senderId,
+        ChatMessage request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await chatMessageService.CreateMessageAsync(
+                currentUser,
+                senderId,
+                request,
+                cancellationToken);
+
+        if (result.Error is not null)
+        {
+            await SendErrorAsync(
+                senderId,
+                result.Error);
+
+            return;
+        }
+
+        var messageResult =
+            result.Result!;
+
+        /*
+         * ==========================
+         * SEND TO RECEIVER
+         * ==========================
+         */
+
+        var receiverPayload =
+            messageResult.Message with
+            {
+                DeliveryStatus =
+                    "delivered"
+            };
+
+        var receiverResponse =
+            new
+            {
+                type = "message",
+
+                message =
+                    receiverPayload
+            };
+
+        var receiverJson =
+            JsonSerializer.Serialize(
+                receiverResponse,
+                JsonOptions);
+
+        var delivered =
+            await connections.SendToUserAsync(
+                messageResult.ReceiverId,
+                receiverJson,
+                cancellationToken);
+
+        /*
+         * ==========================
+         * UPDATE DELIVERED
+         * ==========================
+         *
+         * Nếu receiver đang online
+         * và WebSocket gửi thành công
+         * => Delivered.
+         */
+
+        if (delivered)
+        {
+            await chatMessageService.MarkDeliveredAsync(
+                messageResult.MessageId,
+                messageResult.ReceiverId,
+                cancellationToken);
+        }
+
+        /*
+         * ==========================
+         * SEND BACK TO SENDER
+         * ==========================
+         */
+
+        var senderPayload =
+            messageResult.Message with
+            {
+                DeliveryStatus =
+                    delivered
+                        ? "delivered"
+                        : "sent"
+            };
+
+        var senderResponse =
+            new
+            {
+                type = "message",
+
+                message =
+                    senderPayload
+            };
+
+        var senderJson =
+            JsonSerializer.Serialize(
+                senderResponse,
+                JsonOptions);
+
+        await connections.SendToUserAsync(
+            senderId,
+            senderJson,
+            cancellationToken);
+    }
+
     private async Task HandleTypingAsync(
+        ClaimsPrincipal currentUser,
         int senderId,
         ChatMessage request,
         CancellationToken cancellationToken)
     {
         /*
-         * Kiểm tra người gửi có thuộc
-         * conversation hay không.
+         * ==========================
+         * SECURITY / DATA SCOPE
+         * ==========================
          */
 
-        var senderIsMember =
-            await db.ConversationMembers
-                .AnyAsync(
-                    x =>
-                        x.ConversationId ==
-                            request.ConversationId &&
-                        x.UserId ==
-                            senderId,
-                    cancellationToken);
+        var canAccess =
+            await conversationAccess.CanAccessAsync(
+                currentUser,
+                request.ConversationId);
 
-        if (!senderIsMember)
+        if (!canAccess)
         {
             await SendErrorAsync(
                 senderId,
-                "You are not a member of this conversation.");
+                "You do not have access to this conversation.");
 
             return;
         }
 
         /*
-         * Kiểm tra receiver có thuộc
-         * conversation hay không.
+         * ==========================
+         * RECEIVER SECURITY CHECK
+         * ==========================
          */
 
         var receiverIsMember =
             await db.ConversationMembers
+                .AsNoTracking()
                 .AnyAsync(
                     x =>
                         x.ConversationId ==
@@ -631,8 +425,9 @@ public class ChatWebSocketHandler(
         }
 
         /*
-         * Gửi trạng thái typing
-         * cho receiver.
+         * ==========================
+         * SEND TYPING
+         * ==========================
          */
 
         var response =
