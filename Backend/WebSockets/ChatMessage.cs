@@ -8,7 +8,7 @@ public class ChatMessage
 
     public int ConversationId { get; set; }
 
-    public int ReceiverId { get; set; }
+    public int? ReceiverId { get; set; }
 
     public long MessageId { get; set; }
 

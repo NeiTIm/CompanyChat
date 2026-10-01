@@ -95,6 +95,7 @@ public class ChatWebSocketHandler(
                 user is not null)
             {
                 user.IsOnline = false;
+
                 user.LastSeen =
                     DateTime.UtcNow;
 
@@ -220,12 +221,14 @@ public class ChatWebSocketHandler(
 
             /*
              * ==========================
-             * TYPING INDICATOR
+             * TYPING
              * ==========================
              */
 
-            if (request.Type == "typing_start" ||
-                request.Type == "typing_stop")
+            if (request.Type ==
+                    "typing_start" ||
+                request.Type ==
+                    "typing_stop")
             {
                 await HandleTypingAsync(
                     currentUser,
@@ -267,6 +270,12 @@ public class ChatWebSocketHandler(
         ChatMessage request,
         CancellationToken cancellationToken)
     {
+        /*
+         * ==========================
+         * CREATE MESSAGE
+         * ==========================
+         */
+
         var result =
             await chatMessageService.CreateMessageAsync(
                 currentUser,
@@ -288,68 +297,86 @@ public class ChatWebSocketHandler(
 
         /*
          * ==========================
-         * SEND TO RECEIVER
-         * ==========================
-         */
-
-        var receiverPayload =
-            messageResult.Message with
-            {
-                DeliveryStatus =
-                    "delivered"
-            };
-
-        var receiverResponse =
-            new
-            {
-                type = "message",
-
-                message =
-                    receiverPayload
-            };
-
-        var receiverJson =
-            JsonSerializer.Serialize(
-                receiverResponse,
-                JsonOptions);
-
-        var delivered =
-            await connections.SendToUserAsync(
-                messageResult.ReceiverId,
-                receiverJson,
-                cancellationToken);
-
-        /*
-         * ==========================
-         * UPDATE DELIVERED
+         * SEND TO RECEIVERS
          * ==========================
          *
-         * Nếu receiver đang online
-         * và WebSocket gửi thành công
-         * => Delivered.
+         * Private:
+         *     1 receiver
+         *
+         * Department:
+         *     nhiều receivers
          */
 
-        if (delivered)
+        var deliveredReceiverIds =
+            new List<int>();
+
+        foreach (
+            var receiverId
+            in messageResult.ReceiverIds)
         {
-            await chatMessageService.MarkDeliveredAsync(
-                messageResult.MessageId,
-                messageResult.ReceiverId,
-                cancellationToken);
+            var receiverPayload =
+                messageResult.Message with
+                {
+                    DeliveryStatus =
+                        "delivered"
+                };
+
+            var receiverResponse =
+                new
+                {
+                    type = "message",
+
+                    message =
+                        receiverPayload
+                };
+
+            var receiverJson =
+                JsonSerializer.Serialize(
+                    receiverResponse,
+                    JsonOptions);
+
+            var delivered =
+                await connections.SendToUserAsync(
+                    receiverId,
+                    receiverJson,
+                    cancellationToken);
+
+            if (delivered)
+            {
+                deliveredReceiverIds.Add(
+                    receiverId);
+
+                await chatMessageService
+                    .MarkDeliveredAsync(
+                        messageResult.MessageId,
+                        receiverId,
+                        cancellationToken);
+            }
         }
 
         /*
          * ==========================
          * SEND BACK TO SENDER
          * ==========================
+         *
+         * Nếu ít nhất một receiver
+         * nhận được qua WebSocket
+         * => delivered.
+         *
+         * Nếu không có receiver online
+         * => sent.
          */
+
+        var senderDeliveryStatus =
+            deliveredReceiverIds.Count > 0
+                ? "delivered"
+                : "sent";
 
         var senderPayload =
             messageResult.Message with
             {
                 DeliveryStatus =
-                    delivered
-                        ? "delivered"
-                        : "sent"
+                    senderDeliveryStatus
             };
 
         var senderResponse =
@@ -380,7 +407,7 @@ public class ChatWebSocketHandler(
     {
         /*
          * ==========================
-         * SECURITY / DATA SCOPE
+         * SECURITY
          * ==========================
          */
 
@@ -400,36 +427,129 @@ public class ChatWebSocketHandler(
 
         /*
          * ==========================
-         * RECEIVER SECURITY CHECK
+         * GET CONVERSATION TYPE
          * ==========================
          */
 
-        var receiverIsMember =
-            await db.ConversationMembers
+        var conversationType =
+            await db.Conversations
                 .AsNoTracking()
-                .AnyAsync(
+                .Where(
                     x =>
-                        x.ConversationId ==
-                            request.ConversationId &&
-                        x.UserId ==
-                            request.ReceiverId,
+                        x.Id ==
+                        request.ConversationId)
+                .Select(
+                    x => x.Type)
+                .FirstOrDefaultAsync(
                     cancellationToken);
 
-        if (!receiverIsMember)
+        if (conversationType is null)
         {
             await SendErrorAsync(
                 senderId,
-                "Receiver is not a member of this conversation.");
+                "Conversation does not exist.");
 
             return;
         }
 
         /*
          * ==========================
-         * SEND TYPING
+         * PRIVATE TYPING
          * ==========================
          */
 
+        if (conversationType == "Private")
+        {
+            if (!request.ReceiverId.HasValue)
+            {
+                await SendErrorAsync(
+                    senderId,
+                    "Receiver is required.");
+
+                return;
+            }
+
+            var receiverId =
+                request.ReceiverId.Value;
+
+            var receiverIsMember =
+                await db.ConversationMembers
+                    .AsNoTracking()
+                    .AnyAsync(
+                        x =>
+                            x.ConversationId ==
+                                request.ConversationId &&
+                            x.UserId ==
+                                receiverId,
+                        cancellationToken);
+
+            if (!receiverIsMember)
+            {
+                await SendErrorAsync(
+                    senderId,
+                    "Receiver is not a member of this conversation.");
+
+                return;
+            }
+
+            await SendTypingToUserAsync(
+                senderId,
+                receiverId,
+                request,
+                cancellationToken);
+
+            return;
+        }
+
+        /*
+         * ==========================
+         * DEPARTMENT TYPING
+         * ==========================
+         *
+         * Gửi typing tới tất cả
+         * thành viên khác trong department.
+         */
+
+        if (conversationType == "Department")
+        {
+            var receiverIds =
+                await db.ConversationMembers
+                    .AsNoTracking()
+                    .Where(
+                        x =>
+                            x.ConversationId ==
+                                request.ConversationId &&
+                            x.UserId !=
+                                senderId)
+                    .Select(
+                        x => x.UserId)
+                    .ToListAsync(
+                        cancellationToken);
+
+            foreach (var receiverId
+                     in receiverIds)
+            {
+                await SendTypingToUserAsync(
+                    senderId,
+                    receiverId,
+                    request,
+                    cancellationToken);
+            }
+
+            return;
+        }
+
+        await SendErrorAsync(
+            senderId,
+            "Unsupported conversation type.");
+    }
+
+    private async Task SendTypingToUserAsync(
+        int senderId,
+        int receiverId,
+        ChatMessage request,
+        CancellationToken cancellationToken)
+    {
         var response =
             new
             {
@@ -452,7 +572,7 @@ public class ChatWebSocketHandler(
                 JsonOptions);
 
         await connections.SendToUserAsync(
-            request.ReceiverId,
+            receiverId,
             json,
             cancellationToken);
     }

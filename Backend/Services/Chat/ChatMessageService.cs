@@ -16,6 +16,7 @@ public record ReplyMessagePayload(
 public record ChatMessagePayload(
     long Id,
     int ConversationId,
+    string ConversationType,
     int SenderId,
     string SenderName,
     string Content,
@@ -26,7 +27,7 @@ public record ChatMessagePayload(
 
 public record ChatMessageResult(
     long MessageId,
-    int ReceiverId,
+    IReadOnlyList<int> ReceiverIds,
     ChatMessagePayload Message);
 
 public class ChatMessageService(
@@ -44,13 +45,6 @@ public class ChatMessageService(
          * ==========================
          * SECURITY / DATA SCOPE
          * ==========================
-         *
-         * Private conversation:
-         * - User phải là member.
-         *
-         * Department conversation:
-         * - User phải là member.
-         * - User phải thuộc đúng Department.
          */
 
         var canAccess =
@@ -67,26 +61,122 @@ public class ChatMessageService(
 
         /*
          * ==========================
-         * RECEIVER SECURITY CHECK
+         * GET CONVERSATION
          * ==========================
          */
 
-        var receiverIsMember =
-            await db.ConversationMembers
+        var conversation =
+            await db.Conversations
                 .AsNoTracking()
-                .AnyAsync(
+                .FirstOrDefaultAsync(
                     x =>
-                        x.ConversationId ==
-                            request.ConversationId &&
-                        x.UserId ==
-                            request.ReceiverId,
+                        x.Id ==
+                        request.ConversationId,
                     cancellationToken);
 
-        if (!receiverIsMember)
+        if (conversation is null)
         {
             return (
                 null,
-                "Receiver is not a member of this conversation.");
+                "Conversation does not exist.");
+        }
+
+        var conversationType =
+            conversation.Type;
+
+        /*
+         * ==========================
+         * GET RECEIVERS
+         * ==========================
+         *
+         * Private:
+         * - Chỉ có 1 receiver.
+         *
+         * Department:
+         * - Lấy tất cả member
+         * - Không gửi lại cho sender.
+         */
+
+        List<int> receiverIds;
+
+        if (conversationType == "Private")
+        {
+            /*
+             * Private bắt buộc phải có ReceiverId.
+             */
+
+            if (!request.ReceiverId.HasValue)
+            {
+                return (
+                    null,
+                    "Receiver is required for private conversation.");
+            }
+
+            var receiverId =
+                request.ReceiverId.Value;
+
+            /*
+             * Receiver phải là member.
+             */
+
+            var receiverIsMember =
+                await db.ConversationMembers
+                    .AsNoTracking()
+                    .AnyAsync(
+                        x =>
+                            x.ConversationId ==
+                                request.ConversationId &&
+                            x.UserId ==
+                                receiverId,
+                        cancellationToken);
+
+            if (!receiverIsMember)
+            {
+                return (
+                    null,
+                    "Receiver is not a member of this conversation.");
+            }
+
+            receiverIds =
+            [
+                receiverId
+            ];
+        }
+        else if (conversationType == "Department")
+        {
+            /*
+             * Department không sử dụng ReceiverId.
+             *
+             * Lấy tất cả thành viên trong conversation
+             * ngoại trừ người gửi.
+             */
+
+            receiverIds =
+                await db.ConversationMembers
+                    .AsNoTracking()
+                    .Where(
+                        x =>
+                            x.ConversationId ==
+                                request.ConversationId &&
+                            x.UserId !=
+                                senderId)
+                    .Select(
+                        x => x.UserId)
+                    .ToListAsync(
+                        cancellationToken);
+
+            if (receiverIds.Count == 0)
+            {
+                return (
+                    null,
+                    "There are no other members in this department conversation.");
+            }
+        }
+        else
+        {
+            return (
+                null,
+                "Unsupported conversation type.");
         }
 
         /*
@@ -150,12 +240,27 @@ public class ChatMessageService(
          * ==========================
          * CREATE MESSAGE STATES
          * ==========================
+         *
+         * Sender:
+         * - Delivered = true
+         * - Read = true
+         *
+         * Receivers:
+         * - Delivered = false
+         * - Read = false
          */
 
         var now =
             DateTime.UtcNow;
 
-        var senderState =
+        var states =
+            new List<MessageUserState>();
+
+        /*
+         * Sender state
+         */
+
+        states.Add(
             new MessageUserState
             {
                 MessageId =
@@ -175,26 +280,32 @@ public class ChatMessageService(
 
                 ReadAt =
                     now
-            };
+            });
 
-        var receiverState =
-            new MessageUserState
-            {
-                MessageId =
-                    message.Id,
+        /*
+         * Receiver states
+         */
 
-                UserId =
-                    request.ReceiverId,
+        foreach (var receiverId in receiverIds)
+        {
+            states.Add(
+                new MessageUserState
+                {
+                    MessageId =
+                        message.Id,
 
-                IsDelivered =
-                    false,
+                    UserId =
+                        receiverId,
 
-                IsRead =
-                    false
-            };
+                    IsDelivered =
+                        false,
 
-        db.MessageUserStates.Add(senderState);
-        db.MessageUserStates.Add(receiverState);
+                    IsRead =
+                        false
+                });
+        }
+
+        db.MessageUserStates.AddRange(states);
 
         await db.SaveChangesAsync(
             cancellationToken);
@@ -211,7 +322,7 @@ public class ChatMessageService(
                 .FirstAsync(
                     x =>
                         x.Id ==
-                            senderId,
+                        senderId,
                     cancellationToken);
 
         /*
@@ -253,6 +364,7 @@ public class ChatMessageService(
             new ChatMessagePayload(
                 message.Id,
                 message.ConversationId,
+                conversationType,
                 message.SenderId,
                 sender.FullName,
                 message.Content,
@@ -261,10 +373,16 @@ public class ChatMessageService(
                 message.SentAt,
                 "sent");
 
+        /*
+         * ==========================
+         * RESULT
+         * ==========================
+         */
+
         var result =
             new ChatMessageResult(
                 message.Id,
-                request.ReceiverId,
+                receiverIds,
                 payload);
 
         return (
@@ -298,7 +416,9 @@ public class ChatMessageService(
         }
 
         state.IsDelivered = true;
-        state.DeliveredAt = DateTime.UtcNow;
+
+        state.DeliveredAt =
+            DateTime.UtcNow;
 
         await db.SaveChangesAsync(
             cancellationToken);

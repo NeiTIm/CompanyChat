@@ -18,4 +18,5 @@ public record DepartmentConversationDto(
 public record UnreadConversationDto(
     int ConversationId,
     int UserId,
+    string ConversationType,
     int UnreadCount);

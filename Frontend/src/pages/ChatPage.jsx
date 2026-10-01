@@ -4,6 +4,7 @@ import ChatWindow from "../components/chat/ChatWindow";
 import useWebSocket from "../hooks/useWebSocket";
 import useChat from "../hooks/useChat";
 
+
 /* =========================================================
    ICONS
 ========================================================= */
@@ -33,6 +34,7 @@ function BuildingIcon() {
   );
 }
 
+
 function SettingsIcon() {
   return (
     <svg
@@ -47,10 +49,12 @@ function SettingsIcon() {
       aria-hidden="true"
     >
       <circle cx="12" cy="12" r="3" />
+
       <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.7 1.7-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2.4v-.2a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-1.7-1.7.06-.06A1.7 1.7 0 0 0 8.4 15a1.7 1.7 0 0 0-1.56-1.03H6v-2.4h.84A1.7 1.7 0 0 0 8.4 10a1.7 1.7 0 0 0-.34-1.88L8 8.06l1.7-1.7.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.56V5h2.4v.2a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.7 1.7-.06.06A1.7 1.7 0 0 0 19.4 10a1.7 1.7 0 0 0 1.56 1.03h.84v2.4h-.84A1.7 1.7 0 0 0 19.4 15Z" />
     </svg>
   );
 }
+
 
 /* =========================================================
    CHAT PAGE
@@ -61,6 +65,7 @@ function ChatPage({
   onGoToAdmin,
   onLogout,
 }) {
+
   /* =====================================================
      WEBSOCKET
   ===================================================== */
@@ -70,7 +75,10 @@ function ChatPage({
     websocketConnected,
     socketEvent,
     closeWebSocket,
-  } = useWebSocket(currentUser);
+  } = useWebSocket(
+    currentUser
+  );
+
 
   /* =====================================================
      CHAT
@@ -78,18 +86,28 @@ function ChatPage({
 
   const {
     users,
+
     selectedUser,
+
     departmentConversation,
+
     unreadCounts,
 
+    departmentUnreadCount,
+
     handleSelectUser,
+
     handleSelectDepartment,
+
     handleConversationRead,
+
     handleConversationChange,
+
   } = useChat(
     currentUser,
     socketEvent
   );
+
 
   /* =====================================================
      LOGOUT
@@ -98,11 +116,17 @@ function ChatPage({
   function handleLogout() {
     closeWebSocket();
 
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.removeItem(
+      "token"
+    );
+
+    localStorage.removeItem(
+      "user"
+    );
 
     onLogout();
   }
+
 
   /* =====================================================
      SELECT DEPARTMENT CHAT
@@ -110,8 +134,11 @@ function ChatPage({
 
   async function handleDepartmentChat() {
     try {
+
       await handleSelectDepartment();
+
     } catch (error) {
+
       console.error(
         "Open department chat error:",
         error
@@ -123,6 +150,7 @@ function ChatPage({
       );
     }
   }
+
 
   /* =====================================================
      RENDER
@@ -138,6 +166,7 @@ function ChatPage({
       <header className="topbar">
 
         <div className="brand">
+
           <div className="brand-logo">
             C
           </div>
@@ -145,17 +174,21 @@ function ChatPage({
           <div className="brand-name">
             Company Chat
           </div>
+
         </div>
+
 
         <div className="topbar-right">
 
           <div className="current-user">
+
             <div className="current-user-name">
               {currentUser.fullName ||
                 currentUser.username}
             </div>
 
             <div className="current-user-role">
+
               <span
                 className={`current-status-dot ${
                   websocketConnected
@@ -167,34 +200,52 @@ function ChatPage({
               {websocketConnected
                 ? "Đang online"
                 : "Offline"}
+
             </div>
+
           </div>
+
 
           {/* ADMIN */}
 
-          {currentUser?.role === "Admin" && (
+          {currentUser?.role ===
+            "Admin" && (
+
             <button
               type="button"
               className="admin-dashboard-button"
-              onClick={onGoToAdmin}
+              onClick={
+                onGoToAdmin
+              }
             >
+
               <SettingsIcon />
-              <span>Admin Dashboard</span>
+
+              <span>
+                Admin Dashboard
+              </span>
+
             </button>
+
           )}
+
 
           {/* LOGOUT */}
 
           <button
             type="button"
             className="logout-button"
-            onClick={handleLogout}
+            onClick={
+              handleLogout
+            }
           >
             Đăng xuất
           </button>
 
         </div>
+
       </header>
+
 
       {/* =================================================
           BODY
@@ -202,11 +253,13 @@ function ChatPage({
 
       <div className="app-body">
 
+
         {/* =================================================
             LEFT SIDEBAR
         ================================================= */}
 
         <div className="chat-sidebar">
+
 
           {/* =================================================
               DEPARTMENT CHAT
@@ -219,16 +272,22 @@ function ChatPage({
                 ? "active"
                 : ""
             }`}
-            onClick={handleDepartmentChat}
+            onClick={
+              handleDepartmentChat
+            }
           >
 
             <div className="department-chat-icon">
+
               <BuildingIcon />
+
             </div>
+
 
             <div className="department-chat-content">
 
               <div className="department-chat-top">
+
                 <div className="department-chat-title">
                   Phòng ban
                 </div>
@@ -236,52 +295,105 @@ function ChatPage({
                 <span className="department-chat-arrow">
                   →
                 </span>
+
               </div>
+
 
               <div className="department-chat-description">
                 Trò chuyện nội bộ theo phòng ban
               </div>
 
+
               <div className="department-chat-meta">
+
                 <span className="department-chat-status-dot" />
+
                 Kênh nội bộ
+
+
+                {/* =========================================
+                    DEPARTMENT UNREAD
+                ========================================= */}
+
+                {departmentUnreadCount >
+                  0 && (
+
+                  <span className="department-chat-unread">
+
+                    {departmentUnreadCount >
+                    99
+                      ? "99+"
+                      : departmentUnreadCount}
+
+                  </span>
+
+                )}
+
               </div>
 
             </div>
 
           </button>
 
+
           {/* =================================================
               PRIVATE USERS
           ================================================= */}
 
           <UserList
-            users={users}
-            selectedUser={selectedUser}
-            onSelectUser={handleSelectUser}
-            unreadCounts={unreadCounts}
+            users={
+              users
+            }
+
+            selectedUser={
+              selectedUser
+            }
+
+            onSelectUser={
+              handleSelectUser
+            }
+
+            unreadCounts={
+              unreadCounts
+            }
           />
 
         </div>
+
 
         {/* =================================================
             CHAT WINDOW
         ================================================= */}
 
         <ChatWindow
-          selectedUser={selectedUser}
+          selectedUser={
+            selectedUser
+          }
+
           departmentConversation={
             departmentConversation
           }
-          currentUser={currentUser}
-          websocket={websocket}
+
+          currentUser={
+            currentUser
+          }
+
+          websocket={
+            websocket
+          }
+
           websocketConnected={
             websocketConnected
           }
-          socketEvent={socketEvent}
+
+          socketEvent={
+            socketEvent
+          }
+
           onConversationRead={
             handleConversationRead
           }
+
           onConversationChange={
             handleConversationChange
           }
@@ -292,5 +404,6 @@ function ChatPage({
     </div>
   );
 }
+
 
 export default ChatPage;

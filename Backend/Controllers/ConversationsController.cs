@@ -151,44 +151,62 @@ public class ConversationsController(
     {
         var unreadCounts =
             await db.MessageUserStates
-                .Where(x =>
-                    x.UserId ==
-                        CurrentUserId &&
+                .Where(
+                    x =>
+                        x.UserId ==
+                            CurrentUserId &&
 
-                    !x.IsRead &&
+                        !x.IsRead &&
 
-                    !x.IsDeletedForMe &&
+                        !x.IsDeletedForMe &&
 
-                    /*
-                     * Không tính những message
-                     * nằm trước thời điểm CurrentUser
-                     * xóa lịch sử.
-                     */
-                    x.Message.Conversation.Members
-                        .Any(
-                            m =>
-                                m.UserId ==
-                                    CurrentUserId &&
+                        /*
+                         * Không tính những message
+                         * nằm trước thời điểm CurrentUser
+                         * xóa lịch sử.
+                         */
+                        x.Message.Conversation.Members
+                            .Any(
+                                m =>
+                                    m.UserId ==
+                                        CurrentUserId &&
 
-                                (
-                                    m.HistoryDeletedAt ==
-                                        null ||
+                                    (
+                                        m.HistoryDeletedAt ==
+                                            null ||
 
-                                    x.Message.SentAt >
-                                        m.HistoryDeletedAt
-                                )))
+                                        x.Message.SentAt >
+                                            m.HistoryDeletedAt
+                                    )))
                 .GroupBy(
                     x =>
-                        x.Message.ConversationId)
+                        new
+                        {
+                            x.Message.ConversationId,
+
+                            x.Message.Conversation.Type
+                        })
                 .Select(
                     x =>
                         new UnreadConversationDto(
-                            x.Key,
+                            x.Key.ConversationId,
 
-                            x.Select(
-                                s =>
-                                    s.Message.SenderId)
-                                .FirstOrDefault(),
+                            /*
+                             * Private:
+                             * UserId là người gửi.
+                             *
+                             * Department:
+                             * Không dùng UserId để đại diện
+                             * cho unread của phòng ban.
+                             */
+                            x.Key.Type == "Private"
+                                ? x.Select(
+                                    s =>
+                                        s.Message.SenderId)
+                                    .FirstOrDefault()
+                                : 0,
+
+                            x.Key.Type,
 
                             x.Count()))
                 .ToListAsync();
@@ -221,17 +239,6 @@ public class ConversationsController(
          * =================================================
          * KIỂM TRA QUYỀN TRUY CẬP
          * =================================================
-         *
-         * ConversationAccessService kiểm tra:
-         *
-         * Private:
-         *     -> phải là member
-         *
-         * Department:
-         *     -> phải là member
-         *     -> phải thuộc đúng Department
-         *
-         * Admin không tự động được bypass.
          */
 
         var canAccess =
@@ -249,9 +256,6 @@ public class ConversationsController(
          * =================================================
          * LẤY MEMBER CỦA CURRENT USER
          * =================================================
-         *
-         * Vẫn lấy ConversationMember riêng để sử dụng
-         * HistoryDeletedAt.
          */
 
         var currentMember =
@@ -281,9 +285,6 @@ public class ConversationsController(
 
                 .Include(x => x.Sender)
 
-                /*
-                 * Reply message
-                 */
                 .Include(x => x.ReplyToMessage)
                     .ThenInclude(x => x!.Sender)
 
@@ -294,8 +295,7 @@ public class ConversationsController(
 
                         /*
                          * Không lấy những message
-                         * mà CurrentUser đã
-                         * "xóa cho tôi".
+                         * mà CurrentUser đã xóa cho tôi.
                          */
                         !x.UserStates.Any(
                             s =>
@@ -449,8 +449,7 @@ public class ConversationsController(
 
 
         /*
-         * Lấy ConversationMember để sử dụng
-         * HistoryDeletedAt.
+         * Lấy ConversationMember
          */
 
         var member =
@@ -485,10 +484,6 @@ public class ConversationsController(
 
                         !x.IsDeletedForMe &&
 
-                        /*
-                         * Không mark read những message
-                         * nằm trước HistoryDeletedAt.
-                         */
                         (
                             member.HistoryDeletedAt ==
                                 null ||
@@ -667,7 +662,7 @@ public class ConversationsController(
 
 
         /*
-         * Lấy ConversationMember của CurrentUser.
+         * Lấy ConversationMember
          */
 
         var member =
@@ -707,11 +702,12 @@ public class ConversationsController(
             });
     }
 
+
     /*
- * ==================================================
- * GET OR CREATE DEPARTMENT CONVERSATION
- * ==================================================
- */
+     * ==================================================
+     * GET OR CREATE DEPARTMENT CONVERSATION
+     * ==================================================
+     */
 
     [HttpPost("department")]
     public async Task<ActionResult<DepartmentConversationDto>>
@@ -925,6 +921,4 @@ public class ConversationsController(
                 department.Name,
                 conversation.CreatedAt));
     }
-
-
 }
