@@ -2,11 +2,9 @@ import UserList from "../components/user/UserList";
 import ChatWindow from "../components/chat/ChatWindow";
 import NotificationBell from "../components/notification/NotificationBell";
 
-
 import useWebSocket from "../hooks/useWebSocket";
 import useChat from "../hooks/useChat";
 import useNotifications from "../hooks/useNotifications";
-
 
 /* =========================================================
    ICONS
@@ -37,7 +35,6 @@ function BuildingIcon() {
   );
 }
 
-
 function SettingsIcon() {
   return (
     <svg
@@ -58,7 +55,6 @@ function SettingsIcon() {
   );
 }
 
-
 /* =========================================================
    CHAT PAGE
 ========================================================= */
@@ -78,9 +74,7 @@ function ChatPage({
     websocketConnected,
     socketEvent,
     closeWebSocket,
-  } = useWebSocket(
-    currentUser
-  );
+  } = useWebSocket(currentUser);
 
 
   /* =====================================================
@@ -89,29 +83,20 @@ function ChatPage({
 
   const {
     users,
-
     selectedUser,
-
     departmentConversation,
-
     unreadCounts,
-
     departmentUnreadCount,
-
     handleSelectUser,
-
     handleSelectDepartment,
-
     handleConversationRead,
-
     handleConversationChange,
-
   } = useChat(
-  currentUser,
-  socketEvent,
-  websocket,
-  websocketConnected
-);
+    currentUser,
+    socketEvent,
+    websocket,
+    websocketConnected
+  );
 
 
   /* =====================================================
@@ -124,9 +109,13 @@ function ChatPage({
     loading,
     handleNotificationClick,
     handleMarkAllAsRead,
-  } = useNotifications(
-    socketEvent
-  );
+    handleDeleteNotification,
+
+    // Mới:
+    handleUserNotificationRead,
+    handleDepartmentNotificationRead,
+    handleDeleteAllReadNotifications,
+  } = useNotifications(socketEvent);
 
 
   /* =====================================================
@@ -136,13 +125,8 @@ function ChatPage({
   function handleLogout() {
     closeWebSocket();
 
-    localStorage.removeItem(
-      "token"
-    );
-
-    localStorage.removeItem(
-      "user"
-    );
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
 
     onLogout();
   }
@@ -153,83 +137,116 @@ function ChatPage({
   ===================================================== */
 
   async function handleDepartmentChat() {
-    try {
+      try {
 
-      await handleSelectDepartment();
+        await handleSelectDepartment();
 
-    } catch (error) {
+        /*
+        * Đánh dấu các notification
+        * phòng ban là đã đọc.
+        */
+        await handleDepartmentNotificationRead();
 
-      console.error(
-        "Open department chat error:",
-        error
+      } catch (error) {
+
+        console.error(
+          "Open department chat error:",
+          error
+        );
+
+        alert(
+          error?.response?.data?.message ||
+            "Không thể mở phòng chat phòng ban."
+        );
+      }
+    }
+
+
+  /* =====================================================
+     SELECT USER
+     + MARK RELATED NOTIFICATIONS AS READ
+  ===================================================== */
+
+  async function handleSelectUserFromList(user) {
+    /*
+     * Mở chat trước.
+     */
+    handleSelectUser(user);
+
+    /*
+     * Sau đó đánh dấu notification
+     * liên quan đến user này là đã đọc.
+     */
+    await handleUserNotificationRead(user.id);
+  }
+
+
+  /* =====================================================
+     OPEN NOTIFICATION
+  ===================================================== */
+
+  async function handleOpenNotification(
+    notification
+  ) {
+    const target =
+      await handleNotificationClick(
+        notification
       );
 
-      alert(
-        error?.response?.data?.message ||
-          "Không thể mở phòng chat phòng ban."
-      );
+    if (!target) {
+      return;
+    }
+
+
+    /* ==============================
+       PHÒNG BAN
+    ============================== */
+
+    if (
+      target.conversationType ===
+      "Department"
+    ) {
+      try {
+        await handleSelectDepartment();
+      } catch (error) {
+        console.error(
+          "Open department notification error:",
+          error
+        );
+      }
+
+      return;
+    }
+
+
+    /* ==============================
+       CHAT RIÊNG
+    ============================== */
+
+    if (
+      target.conversationType ===
+      "Private"
+    ) {
+      const user =
+        users.find(
+          (item) =>
+            Number(item.id) ===
+            Number(target.senderId)
+        );
+
+      if (!user) {
+        console.error(
+          "Notification sender not found:",
+          target.senderId
+        );
+
+        return;
+      }
+
+      handleSelectUser(user);
     }
   }
 
-  async function handleOpenNotification(
-        notification
-      ) {
-        const target =
-          await handleNotificationClick(
-            notification
-          );
-
-        if (!target) {
-          return;
-        }
-
-        /* ==============================
-          PHÒNG BAN
-        ============================== */
-
-        if (
-          target.conversationType ===
-          "Department"
-        ) {
-          try {
-            await handleSelectDepartment();
-          } catch (error) {
-            console.error(
-              "Open department notification error:",
-              error
-            );
-          }
-
-          return;
-        }
-
-        /* ==============================
-          CHAT RIÊNG
-        ============================== */
-
-        if (
-          target.conversationType ===
-          "Private"
-        ) {
-          const user =
-            users.find(
-              (item) =>
-                Number(item.id) ===
-                Number(target.senderId)
-            );
-
-          if (!user) {
-            console.error(
-              "Notification sender not found:",
-              target.senderId
-            );
-
-            return;
-          }
-
-          handleSelectUser(user);
-        }
-      }
 
   /* =====================================================
      RENDER
@@ -259,29 +276,33 @@ function ChatPage({
 
         <div className="topbar-right">
 
-          {/* NOTIFICATION BELL */}
+          {/* =================================================
+              NOTIFICATION BELL
+          ================================================= */}
+
           <NotificationBell
-              notifications={
-                notifications
-              }
-
-              unreadCount={
-                unreadCount
-              }
-
-              loading={
-                loading
-              }
-
+              notifications={notifications}
+              unreadCount={unreadCount}
+              loading={loading}
               onNotificationClick={
                 handleOpenNotification
               }
-
               onMarkAllAsRead={
                 handleMarkAllAsRead
               }
+              onDeleteNotification={
+                handleDeleteNotification
+              }
+              onDeleteAllReadNotifications={
+                handleDeleteAllReadNotifications
+              }
             />
-          
+
+
+          {/* =================================================
+              CURRENT USER
+          ================================================= */}
+
           <div className="current-user">
 
             <div className="current-user-name">
@@ -308,7 +329,9 @@ function ChatPage({
           </div>
 
 
-          {/* ADMIN */}
+          {/* =================================================
+              ADMIN
+          ================================================= */}
 
           {currentUser?.role ===
             "Admin" && (
@@ -332,7 +355,9 @@ function ChatPage({
           )}
 
 
-          {/* LOGOUT */}
+          {/* =================================================
+              LOGOUT
+          ================================================= */}
 
           <button
             type="button"
@@ -443,21 +468,12 @@ function ChatPage({
           ================================================= */}
 
           <UserList
-            users={
-              users
-            }
-
-            selectedUser={
-              selectedUser
-            }
-
+            users={users}
+            selectedUser={selectedUser}
             onSelectUser={
-              handleSelectUser
+              handleSelectUserFromList
             }
-
-            unreadCounts={
-              unreadCounts
-            }
+            unreadCounts={unreadCounts}
           />
 
         </div>
@@ -468,34 +484,19 @@ function ChatPage({
         ================================================= */}
 
         <ChatWindow
-          selectedUser={
-            selectedUser
-          }
-
+          selectedUser={selectedUser}
           departmentConversation={
             departmentConversation
           }
-
-          currentUser={
-            currentUser
-          }
-
-          websocket={
-            websocket
-          }
-
+          currentUser={currentUser}
+          websocket={websocket}
           websocketConnected={
             websocketConnected
           }
-
-          socketEvent={
-            socketEvent
-          }
-
+          socketEvent={socketEvent}
           onConversationRead={
             handleConversationRead
           }
-
           onConversationChange={
             handleConversationChange
           }
@@ -506,6 +507,5 @@ function ChatPage({
     </div>
   );
 }
-
 
 export default ChatPage;

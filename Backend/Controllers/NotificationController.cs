@@ -120,5 +120,48 @@ public class NotificationController(
 
         return Ok(notification);
     }
+    // DELETE: /api/notifications/{id}
+    [HttpDelete("{id:long}")]
+    public async Task<IActionResult> DeleteNotification(
+    long id)
+    {
+        var userId = GetUserId();
 
+        var success =
+            await notificationService.DeleteAsync(
+                id,
+                userId);
+
+        if (!success)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Notification does not exist or has not been read."
+            });
+        }
+
+        return Ok(new
+        {
+            message =
+                "Notification deleted successfully."
+        });
+    }
+    // DELETE: /api/notifications/read
+    [HttpDelete("read")]
+    public async Task<IActionResult> DeleteAllReadNotifications()
+    {
+        var userId = GetUserId();
+
+        var deletedCount =
+            await notificationService
+                .DeleteAllReadAsync(userId);
+
+        return Ok(new
+        {
+            message =
+                "Read notifications deleted successfully.",
+            deletedCount
+        });
+    }
 }

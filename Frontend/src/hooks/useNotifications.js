@@ -6,6 +6,8 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   getNotificationTarget,
+  deleteNotification,
+  deleteAllReadNotifications,
 } from "../services/notificationService";
 
 function useNotifications(socketEvent) {
@@ -15,11 +17,9 @@ function useNotifications(socketEvent) {
 
   const [loading, setLoading] = useState(false);
 
-  /*
-   * ==========================
-   * LOAD NOTIFICATIONS
-   * ==========================
-   */
+  /* =====================================================
+     LOAD NOTIFICATIONS
+  ===================================================== */
 
   async function loadNotifications() {
     try {
@@ -35,11 +35,9 @@ function useNotifications(socketEvent) {
     }
   }
 
-  /*
-   * ==========================
-   * LOAD UNREAD COUNT
-   * ==========================
-   */
+  /* =====================================================
+     LOAD UNREAD COUNT
+  ===================================================== */
 
   async function loadUnreadCount() {
     try {
@@ -51,22 +49,19 @@ function useNotifications(socketEvent) {
     }
   }
 
-  /*
-   * ==========================
-   * INITIAL LOAD
-   * ==========================
-   */
+  /* =====================================================
+     INITIAL LOAD
+  ===================================================== */
 
   useEffect(() => {
     loadNotifications();
+
     loadUnreadCount();
   }, []);
 
-  /*
-   * ==========================
-   * REALTIME NOTIFICATION
-   * ==========================
-   */
+  /* =====================================================
+     REALTIME NOTIFICATION
+  ===================================================== */
 
   useEffect(() => {
     if (!socketEvent) {
@@ -83,26 +78,44 @@ function useNotifications(socketEvent) {
       return;
     }
 
-    /*
-     * Thêm notification mới lên đầu.
-     */
+    /* ===================================================
+       CHECK EXISTING NOTIFICATION
+    =================================================== */
 
-    setNotifications((current) => [notification, ...current]);
+    setNotifications((current) => {
+      const exists = current.some(
+        (item) => Number(item.id) === Number(notification.id),
+      );
 
-    /*
-     * Tăng số notification chưa đọc.
-     */
+      /* ================================================
+         NOTIFICATION ĐÃ TỒN TẠI
+      ================================================= */
 
-    if (!notification.isRead) {
-      setUnreadCount((current) => current + 1);
-    }
+      if (exists) {
+        return current
+          .map((item) =>
+            Number(item.id) === Number(notification.id) ? notification : item,
+          )
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      }
+
+      /* ================================================
+         NOTIFICATION MỚI
+      ================================================= */
+
+      return [notification, ...current];
+    });
+
+    /* ===================================================
+       RELOAD UNREAD COUNT
+    ================================================= */
+
+    loadUnreadCount();
   }, [socketEvent]);
 
-  /*
-   * ==========================
-   * MARK AS READ
-   * ==========================
-   */
+  /* =====================================================
+     MARK AS READ
+  ===================================================== */
 
   async function handleMarkAsRead(notificationId) {
     try {
@@ -110,7 +123,7 @@ function useNotifications(socketEvent) {
 
       setNotifications((current) =>
         current.map((notification) =>
-          notification.id === notificationId
+          Number(notification.id) === Number(notificationId)
             ? {
                 ...notification,
                 isRead: true,
@@ -119,17 +132,15 @@ function useNotifications(socketEvent) {
         ),
       );
 
-      setUnreadCount((current) => Math.max(0, current - 1));
+      await loadUnreadCount();
     } catch (error) {
       console.error("Mark notification as read error:", error);
     }
   }
 
-  /*
-   * ==========================
-   * MARK ALL AS READ
-   * ==========================
-   */
+  /* =====================================================
+     MARK ALL AS READ
+  ===================================================== */
 
   async function handleMarkAllAsRead() {
     try {
@@ -147,22 +158,23 @@ function useNotifications(socketEvent) {
       console.error("Mark all notifications as read error:", error);
     }
   }
-  /*
-   * ==========================
-   * HANDLE NOTIFICATION CLICK
-   * ==========================
-   * Khi click vào notification, đánh dấu là đã đọc (nếu chưa đọc) và lấy target của notification.
-   * Trả về target để điều hướng đến trang tương ứng.
-   * ==========================
-   */
+
+  /* =====================================================
+     OPEN NOTIFICATION
+  ===================================================== */
+
   async function handleNotificationClick(notification) {
     try {
+      /* ================================================
+         MARK AS READ
+      ================================================= */
+
       if (!notification.isRead) {
         await markNotificationAsRead(notification.id);
 
         setNotifications((current) =>
           current.map((item) =>
-            item.id === notification.id
+            Number(item.id) === Number(notification.id)
               ? {
                   ...item,
                   isRead: true,
@@ -171,8 +183,12 @@ function useNotifications(socketEvent) {
           ),
         );
 
-        setUnreadCount((current) => Math.max(0, current - 1));
+        await loadUnreadCount();
       }
+
+      /* ================================================
+         GET TARGET
+      ================================================= */
 
       const target = await getNotificationTarget(notification.id);
 
@@ -183,13 +199,208 @@ function useNotifications(socketEvent) {
       return null;
     }
   }
+
+  /* =====================================================
+     MARK USER NOTIFICATIONS AS READ
+  ===================================================== */
+
+  async function handleUserNotificationRead(userId) {
+    try {
+      /*
+       * Lấy những notification
+       * chưa đọc.
+       */
+
+      const unreadNotifications = notifications.filter(
+        (notification) => !notification.isRead,
+      );
+
+      /*
+       * Không có notification
+       * chưa đọc thì không cần làm gì.
+       */
+
+      if (unreadNotifications.length === 0) {
+        return;
+      }
+
+      /*
+       * Lưu ID những notification
+       * cần đánh dấu đã đọc.
+       */
+
+      const notificationIds = [];
+
+      /*
+       * Kiểm tra từng notification.
+       *
+       * Notification không lưu SenderId
+       * nên lấy target từ Backend.
+       */
+
+      for (const notification of unreadNotifications) {
+        try {
+          const target = await getNotificationTarget(notification.id);
+
+          /*
+           * Chỉ xử lý chat riêng.
+           */
+
+          if (target?.conversationType !== "Private") {
+            continue;
+          }
+
+          /*
+           * Notification thuộc user
+           * vừa được click.
+           */
+
+          if (Number(target.senderId) === Number(userId)) {
+            notificationIds.push(notification.id);
+          }
+        } catch (error) {
+          console.error("Get notification target error:", error);
+        }
+      }
+
+      /*
+       * Không có notification phù hợp.
+       */
+
+      if (notificationIds.length === 0) {
+        return;
+      }
+
+      /*
+       * Đánh dấu từng notification
+       * là đã đọc.
+       */
+
+      await Promise.all(
+        notificationIds.map((notificationId) =>
+          markNotificationAsRead(notificationId),
+        ),
+      );
+
+      /*
+       * Cập nhật giao diện ngay.
+       */
+
+      setNotifications((current) =>
+        current.map((notification) =>
+          notificationIds.includes(notification.id)
+            ? {
+                ...notification,
+                isRead: true,
+              }
+            : notification,
+        ),
+      );
+
+      /*
+       * Lấy lại số unread chính xác
+       * từ Backend.
+       */
+
+      await loadUnreadCount();
+    } catch (error) {
+      console.error("Mark user notifications as read error:", error);
+    }
+  }
+
+  /* =====================================================
+     DELETE NOTIFICATION
+  ===================================================== */
+
+  async function handleDeleteNotification(notificationId) {
+    try {
+      await deleteNotification(notificationId);
+
+      setNotifications((current) =>
+        current.filter(
+          (notification) => Number(notification.id) !== Number(notificationId),
+        ),
+      );
+    } catch (error) {
+      console.error("Delete notification error:", error);
+    }
+  }
+
+  /* =====================================================
+   MARK DEPARTMENT NOTIFICATIONS AS READ
+    ===================================================== */
+
+  async function handleDepartmentNotificationRead() {
+    try {
+      const departmentNotifications = notifications.filter(
+        (notification) =>
+          !notification.isRead && notification.type === "DepartmentMessage",
+      );
+
+      if (departmentNotifications.length === 0) {
+        return;
+      }
+
+      await Promise.all(
+        departmentNotifications.map((notification) =>
+          markNotificationAsRead(notification.id),
+        ),
+      );
+
+      setNotifications((current) =>
+        current.map((notification) =>
+          notification.type === "DepartmentMessage"
+            ? {
+                ...notification,
+                isRead: true,
+              }
+            : notification,
+        ),
+      );
+
+      await loadUnreadCount();
+    } catch (error) {
+      console.error("Mark department notifications as read error:", error);
+    }
+  }
+  {
+    /*Delete all read notifications */
+  }
+  async function handleDeleteAllReadNotifications() {
+    try {
+      await deleteAllReadNotifications();
+
+      setNotifications((current) =>
+        current.filter((notification) => !notification.isRead),
+      );
+    } catch (error) {
+      console.error("Delete all read notifications error:", error);
+    }
+  }
+  /* =====================================================
+     RETURN
+  ===================================================== */
+
   return {
     notifications,
+
     unreadCount,
+
     loading,
+
     handleMarkAsRead,
+
     handleMarkAllAsRead,
+
     handleNotificationClick,
+
+    handleDeleteNotification,
+
+    handleUserNotificationRead,
+
+    handleDepartmentNotificationRead,
+
+    handleDeleteAllReadNotifications,
   };
 }
 

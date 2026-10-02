@@ -4790,14 +4790,12 @@ button:disabled {
   line-height: 1;
 }
 
-
 /* =========================================================
    DROPDOWN
 ========================================================= */
 
 .notification-dropdown {
   position: absolute;
-
   top: calc(100% + 10px);
   right: 0;
 
@@ -4819,29 +4817,64 @@ button:disabled {
 
 
 /* =========================================================
-   HEADER
+   HEADER ACTIONS
 ========================================================= */
 
-.notification-dropdown-header {
+.notification-header-actions {
   height: 52px;
 
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
 
-  padding: 0 16px;
+  gap: 8px;
+
+  padding: 0 14px;
 
   border-bottom: 1px solid #e2e8f0;
+
+  background: #ffffff;
 }
 
-.notification-dropdown-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #0f172a;
-}
 
-.notification-read-all-button {
+/* =========================================================
+   DELETE ALL
+========================================================= */
+
+.notification-delete-all-button {
   border: none;
+
+  background: transparent;
+
+  color: #ef4444;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  padding: 6px 8px;
+
+  border-radius: 6px;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.notification-delete-all-button:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+
+/* =========================================================
+   MARK ALL AS READ
+========================================================= */
+
+.notification-mark-all-button {
+  border: none;
+
   background: transparent;
 
   color: #2563eb;
@@ -4849,11 +4882,20 @@ button:disabled {
   font-size: 12px;
   font-weight: 600;
 
+  padding: 6px 8px;
+
+  border-radius: 6px;
+
   cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
-.notification-read-all-button:hover {
-  text-decoration: underline;
+.notification-mark-all-button:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 
@@ -4865,6 +4907,28 @@ button:disabled {
   max-height: 428px;
 
   overflow-y: auto;
+}
+
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+.notification-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.notification-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notification-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.notification-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 
@@ -4903,6 +4967,10 @@ button:disabled {
   background: #f8fbff;
 }
 
+.notification-item.unread:hover {
+  background: #f1f7ff;
+}
+
 .notification-item.read {
   background: #ffffff;
 }
@@ -4937,6 +5005,7 @@ button:disabled {
 
 .notification-item-content {
   min-width: 0;
+
   flex: 1;
 }
 
@@ -4947,6 +5016,8 @@ button:disabled {
 
   font-size: 13px;
   font-weight: 700;
+
+  line-height: 1.4;
 }
 
 .notification-item-text {
@@ -4964,6 +5035,54 @@ button:disabled {
   color: #94a3b8;
 
   font-size: 11px;
+}
+
+
+/* =========================================================
+   DELETE SINGLE NOTIFICATION
+========================================================= */
+
+.notification-delete-button {
+  flex-shrink: 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #94a3b8;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  padding: 4px 6px;
+
+  border-radius: 5px;
+
+  cursor: pointer;
+
+  opacity: 0;
+
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+
+/* Hiện nút Xóa khi hover notification */
+
+.notification-item:hover
+.notification-delete-button {
+  opacity: 1;
+}
+
+
+/* Hover nút Xóa */
+
+.notification-delete-button:hover {
+  background: #fef2f2;
+
+  color: #dc2626;
 }
 
 

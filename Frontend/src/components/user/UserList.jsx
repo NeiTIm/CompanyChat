@@ -2,6 +2,7 @@ import { useState } from "react";
 import Avatar from "../common/Avatar";
 import { formatLastSeen } from "../../utils/dateUtils";
 
+
 /* =========================================================
    SEARCH ICON
 ========================================================= */
@@ -19,11 +20,17 @@ function SearchIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <circle cx="11" cy="11" r="6.5" />
+      <circle
+        cx="11"
+        cy="11"
+        r="6.5"
+      />
+
       <path d="m16 16 4 4" />
     </svg>
   );
 }
+
 
 /* =========================================================
    USER LIST
@@ -35,31 +42,60 @@ function UserList({
   onSelectUser,
   unreadCounts,
 }) {
-  const [search, setSearch] = useState("");
 
-  const filteredUsers = users.filter((user) => {
-    const keyword = search.trim().toLowerCase();
+  const [search, setSearch] =
+    useState("");
 
-    if (!keyword) {
-      return true;
-    }
 
-    return (
-      user.fullName
-        ?.toLowerCase()
-        .includes(keyword) ||
-      user.username
-        ?.toLowerCase()
-        .includes(keyword)
-    );
-  });
+  /* =====================================================
+     FILTER USERS
+  ===================================================== */
 
-  const onlineCount = users.filter(
-    (user) => user.isOnline
-  ).length;
+  const filteredUsers =
+    users.filter((user) => {
+
+      const keyword =
+        search
+          .trim()
+          .toLowerCase();
+
+
+      if (!keyword) {
+        return true;
+      }
+
+
+      return (
+        user.fullName
+          ?.toLowerCase()
+          .includes(keyword) ||
+
+        user.username
+          ?.toLowerCase()
+          .includes(keyword)
+      );
+
+    });
+
+
+  /* =====================================================
+     ONLINE COUNT
+  ===================================================== */
+
+  const onlineCount =
+    users.filter(
+      (user) =>
+        user.isOnline
+    ).length;
+
+
+  /* =====================================================
+     RENDER
+  ===================================================== */
 
   return (
     <aside className="sidebar">
+
 
       {/* =================================================
           SIDEBAR HEADER
@@ -73,20 +109,28 @@ function UserList({
             Nhân viên
           </div>
 
+
           <div className="employee-summary">
+
             <span>
               {users.length} thành viên
             </span>
 
+
             <span className="online-summary">
+
               <span className="mini-online-dot" />
+
               {onlineCount} online
+
             </span>
+
           </div>
 
         </div>
 
       </div>
+
 
       {/* =================================================
           SEARCH
@@ -95,8 +139,11 @@ function UserList({
       <div className="search-box">
 
         <span className="search-icon">
+
           <SearchIcon />
+
         </span>
+
 
         <input
           value={search}
@@ -108,95 +155,153 @@ function UserList({
 
       </div>
 
+
       {/* =================================================
           USER LIST
       ================================================= */}
 
       <div className="user-list">
 
-        {filteredUsers.map((user) => {
+        {filteredUsers.map(
+          (user) => {
 
-          const selected =
-            selectedUser?.id === user.id;
+            const selected =
+              selectedUser?.id ===
+              user.id;
 
-          const unreadCount =
-            unreadCounts[user.id] || 0;
 
-          return (
-            <button
-              key={user.id}
-              type="button"
-              className={`user-item ${
-                selected ? "selected" : ""
-              }`}
-              onClick={() =>
-                onSelectUser(user)
-              }
-            >
+            const unreadCount =
+              unreadCounts[user.id] ||
+              0;
 
-              <Avatar
-                user={user}
-                size="medium"
-                showStatus
-              />
 
-              <div className="user-info">
+            return (
 
-                <div className="user-name-row">
+              <button
+                key={user.id}
+                type="button"
+                className={`user-item ${
+                  selected
+                    ? "selected"
+                    : ""
+                }`}
+                onClick={() =>
+                  onSelectUser(user)
+                }
+              >
 
-                  <div className="user-name">
-                    {user.fullName ||
-                      user.username}
+
+                {/* =================================================
+                    AVATAR
+                ================================================= */}
+
+                <Avatar
+                  user={user}
+                  size="medium"
+                  showStatus
+                />
+
+
+                {/* =================================================
+                    USER INFO
+                ================================================= */}
+
+                <div className="user-info">
+
+
+                  {/* USER NAME */}
+
+                  <div className="user-name-row">
+
+                    <div className="user-name">
+
+                      {user.fullName ||
+                        user.username}
+
+                    </div>
+
+
+                    {/* UNREAD CHAT COUNT */}
+
+                    {unreadCount >
+                      0 && (
+
+                      <span className="unread-badge">
+
+                        {unreadCount >
+                        99
+                          ? "99+"
+                          : unreadCount}
+
+                      </span>
+
+                    )}
+
                   </div>
 
-                  {unreadCount > 0 && (
-                    <span className="unread-badge">
-                      {unreadCount > 99
-                        ? "99+"
-                        : unreadCount}
-                    </span>
-                  )}
+
+                  {/* USERNAME */}
+
+                  <div className="user-username">
+
+                    @{user.username}
+
+                  </div>
+
+
+                  {/* ONLINE STATUS */}
+
+                  <div
+                    className={`user-presence ${
+                      user.isOnline
+                        ? "online"
+                        : "offline"
+                    }`}
+                  >
+
+                    <span className="presence-dot" />
+
+
+                    {user.isOnline
+                      ? "Đang online"
+                      : formatLastSeen(
+                          user.lastSeen
+                        )}
+
+                  </div>
 
                 </div>
 
-                <div className="user-username">
-                  @{user.username}
-                </div>
+              </button>
 
-                <div
-                  className={`user-presence ${
-                    user.isOnline
-                      ? "online"
-                      : "offline"
-                  }`}
-                >
-                  <span className="presence-dot" />
+            );
 
-                  {user.isOnline
-                    ? "Đang online"
-                    : formatLastSeen(
-                        user.lastSeen
-                      )}
-                </div>
+          }
+        )}
 
-              </div>
 
-            </button>
-          );
-        })}
+        {/* =================================================
+            EMPTY
+        ================================================= */}
 
-        {filteredUsers.length === 0 && (
+        {filteredUsers.length ===
+          0 && (
+
           <div className="empty-users">
 
             <div className="empty-users-icon">
+
               <SearchIcon />
+
             </div>
+
 
             <div>
               Không tìm thấy nhân viên
             </div>
 
           </div>
+
         )}
 
       </div>
@@ -204,5 +309,6 @@ function UserList({
     </aside>
   );
 }
+
 
 export default UserList;

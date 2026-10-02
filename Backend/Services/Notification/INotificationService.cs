@@ -28,4 +28,8 @@ public interface INotificationService
     Task<object?> GetNotificationTargetAsync(
     long notificationId,
     int userId);
+    Task<bool> DeleteAsync(
+        long notificationId,
+        int userId);
+    Task<int> DeleteAllReadAsync(int userId);
 }

@@ -37,17 +37,14 @@ function NotificationBell({
   loading,
   onNotificationClick,
   onMarkAllAsRead,
+  onDeleteNotification,
+  onDeleteAllReadNotifications,
 }) {
-  const [open, setOpen] =
-    useState(false);
-
+  const [open, setOpen] = useState(false);
 
   function handleToggle() {
-    setOpen(
-      (current) => !current
-    );
+    setOpen((current) => !current);
   }
-
 
   return (
     <div className="notification-container">
@@ -61,9 +58,7 @@ function NotificationBell({
         className={`notification-bell-button ${
           open ? "active" : ""
         }`}
-        onClick={
-          handleToggle
-        }
+        onClick={handleToggle}
         aria-label="Thông báo"
       >
 
@@ -75,15 +70,11 @@ function NotificationBell({
         =============================================== */}
 
         {unreadCount > 0 && (
-
           <span className="notification-badge">
-
             {unreadCount > 99
               ? "99+"
               : unreadCount}
-
           </span>
-
         )}
 
       </button>
@@ -94,30 +85,23 @@ function NotificationBell({
       ================================================= */}
 
       {open && (
-
         <NotificationDropdown
-          notifications={
-            notifications
-          }
-
-          unreadCount={
-            unreadCount
-          }
-
-          loading={
-            loading
-          }
-
+          notifications={notifications}
+          unreadCount={unreadCount}
+          loading={loading}
           onNotificationClick={
             onNotificationClick
           }
-
           onMarkAllAsRead={
             onMarkAllAsRead
           }
-
+          onDeleteNotification={
+            onDeleteNotification
+          }
+          onDeleteAllReadNotifications={
+            onDeleteAllReadNotifications
+          }
         />
-
       )}
 
     </div>
