@@ -107,9 +107,11 @@ function ChatPage({
     handleConversationChange,
 
   } = useChat(
-    currentUser,
-    socketEvent
-  );
+  currentUser,
+  socketEvent,
+  websocket,
+  websocketConnected
+);
 
 
   /* =====================================================

@@ -5,6 +5,7 @@ using CompanyChat.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using CompanyChat.Api.WebSockets;
 using CompanyChat.Api.Services.Notification;
+using CompanyChat.Api.Services;
 
 namespace CompanyChat.Api.Services.Chat;
 
@@ -46,7 +47,8 @@ public record ChatMessageResult(
 public class ChatMessageService(
     AppDbContext db,
     ConversationAccessService accessService,
-    INotificationService notificationService)
+    INotificationService notificationService,
+    ConnectionManager connections)
 {
     public async Task<(ChatMessageResult? Result, string? Error)>
         CreateMessageAsync(
@@ -350,6 +352,20 @@ public class ChatMessageService(
 
         foreach (var receiverId in receiverIds)
         {
+            /*
+             * Nếu người nhận đang mở đúng
+             * conversation này thì không tạo notification.
+             *
+             * Tin nhắn realtime vẫn được gửi bình thường.
+             */
+
+            if (connections.IsUserViewingConversation(
+                    receiverId,
+                    conversation.Id))
+            {
+                continue;
+            }
+
             var notification =
                 await notificationService.CreateAsync(
                     receiverId,

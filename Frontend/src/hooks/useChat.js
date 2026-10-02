@@ -7,7 +7,7 @@ import {
   getOrCreateDepartmentConversation,
 } from "../services/conversationService";
 
-function useChat(currentUser, socketEvent) {
+function useChat(currentUser, socketEvent, websocket, websocketConnected) {
   const [users, setUsers] = useState([]);
 
   const [selectedUser, setSelectedUser] = useState(null);
@@ -116,7 +116,33 @@ function useChat(currentUser, socketEvent) {
   ===================================================== */
 
   function handleConversationChange(conversationId) {
+    /*
+     * Lưu conversation hiện tại
+     * để xử lý unread message.
+     */
+
     activeConversationRef.current = conversationId;
+
+    /*
+     * Báo cho Backend biết user
+     * đang mở conversation nào.
+     */
+
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    if (!conversationId) {
+      return;
+    }
+
+    websocket.send(
+      JSON.stringify({
+        type: "conversation_change",
+
+        conversationId: conversationId,
+      }),
+    );
   }
 
   /* =====================================================
@@ -221,11 +247,6 @@ function useChat(currentUser, socketEvent) {
      * DEPARTMENT MESSAGE
      * ===================================================
      *
-     * Backend phải gửi:
-     *
-     * conversationType:
-     * "Department"
-     *
      * Nếu user không mở Department Chat
      * thì tăng badge Department.
      */
@@ -240,11 +261,6 @@ function useChat(currentUser, socketEvent) {
      * ===================================================
      * PRIVATE MESSAGE
      * ===================================================
-     *
-     * Backend gửi:
-     *
-     * conversationType:
-     * "Private"
      *
      * Badge sẽ được cộng cho người gửi.
      */

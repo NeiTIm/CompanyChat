@@ -221,10 +221,28 @@ public class ChatWebSocketHandler(
             }
 
             /*
-             * ==========================
-             * TYPING
-             * ==========================
-             */
+            * ==========================
+            * CONVERSATION CHANGE
+            * ==========================
+            */
+
+            if (request.Type ==
+                "conversation_change")
+            {
+                await HandleConversationChangeAsync(
+                    currentUser,
+                    senderId,
+                    request,
+                    cancellationToken);
+
+                continue;
+            }
+
+            /*
+            * ==========================
+            * TYPING
+            * ==========================
+            */
 
             if (request.Type ==
                     "typing_start" ||
@@ -449,6 +467,49 @@ public class ChatWebSocketHandler(
             senderId,
             senderJson,
             cancellationToken);
+    }
+    // Xử lý khi user thay đổi conversation đang mở.
+    private async Task HandleConversationChangeAsync(
+    ClaimsPrincipal currentUser,
+    int userId,
+    ChatMessage request,
+    CancellationToken cancellationToken)
+    {
+        /*
+         * Không có conversation
+         */
+        if (request.ConversationId <= 0)
+        {
+            connections.ClearActiveConversation(
+                userId);
+
+            return;
+        }
+
+        /*
+         * Kiểm tra user có quyền truy cập
+         * conversation này hay không.
+         */
+        var canAccess =
+            await conversationAccess.CanAccessAsync(
+                currentUser,
+                request.ConversationId);
+
+        if (!canAccess)
+        {
+            await SendErrorAsync(
+                userId,
+                "You do not have access to this conversation.");
+
+            return;
+        }
+
+        /*
+         * Lưu conversation đang mở.
+         */
+        connections.SetActiveConversation(
+            userId,
+            request.ConversationId);
     }
 
     private async Task HandleTypingAsync(
