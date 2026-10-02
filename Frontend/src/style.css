@@ -5099,3 +5099,457 @@ button:disabled {
 
   font-size: 13px;
 }
+
+/* =========================================================
+   CREATE GROUP OVERLAY
+========================================================= */
+
+.create-group-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(15, 23, 42, 0.45);
+}
+
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+.create-group-modal {
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+
+  background: #ffffff;
+  border-radius: 14px;
+
+  box-shadow:
+    0 20px 50px rgba(15, 23, 42, 0.18);
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.create-group-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  padding: 20px 22px;
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.create-group-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.create-group-subtitle {
+  margin-top: 5px;
+
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.create-group-close {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: transparent;
+  color: #6b7280;
+
+  cursor: pointer;
+}
+
+.create-group-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+
+/* =========================================================
+   BODY
+========================================================= */
+
+.create-group-body {
+  padding: 20px 22px;
+
+  overflow-y: auto;
+}
+
+.create-group-field {
+  margin-bottom: 20px;
+}
+
+.create-group-field label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.create-group-field input {
+  width: 100%;
+  height: 42px;
+
+  padding: 0 12px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+
+  outline: none;
+
+  font-size: 14px;
+}
+
+.create-group-field input:focus {
+  border-color: #2563eb;
+
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+
+/* =========================================================
+   MEMBER HEADING
+========================================================= */
+
+.create-group-member-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 9px;
+
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.create-group-member-heading span {
+  font-weight: 500;
+  color: #6b7280;
+}
+
+
+/* =========================================================
+   SEARCH
+========================================================= */
+
+.create-group-search {
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 0 11px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+
+  margin-bottom: 10px;
+}
+
+.create-group-search > span {
+  display: flex;
+  color: #6b7280;
+}
+
+.create-group-search input {
+  flex: 1;
+
+  min-width: 0;
+
+  border: 0;
+  outline: 0;
+
+  font-size: 14px;
+}
+
+
+/* =========================================================
+   USER LIST
+========================================================= */
+
+.create-group-user-list {
+  max-height: 300px;
+
+  overflow-y: auto;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.create-group-user {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 10px 12px;
+
+  border: 0;
+  border-bottom: 1px solid #f1f5f9;
+
+  background: #ffffff;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.create-group-user:last-child {
+  border-bottom: 0;
+}
+
+.create-group-user:hover {
+  background: #f8fafc;
+}
+
+.create-group-user.selected {
+  background: #eff6ff;
+}
+
+.create-group-user-info {
+  flex: 1;
+
+  min-width: 0;
+}
+
+.create-group-user-name {
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.create-group-user-username {
+  margin-top: 2px;
+
+  font-size: 12px;
+  color: #6b7280;
+}
+
+
+/* =========================================================
+   CHECKBOX
+========================================================= */
+
+.create-group-checkbox {
+  width: 20px;
+  height: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border: 1.5px solid #cbd5e1;
+  border-radius: 5px;
+
+  color: #ffffff;
+}
+
+.create-group-checkbox.checked {
+  border-color: #2563eb;
+  background: #2563eb;
+}
+
+
+/* =========================================================
+   EMPTY
+========================================================= */
+
+.create-group-empty {
+  padding: 28px 15px;
+
+  text-align: center;
+
+  font-size: 13px;
+  color: #6b7280;
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.create-group-error {
+  margin-top: 12px;
+
+  padding: 10px 12px;
+
+  border-radius: 8px;
+
+  background: #fef2f2;
+  color: #b91c1c;
+
+  font-size: 13px;
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.create-group-footer {
+  display: flex;
+  justify-content: flex-end;
+
+  gap: 10px;
+
+  padding: 15px 22px;
+
+  border-top: 1px solid #e5e7eb;
+}
+
+.create-group-cancel,
+.create-group-submit {
+  height: 38px;
+
+  padding: 0 17px;
+
+  border-radius: 8px;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.create-group-cancel {
+  border: 1px solid #d1d5db;
+
+  background: #ffffff;
+  color: #374151;
+}
+
+.create-group-cancel:hover {
+  background: #f9fafb;
+}
+
+.create-group-submit {
+  border: 1px solid #2563eb;
+
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.create-group-submit:hover {
+  background: #1d4ed8;
+}
+
+.create-group-cancel:disabled,
+.create-group-submit:disabled,
+.create-group-close:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   GROUP SIDEBAR
+========================================================= */
+
+.group-chat-section {
+  padding: 8px 10px 10px;
+}
+
+.group-chat-header {
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 6px;
+}
+
+.group-chat-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.group-chat-create-button {
+  width: 28px;
+  height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+  border-radius: 7px;
+
+  background: transparent;
+  color: #4b5563;
+
+  font-size: 21px;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.group-chat-create-button:hover {
+  background: #eef2f7;
+  color: #111827;
+}
+
+
+/* =========================================================
+   GROUP EMPTY
+========================================================= */
+
+.group-chat-empty {
+  padding: 12px 8px 14px;
+
+  color: #9ca3af;
+}
+
+.group-chat-empty-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.group-chat-empty-description {
+  margin-top: 3px;
+
+  font-size: 12px;
+}

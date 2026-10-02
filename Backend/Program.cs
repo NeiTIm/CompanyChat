@@ -30,6 +30,7 @@ builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<ChatWebSocketHandler>();
 builder.Services.AddScoped<PrivateChatHandler>();
 builder.Services.AddScoped<DepartmentChatHandler>();
+builder.Services.AddScoped<GroupChatHandler>();
 
 builder.Services.AddSingleton<ConnectionManager>();
 

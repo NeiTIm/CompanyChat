@@ -28,6 +28,9 @@ public class ChatWebSocketHandler
     private readonly DepartmentChatHandler
         departmentChatHandler;
 
+    private readonly GroupChatHandler
+        groupChatHandler;
+
     private readonly ILogger<ChatWebSocketHandler>
         logger;
 
@@ -39,6 +42,7 @@ public class ChatWebSocketHandler
         ChatMessageService chatMessageService,
         PrivateChatHandler privateChatHandler,
         DepartmentChatHandler departmentChatHandler,
+        GroupChatHandler groupChatHandler,
         ILogger<ChatWebSocketHandler> logger)
     {
         this.db = db;
@@ -57,6 +61,9 @@ public class ChatWebSocketHandler
 
         this.departmentChatHandler =
             departmentChatHandler;
+
+        this.groupChatHandler =
+            groupChatHandler;
 
         this.logger =
             logger;
@@ -114,6 +121,7 @@ public class ChatWebSocketHandler
             /*
              * Không cần gửi chính mình.
              */
+
             if (onlineUserId == userId)
             {
                 continue;
@@ -611,6 +619,19 @@ public class ChatWebSocketHandler
             case "Department":
 
                 await departmentChatHandler
+                    .HandleTypingAsync(
+                        currentUser,
+                        senderId,
+                        request,
+                        isTyping,
+                        CancellationToken.None);
+
+                break;
+
+
+            case "Group":
+
+                await groupChatHandler
                     .HandleTypingAsync(
                         currentUser,
                         senderId,

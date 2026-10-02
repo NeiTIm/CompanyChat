@@ -922,4 +922,1237 @@ public class ConversationsController(
                 department.Name,
                 conversation.CreatedAt));
     }
+
+    /*
+    * ==================================================
+    * CREATE GROUP CONVERSATION
+    * ==================================================
+    */
+
+    [HttpPost("group")]
+    public async Task<IActionResult> CreateGroup(
+        [FromBody] CreateGroupRequest request)
+    {
+        // Kiểm tra tên group
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return BadRequest(new
+            {
+                message = "Group name is required."
+            });
+        }
+
+        var groupName = request.Name.Trim();
+
+        if (groupName.Length > 100)
+        {
+            return BadRequest(new
+            {
+                message = "Group name cannot exceed 100 characters."
+            });
+        }
+
+
+        // Lấy danh sách member hợp lệ
+        var memberIds = request.MemberIds
+            .Where(x => x > 0)
+            .Distinct()
+            .ToList();
+
+
+        // Không tính người tạo vào danh sách member
+        memberIds.Remove(CurrentUserId);
+
+        if (memberIds.Count == 0)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "A group must have at least one other member."
+            });
+        }
+
+
+        // Kiểm tra các user có tồn tại và đang Active
+        var users = await db.Users
+            .Where(x =>
+                memberIds.Contains(x.Id) &&
+                x.IsActive)
+            .Select(x => x.Id)
+            .ToListAsync();
+
+
+        var invalidUserIds = memberIds
+            .Except(users)
+            .ToList();
+
+        if (invalidUserIds.Count > 0)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "One or more selected users are invalid or inactive.",
+
+                invalidUserIds
+            });
+        }
+
+
+        // Tạo group conversation
+        var conversation = new Conversation
+        {
+            Type = "Group",
+
+            Name = groupName,
+
+            CreatedBy = CurrentUserId,
+
+            DepartmentId = null
+        };
+
+        db.Conversations.Add(conversation);
+
+
+        // Thêm người tạo làm Owner
+        conversation.Members.Add(
+            new ConversationMember
+            {
+                UserId = CurrentUserId,
+                Role = "Owner"
+            });
+
+
+        // Thêm các member vào group
+        foreach (var userId in memberIds)
+        {
+            conversation.Members.Add(
+                new ConversationMember
+                {
+                    UserId = userId,
+                    Role = "Member"
+                });
+        }
+
+
+        // Lưu database
+        await db.SaveChangesAsync();
+
+
+        // Trả thông tin group vừa tạo
+        return Ok(new
+        {
+            conversationId = conversation.Id,
+
+            type = conversation.Type,
+
+            name = conversation.Name,
+
+            createdBy = conversation.CreatedBy,
+
+            createdAt = conversation.CreatedAt,
+
+            members = conversation.Members
+                .Select(x => new
+                {
+                    userId = x.UserId,
+                    role = x.Role
+                })
+                .ToList()
+        });
+    }
+
+    /*
+    * ==================================================
+    * GET MY GROUPS
+    * ==================================================
+    */
+
+    [HttpGet("groups")]
+    public async Task<IActionResult> GetMyGroups()
+    {
+        /*
+         * ==================================================
+         * LẤY CÁC GROUP CURRENT USER ĐANG THAM GIA
+         * ==================================================
+         */
+
+        var groups = await db.Conversations
+            .Where(x =>
+                x.Type == "Group" &&
+
+                x.Members.Any(
+                    m =>
+                        m.UserId == CurrentUserId))
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new
+            {
+                conversationId = x.Id,
+
+                type = x.Type,
+
+                name = x.Name,
+
+                createdBy = x.CreatedBy,
+
+                createdAt = x.CreatedAt,
+
+                memberCount = x.Members.Count()
+            })
+            .ToListAsync();
+
+
+        /*
+         * ==================================================
+         * TRẢ RESPONSE
+         * ==================================================
+         */
+
+        return Ok(groups);
+    }
+
+    /*
+    * ==================================================
+    * GET GROUP MEMBERS
+    * ==================================================
+    */
+
+    [HttpGet("{conversationId:int}/members")]
+    public async Task<IActionResult> GetGroupMembers(
+        int conversationId)
+    {
+        /*
+         * ==================================================
+         * KIỂM TRA GROUP
+         * ==================================================
+         */
+
+        var conversation =
+            await db.Conversations
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == conversationId &&
+                        x.Type == "Group");
+
+        if (conversation is null)
+        {
+            return NotFound(
+                new
+                {
+                    message = "Group not found."
+                });
+        }
+
+
+        /*
+         * ==================================================
+         * KIỂM TRA CURRENT USER CÓ PHẢI MEMBER
+         * ==================================================
+         */
+
+        var isMember =
+            await db.ConversationMembers
+                .AnyAsync(
+                    x =>
+                        x.ConversationId ==
+                            conversationId &&
+
+                        x.UserId ==
+                            CurrentUserId);
+
+        if (!isMember)
+        {
+            return Forbid();
+        }
+
+
+        /*
+         * ==================================================
+         * LẤY DANH SÁCH MEMBER
+         * ==================================================
+         */
+
+        var members =
+            await db.ConversationMembers
+                .Where(
+                    x =>
+                        x.ConversationId ==
+                            conversationId)
+                .Include(x => x.User)
+                .ThenInclude(x => x.Department)
+                .Select(
+                    x => new
+                    {
+                        userId =
+                            x.UserId,
+
+                        username =
+                            x.User.Username,
+
+                        fullName =
+                            x.User.FullName,
+
+                        email =
+                            x.User.Email,
+
+                        role =
+                            x.Role,
+
+                        isOnline =
+                            x.User.IsOnline,
+
+                        lastSeen =
+                            x.User.LastSeen,
+
+                        departmentId =
+                            x.User.DepartmentId,
+
+                        departmentName =
+                            x.User.Department != null
+                                ? x.User.Department.Name
+                                : null,
+
+                        isActive =
+                            x.User.IsActive
+                    })
+                .OrderBy(
+                    x =>
+                        x.role == "Owner"
+                            ? 0
+                            : x.role == "Admin"
+                                ? 1
+                                : 2)
+                .ThenBy(
+                    x =>
+                        x.fullName)
+                .ToListAsync();
+
+
+        /*
+         * ==================================================
+         * TRẢ RESPONSE
+         * ==================================================
+         */
+
+        return Ok(
+            new
+            {
+                conversationId,
+
+                total =
+                    members.Count,
+
+                members
+            });
+    }
+
+    /*
+    * ==================================================
+    * ADD MEMBER TO GROUP
+    * ==================================================
+    */
+
+    [HttpPost("{conversationId:int}/members")]
+    public async Task<IActionResult> AddGroupMember(
+        int conversationId,
+        [FromBody] AddGroupMemberRequest request)
+    {
+        /*
+         * ==================================================
+         * KIỂM TRA GROUP
+         * ==================================================
+         */
+
+        var conversation =
+            await db.Conversations
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == conversationId &&
+                        x.Type == "Group");
+
+        if (conversation is null)
+        {
+            return NotFound(
+                new
+                {
+                    message = "Group not found."
+                });
+        }
+
+
+        /*
+         * ==================================================
+         * LẤY ROLE CỦA CURRENT USER
+         * ==================================================
+         */
+
+        var currentMember =
+            await db.ConversationMembers
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.ConversationId ==
+                            conversationId &&
+
+                        x.UserId ==
+                            CurrentUserId);
+
+        if (currentMember is null)
+        {
+            return Forbid();
+        }
+
+
+        /*
+         * ==================================================
+         * CHỈ OWNER / ADMIN ĐƯỢC THÊM MEMBER
+         * ==================================================
+         */
+
+        if (currentMember.Role != "Owner" &&
+            currentMember.Role != "Admin")
+        {
+            return Forbid();
+        }
+
+
+        /*
+         * ==================================================
+         * KHÔNG ĐƯỢC TỰ THÊM CHÍNH MÌNH
+         * ==================================================
+         */
+
+        if (request.UserId == CurrentUserId)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "You are already a member of this group."
+                });
+        }
+
+
+        /*
+         * ==================================================
+         * KIỂM TRA USER
+         * ==================================================
+         */
+
+        var user =
+            await db.Users
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == request.UserId &&
+                        x.IsActive);
+
+        if (user is null)
+        {
+            return NotFound(
+                new
+                {
+                    message =
+                        "User not found or inactive."
+                });
+        }
+
+
+        /*
+         * ==================================================
+         * KIỂM TRA USER ĐÃ Ở TRONG GROUP CHƯA
+         * ==================================================
+         */
+
+        var alreadyMember =
+            await db.ConversationMembers
+                .AnyAsync(
+                    x =>
+                        x.ConversationId ==
+                            conversationId &&
+
+                        x.UserId ==
+                            request.UserId);
+
+        if (alreadyMember)
+        {
+            return Conflict(
+                new
+                {
+                    message =
+                        "User is already a member of this group."
+                });
+        }
+
+
+        /*
+         * ==================================================
+         * THÊM MEMBER
+         * ==================================================
+         */
+
+        var member =
+            new ConversationMember
+            {
+                ConversationId =
+                    conversationId,
+
+                UserId =
+                    request.UserId,
+
+                Role =
+                    "Member"
+            };
+
+        db.ConversationMembers.Add(member);
+
+        await db.SaveChangesAsync();
+
+
+        /*
+         * ==================================================
+         * RESPONSE
+         * ==================================================
+         */
+
+        return Ok(
+            new
+            {
+                conversationId,
+
+                userId =
+                    user.Id,
+
+                username =
+                    user.Username,
+
+                fullName =
+                    user.FullName,
+
+                role =
+                    member.Role,
+
+                message =
+                    "Member added successfully."
+            });
+    }
+
+    /*
+    * ==================================================
+    * REMOVE MEMBER FROM GROUP
+    * ==================================================
+    */
+
+    [HttpDelete("{conversationId:int}/members")]
+    public async Task<IActionResult> RemoveGroupMember(
+        int conversationId,
+        [FromBody] RemoveGroupMemberRequest request)
+    {
+        /*
+         * ==================================================
+         * KIỂM TRA GROUP
+         * ==================================================
+         */
+
+        var conversation =
+            await db.Conversations
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == conversationId &&
+                        x.Type == "Group");
+
+        if (conversation is null)
+        {
+            return NotFound(
+                new
+                {
+                    message = "Group not found."
+                });
+        }
+
+
+        /*
+         * ==================================================
+         * LẤY ROLE CỦA CURRENT USER
+         * ==================================================
+         */
+
+        var currentMember =
+            await db.ConversationMembers
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.ConversationId ==
+                            conversationId &&
+
+                        x.UserId ==
+                            CurrentUserId);
+
+        if (currentMember is null)
+        {
+            return Forbid();
+        }
+
+
+        /*
+         * ==================================================
+         * CHỈ OWNER / ADMIN ĐƯỢC XÓA MEMBER
+         * ==================================================
+         */
+
+        if (currentMember.Role != "Owner" &&
+            currentMember.Role != "Admin")
+        {
+            return Forbid();
+        }
+
+
+        /*
+         * ==================================================
+         * KHÔNG ĐƯỢC TỰ XÓA CHÍNH MÌNH
+         * ==================================================
+         */
+
+        if (request.UserId == CurrentUserId)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "You cannot remove yourself from the group."
+                });
+        }
+
+
+        /*
+         * ==================================================
+         * LẤY MEMBER CẦN XÓA
+         * ==================================================
+         */
+
+        var targetMember =
+            await db.ConversationMembers
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.ConversationId ==
+                            conversationId &&
+
+                        x.UserId ==
+                            request.UserId);
+
+        if (targetMember is null)
+        {
+            return NotFound(
+                new
+                {
+                    message =
+                        "User is not a member of this group."
+                });
+        }
+
+
+        /*
+         * ==================================================
+         * KIỂM TRA QUYỀN OWNER / ADMIN
+         * ==================================================
+         */
+
+        /*
+         * Owner có thể xóa Admin hoặc Member.
+         */
+
+        if (currentMember.Role == "Owner")
+        {
+            // Owner được phép xóa Admin / Member.
+        }
+
+        /*
+         * Admin chỉ được xóa Member.
+         */
+
+        else if (currentMember.Role == "Admin")
+        {
+            if (targetMember.Role != "Member")
+            {
+                return Forbid();
+            }
+        }
+
+
+        /*
+         * ==================================================
+         * XÓA MEMBER
+         * ==================================================
+         */
+
+        db.ConversationMembers.Remove(
+            targetMember);
+
+        await db.SaveChangesAsync();
+
+
+        /*
+         * ==================================================
+         * RESPONSE
+         * ==================================================
+         */
+
+        return Ok(
+            new
+            {
+                conversationId,
+
+                userId =
+                    request.UserId,
+
+                message =
+                    "Member removed successfully."
+            });
+    }
+
+    /*
+    * ==================================================
+    * UPDATE GROUP MEMBER ROLE
+    * ==================================================
+    */
+
+    [HttpPatch("{conversationId:int}/members/{userId:int}/role")]
+    public async Task<IActionResult> UpdateGroupMemberRole(
+        int conversationId,
+        int userId,
+        [FromBody] UpdateGroupMemberRoleRequest request)
+    {
+        /*
+         * ==================================================
+         * KIỂM TRA GROUP
+         * ==================================================
+         */
+
+        var conversation =
+            await db.Conversations
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == conversationId &&
+                        x.Type == "Group");
+
+        if (conversation is null)
+        {
+            return NotFound(
+                new
+                {
+                    message = "Group not found."
+                });
+        }
+
+        /*
+         * ==================================================
+         * LẤY MEMBER HIỆN TẠI
+         * ==================================================
+         */
+
+        var currentMember =
+            await db.ConversationMembers
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.ConversationId == conversationId &&
+                        x.UserId == CurrentUserId);
+
+        if (currentMember is null)
+        {
+            return Forbid();
+        }
+
+        /*
+         * ==================================================
+         * CHỈ OWNER ĐƯỢC ĐỔI ROLE
+         * ==================================================
+         */
+
+        if (currentMember.Role != "Owner")
+        {
+            return Forbid();
+        }
+
+        /*
+         * ==================================================
+         * KHÔNG CHO TỰ ĐỔI ROLE
+         * ==================================================
+         */
+
+        if (userId == CurrentUserId)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "You cannot change your own role."
+                });
+        }
+
+        /*
+         * ==================================================
+         * KIỂM TRA ROLE MỚI
+         * ==================================================
+         */
+
+        var newRole =
+            request.Role?.Trim();
+
+        if (newRole != "Admin" &&
+            newRole != "Member")
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "Role must be Admin or Member."
+                });
+        }
+
+        /*
+         * ==================================================
+         * TÌM MEMBER CẦN ĐỔI ROLE
+         * ==================================================
+         */
+
+        var targetMember =
+            await db.ConversationMembers
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.ConversationId == conversationId &&
+                        x.UserId == userId);
+
+        if (targetMember is null)
+        {
+            return NotFound(
+                new
+                {
+                    message =
+                        "User is not a member of this group."
+                });
+        }
+
+        /*
+         * ==================================================
+         * KHÔNG CHO ĐỔI OWNER
+         * ==================================================
+         */
+
+        if (targetMember.Role == "Owner")
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "Owner role cannot be changed."
+                });
+        }
+
+        /*
+         * ==================================================
+         * KIỂM TRA ROLE HIỆN TẠI
+         * ==================================================
+         */
+
+        if (targetMember.Role == newRole)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        $"User is already {newRole}."
+                });
+        }
+
+        /*
+         * ==================================================
+         * CẬP NHẬT ROLE
+         * ==================================================
+         */
+
+        targetMember.Role = newRole;
+
+        await db.SaveChangesAsync();
+
+        return Ok(
+            new
+            {
+                conversationId,
+                userId,
+                role = targetMember.Role,
+                message =
+                    "Member role updated successfully."
+            });
+    }
+
+    /*
+ * ==================================================
+ * LEAVE GROUP
+ * ==================================================
+ */
+
+    [HttpDelete("{conversationId:int}/leave")]
+    public async Task<IActionResult> LeaveGroup(
+        int conversationId)
+    {
+        /*
+         * ==================================================
+         * KIỂM TRA GROUP
+         * ==================================================
+         */
+
+        var conversation =
+            await db.Conversations
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == conversationId &&
+                        x.Type == "Group");
+
+        if (conversation is null)
+        {
+            return NotFound(
+                new
+                {
+                    message = "Group not found."
+                });
+        }
+
+        /*
+         * ==================================================
+         * TÌM MEMBER HIỆN TẠI
+         * ==================================================
+         */
+
+        var currentMember =
+            await db.ConversationMembers
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.ConversationId == conversationId &&
+                        x.UserId == CurrentUserId);
+
+        if (currentMember is null)
+        {
+            return Forbid();
+        }
+
+        /*
+         * ==================================================
+         * OWNER KHÔNG ĐƯỢC RỜI GROUP
+         * ==================================================
+         */
+
+        if (currentMember.Role == "Owner")
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "Owner must transfer ownership before leaving the group."
+                });
+        }
+
+        /*
+         * ==================================================
+         * XÓA MEMBER
+         * ==================================================
+         */
+
+        db.ConversationMembers.Remove(currentMember);
+
+        await db.SaveChangesAsync();
+
+        return Ok(
+            new
+            {
+                conversationId,
+                userId = CurrentUserId,
+                message = "You left the group successfully."
+            });
+    }
+
+    /*
+    * ==================================================
+    * TRANSFER GROUP OWNERSHIP
+    * ==================================================
+    */
+
+    [HttpPatch("{conversationId:int}/transfer-owner/{userId:int}")]
+    public async Task<IActionResult> TransferGroupOwnership(
+        int conversationId,
+        int userId)
+    {
+        /*
+         * ==================================================
+         * KIỂM TRA GROUP
+         * ==================================================
+         */
+
+        var conversation =
+            await db.Conversations
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == conversationId &&
+                        x.Type == "Group");
+
+        if (conversation is null)
+        {
+            return NotFound(
+                new
+                {
+                    message = "Group not found."
+                });
+        }
+
+        /*
+         * ==================================================
+         * LẤY OWNER HIỆN TẠI
+         * ==================================================
+         */
+
+        var currentOwner =
+            await db.ConversationMembers
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.ConversationId == conversationId &&
+                        x.UserId == CurrentUserId);
+
+        if (currentOwner is null)
+        {
+            return Forbid();
+        }
+
+        /*
+         * ==================================================
+         * CHỈ OWNER ĐƯỢC CHUYỂN QUYỀN
+         * ==================================================
+         */
+
+        if (currentOwner.Role != "Owner")
+        {
+            return Forbid();
+        }
+
+        /*
+         * ==================================================
+         * KHÔNG CHUYỂN CHO CHÍNH MÌNH
+         * ==================================================
+         */
+
+        if (userId == CurrentUserId)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "You are already the owner."
+                });
+        }
+
+        /*
+         * ==================================================
+         * TÌM MEMBER MỚI
+         * ==================================================
+         */
+
+        var newOwner =
+            await db.ConversationMembers
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.ConversationId == conversationId &&
+                        x.UserId == userId);
+
+        if (newOwner is null)
+        {
+            return NotFound(
+                new
+                {
+                    message =
+                        "User is not a member of this group."
+                });
+        }
+
+        /*
+         * ==================================================
+         * CHUYỂN QUYỀN
+         * ==================================================
+         */
+
+        currentOwner.Role = "Member";
+        newOwner.Role = "Owner";
+
+        await db.SaveChangesAsync();
+
+        return Ok(
+            new
+            {
+                conversationId,
+                previousOwnerId = CurrentUserId,
+                newOwnerId = userId,
+                message =
+                    "Group ownership transferred successfully."
+            });
+    }
+
+    /*
+    * ==================================================
+    * DELETE GROUP
+    * ==================================================
+    */
+
+    [HttpDelete("{conversationId:int}")]
+    public async Task<IActionResult> DeleteGroup(
+        int conversationId)
+    {
+        /*
+         * ==================================================
+         * TÌM GROUP
+         * ==================================================
+         */
+
+        var conversation =
+            await db.Conversations
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == conversationId &&
+                        x.Type == "Group");
+
+        if (conversation is null)
+        {
+            return NotFound(
+                new
+                {
+                    message = "Group not found."
+                });
+        }
+
+        /*
+         * ==================================================
+         * KIỂM TRA MEMBER HIỆN TẠI
+         * ==================================================
+         */
+
+        var currentMember =
+            await db.ConversationMembers
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.ConversationId == conversationId &&
+                        x.UserId == CurrentUserId);
+
+        if (currentMember is null)
+        {
+            return Forbid();
+        }
+
+        /*
+         * ==================================================
+         * CHỈ OWNER ĐƯỢC XÓA GROUP
+         * ==================================================
+         */
+
+        if (currentMember.Role != "Owner")
+        {
+            return Forbid();
+        }
+
+        /*
+         * ==================================================
+         * LẤY MESSAGE CỦA GROUP
+         * ==================================================
+         */
+
+        var messageIds =
+            await db.Messages
+                .Where(x =>
+                    x.ConversationId == conversationId)
+                .Select(x => x.Id)
+                .ToListAsync();
+
+        /*
+         * ==================================================
+         * XÓA NOTIFICATION
+         * ==================================================
+         */
+
+        if (messageIds.Count > 0)
+        {
+            var messageNotifications =
+                await db.Notifications
+                    .Where(x =>
+                        x.ConversationId == conversationId ||
+                        (x.MessageId.HasValue &&
+                         messageIds.Contains(x.MessageId.Value)))
+                    .ToListAsync();
+
+            db.Notifications.RemoveRange(
+                messageNotifications);
+        }
+        else
+        {
+            var conversationNotifications =
+                await db.Notifications
+                    .Where(x =>
+                        x.ConversationId == conversationId)
+                    .ToListAsync();
+
+            db.Notifications.RemoveRange(
+                conversationNotifications);
+        }
+
+        /*
+         * ==================================================
+         * XÓA MESSAGE USER STATE
+         * ==================================================
+         */
+
+        var messageStates =
+            await db.MessageUserStates
+                .Where(x =>
+                    messageIds.Contains(x.MessageId))
+                .ToListAsync();
+
+        db.MessageUserStates.RemoveRange(
+            messageStates);
+
+        /*
+         * ==================================================
+         * XÓA MESSAGE
+         * ==================================================
+         */
+
+        var messages =
+            await db.Messages
+                .Where(x =>
+                    x.ConversationId == conversationId)
+                .ToListAsync();
+
+        db.Messages.RemoveRange(messages);
+
+        /*
+         * ==================================================
+         * XÓA MEMBERS
+         * ==================================================
+         */
+
+        var members =
+            await db.ConversationMembers
+                .Where(x =>
+                    x.ConversationId == conversationId)
+                .ToListAsync();
+
+        db.ConversationMembers.RemoveRange(
+            members);
+
+        /*
+         * ==================================================
+         * XÓA CONVERSATION
+         * ==================================================
+         */
+
+        db.Conversations.Remove(conversation);
+
+        await db.SaveChangesAsync();
+
+        return Ok(
+            new
+            {
+                conversationId,
+                message = "Group deleted successfully."
+            });
+    }
 }

@@ -108,7 +108,7 @@ public class ChatMessageService(
          * Private:
          * - Chỉ có 1 receiver.
          *
-         * Department:
+         * Department / Group:
          * - Lấy tất cả member.
          * - Không gửi lại cho sender.
          */
@@ -158,13 +158,14 @@ public class ChatMessageService(
                 receiverId
             ];
         }
-        else if (conversationType == "Department")
+        else if (
+            conversationType == "Department" ||
+            conversationType == "Group")
         {
             /*
-             * Department không sử dụng ReceiverId.
-             *
-             * Lấy tất cả thành viên trong conversation
-             * ngoại trừ người gửi.
+             * Department / Group:
+             * - Lấy tất cả member.
+             * - Không gửi lại cho sender.
              */
 
             receiverIds =
@@ -185,7 +186,9 @@ public class ChatMessageService(
             {
                 return (
                     null,
-                    "There are no other members in this department conversation.");
+                    conversationType == "Group"
+                        ? "There are no other members in this group."
+                        : "There are no other members in this department conversation.");
             }
         }
         else
@@ -372,11 +375,15 @@ public class ChatMessageService(
 
                     conversationType == "Department"
                         ? "DepartmentMessage"
-                        : "Message",
+                        : conversationType == "Group"
+                            ? "GroupMessage"
+                            : "Message",
 
                     conversationType == "Department"
                         ? "Tin nhắn phòng ban mới"
-                        : "Tin nhắn mới",
+                        : conversationType == "Group"
+                            ? "Tin nhắn nhóm mới"
+                            : "Tin nhắn mới",
 
                     $"{sender.FullName} đã gửi cho bạn một tin nhắn",
 

@@ -10,6 +10,8 @@ import MessageComposer from "./MessageComposer";
 
 import DeleteMessageModal from "../modal/DeleteMessageModal";
 import DeleteHistoryModal from "../modal/DeleteHistoryModal";
+import GroupDetailsModal from "../modal/GroupDetailsModal";
+
 import Avatar from "../common/Avatar";
 import TypingIndicator from "./TypingIndicator";
 
@@ -32,12 +34,20 @@ import {
 function ChatWindow({
   selectedUser,
   departmentConversation,
+  selectedGroup,
   currentUser,
   websocket,
   websocketConnected,
   socketEvent,
   onConversationRead,
   onConversationChange,
+
+  /* =========================
+     GROUP
+  ========================= */
+
+  onGroupUpdated,
+  onGroupRemoved,
 }) {
   const [conversation, setConversation] =
     useState(null);
@@ -83,6 +93,15 @@ function ChatWindow({
     useState(null);
 
   /* =====================================================
+     GROUP DETAILS
+  ===================================================== */
+
+  const [
+    showGroupDetails,
+    setShowGroupDetails,
+  ] = useState(false);
+
+  /* =====================================================
      REFS
   ===================================================== */
 
@@ -91,13 +110,6 @@ function ChatWindow({
 
   const messagesEndRef =
     useRef(null);
-
-  /* =====================================================
-     CURRENT CHAT TYPE
-  ===================================================== */
-
-  const isDepartmentChat =
-    Boolean(departmentConversation);
 
   /* =====================================================
      CONVERSATION REF
@@ -109,6 +121,16 @@ function ChatWindow({
   }, [conversation]);
 
   /* =====================================================
+     RESET GROUP DETAILS
+  ===================================================== */
+
+  useEffect(() => {
+    if (!selectedGroup) {
+      setShowGroupDetails(false);
+    }
+  }, [selectedGroup]);
+
+  /* =====================================================
      RESET WHEN CHAT TARGET CHANGES
   ===================================================== */
 
@@ -118,12 +140,13 @@ function ChatWindow({
     setText("");
 
     /*
-     * Không có Private User
-     * và không có Department Conversation
+     * Không có chat nào được chọn.
      */
+
     if (
       !selectedUser &&
-      !departmentConversation
+      !departmentConversation &&
+      !selectedGroup
     ) {
       setConversation(null);
 
@@ -135,31 +158,51 @@ function ChatWindow({
       return;
     }
 
-    /*
-     * Nếu đang chọn Department
-     */
+    /* ===================================================
+       GROUP
+    =================================================== */
+
     if (
-      departmentConversation &&
-      !selectedUser
+      selectedGroup &&
+      !selectedUser &&
+      !departmentConversation
     ) {
-      loadDepartmentConversation(
-        departmentConversation
+      loadGroupConversation(
+        selectedGroup,
       );
 
       return;
     }
 
-    /*
-     * Nếu đang chọn Private User
-     */
+    /* ===================================================
+       DEPARTMENT
+    =================================================== */
+
+    if (
+      departmentConversation &&
+      !selectedUser &&
+      !selectedGroup
+    ) {
+      loadDepartmentConversation(
+        departmentConversation,
+      );
+
+      return;
+    }
+
+    /* ===================================================
+       PRIVATE
+    =================================================== */
+
     if (selectedUser) {
       loadPrivateConversation(
-        selectedUser.id
+        selectedUser.id,
       );
     }
   }, [
     selectedUser,
     departmentConversation,
+    selectedGroup,
   ]);
 
   /* =====================================================
@@ -167,7 +210,7 @@ function ChatWindow({
   ===================================================== */
 
   async function loadPrivateConversation(
-    userId
+    userId,
   ) {
     try {
       setLoading(true);
@@ -178,18 +221,18 @@ function ChatWindow({
 
       const currentConversation =
         await getPrivateConversation(
-          userId
+          userId,
         );
 
       setConversation(
-        currentConversation
+        currentConversation,
       );
 
       conversationRef.current =
         currentConversation;
 
       onConversationChange?.(
-        currentConversation.id
+        currentConversation.id,
       );
 
       /* =================================================
@@ -198,7 +241,7 @@ function ChatWindow({
 
       const messages =
         await getConversationMessages(
-          currentConversation.id
+          currentConversation.id,
         );
 
       setMessages(messages);
@@ -208,17 +251,15 @@ function ChatWindow({
       ================================================= */
 
       await markConversationRead(
-        currentConversation.id
+        currentConversation.id,
       );
-
     } catch (error) {
       console.error(
         "Load private conversation error:",
-        error
+        error,
       );
 
       setMessages([]);
-
     } finally {
       setLoading(false);
     }
@@ -229,7 +270,7 @@ function ChatWindow({
   ===================================================== */
 
   async function loadDepartmentConversation(
-    department
+    department,
   ) {
     if (!department?.id) {
       return;
@@ -241,32 +282,34 @@ function ChatWindow({
       /*
        * Department Conversation đã được
        * tạo/lấy từ useChat.
-       *
-       * Không cần gọi lại API tạo conversation.
        */
 
       const currentConversation = {
         id: department.id,
+
         type:
           department.type ||
           "Department",
+
         departmentId:
           department.departmentId,
+
         departmentName:
           department.departmentName,
+
         createdAt:
           department.createdAt,
       };
 
       setConversation(
-        currentConversation
+        currentConversation,
       );
 
       conversationRef.current =
         currentConversation;
 
       onConversationChange?.(
-        currentConversation.id
+        currentConversation.id,
       );
 
       /* =================================================
@@ -275,7 +318,7 @@ function ChatWindow({
 
       const messages =
         await getConversationMessages(
-          currentConversation.id
+          currentConversation.id,
         );
 
       setMessages(messages);
@@ -285,17 +328,103 @@ function ChatWindow({
       ================================================= */
 
       await markConversationRead(
-        currentConversation.id
+        currentConversation.id,
       );
-
     } catch (error) {
       console.error(
         "Load department conversation error:",
-        error
+        error,
       );
 
       setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  }
 
+  /* =====================================================
+     LOAD GROUP CONVERSATION
+  ===================================================== */
+
+  async function loadGroupConversation(
+    group,
+  ) {
+    const conversationId =
+      Number(
+        group?.conversationId ??
+          group?.id,
+      );
+
+    if (!conversationId) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      /*
+       * Group đã được lấy từ useChat.
+       *
+       * Không cần gọi API tạo group.
+       */
+
+      const currentConversation = {
+        id: conversationId,
+
+        type:
+          group.type ||
+          "Group",
+
+        name:
+          group.name ||
+          "Nhóm",
+
+        createdBy:
+          group.createdBy,
+
+        createdAt:
+          group.createdAt,
+
+        memberCount:
+          group.memberCount,
+      };
+
+      setConversation(
+        currentConversation,
+      );
+
+      conversationRef.current =
+        currentConversation;
+
+      onConversationChange?.(
+        conversationId,
+      );
+
+      /* =================================================
+         LOAD MESSAGES
+      ================================================= */
+
+      const messages =
+        await getConversationMessages(
+          conversationId,
+        );
+
+      setMessages(messages);
+
+      /* =================================================
+         MARK READ
+      ================================================= */
+
+      await markConversationRead(
+        conversationId,
+      );
+    } catch (error) {
+      console.error(
+        "Load group conversation error:",
+        error,
+      );
+
+      setMessages([]);
     } finally {
       setLoading(false);
     }
@@ -315,7 +444,8 @@ function ChatWindow({
     =================================================== */
 
     if (
-      socketEvent.type === "message"
+      socketEvent.type ===
+      "message"
     ) {
       const incomingMessage =
         socketEvent.message ||
@@ -335,10 +465,10 @@ function ChatWindow({
 
       if (
         Number(
-          incomingMessage.conversationId
+          incomingMessage.conversationId,
         ) !==
         Number(
-          currentConversation.id
+          currentConversation.id,
         )
       ) {
         return;
@@ -346,16 +476,15 @@ function ChatWindow({
 
       /* ================================================
          MESSAGE DO CHÍNH MÌNH GỬI
-      ================================================= */
+      ================================================ */
 
       if (
         Number(
-          incomingMessage.senderId
+          incomingMessage.senderId,
         ) ===
         Number(currentUser.id)
       ) {
         setMessages((current) => {
-
           /* --------------------------------------------
              TÌM OPTIMISTIC MESSAGE
           -------------------------------------------- */
@@ -365,7 +494,7 @@ function ChatWindow({
               (message) =>
                 message.pending &&
                 message.content ===
-                  incomingMessage.content
+                  incomingMessage.content,
             );
 
           /* --------------------------------------------
@@ -399,17 +528,19 @@ function ChatWindow({
           if (
             current.some(
               (message) =>
-                Number(message.id) ===
                 Number(
-                  incomingMessage.id
-                )
+                  message.id,
+                ) ===
+                Number(
+                  incomingMessage.id,
+                ),
             )
           ) {
             return current;
           }
 
           /* --------------------------------------------
-             TRƯỜNG HỢP KHÔNG CÒN OPTIMISTIC
+             KHÔNG CÒN OPTIMISTIC
           -------------------------------------------- */
 
           return [
@@ -437,7 +568,6 @@ function ChatWindow({
       ================================================= */
 
       setMessages((current) => {
-
         /* ----------------------------------------------
            CHỐNG DUPLICATE
         ---------------------------------------------- */
@@ -445,10 +575,12 @@ function ChatWindow({
         if (
           current.some(
             (message) =>
-              Number(message.id) ===
               Number(
-                incomingMessage.id
-              )
+                message.id,
+              ) ===
+              Number(
+                incomingMessage.id,
+              ),
           )
         ) {
           return current;
@@ -459,6 +591,7 @@ function ChatWindow({
 
           {
             ...incomingMessage,
+
             pending: false,
           },
         ];
@@ -469,7 +602,7 @@ function ChatWindow({
       ---------------------------------------------- */
 
       markConversationRead(
-        currentConversation.id
+        currentConversation.id,
       );
 
       return;
@@ -489,22 +622,28 @@ function ChatWindow({
       const status =
         socketEvent.status;
 
-      if (!messageId || !status) {
+      if (
+        !messageId ||
+        !status
+      ) {
         return;
       }
 
       setMessages((current) =>
-        current.map((message) =>
-          Number(message.id) ===
-          Number(messageId)
-            ? {
-                ...message,
-                deliveryStatus:
-                  status,
-                pending: false,
-              }
-            : message
-        )
+        current.map(
+          (message) =>
+            Number(message.id) ===
+            Number(messageId)
+              ? {
+                  ...message,
+
+                  deliveryStatus:
+                    status,
+
+                  pending: false,
+                }
+              : message,
+        ),
       );
 
       return;
@@ -515,7 +654,8 @@ function ChatWindow({
     =================================================== */
 
     if (
-      socketEvent.type === "typing"
+      socketEvent.type ===
+      "typing"
     ) {
       const currentConversation =
         conversationRef.current;
@@ -526,24 +666,27 @@ function ChatWindow({
 
       if (
         Number(
-          socketEvent.conversationId
+          socketEvent.conversationId,
         ) !==
         Number(
-          currentConversation.id
+          currentConversation.id,
         )
       ) {
         return;
       }
 
       if (
-        Number(socketEvent.userId) ===
+        Number(
+          socketEvent.userId,
+        ) ===
         Number(currentUser.id)
       ) {
         return;
       }
 
       setIsTyping(
-        socketEvent.isTyping === true
+        socketEvent.isTyping ===
+          true,
       );
 
       return;
@@ -575,9 +718,11 @@ function ChatWindow({
         setMessages((current) =>
           current.filter(
             (message) =>
-              Number(message.id) !==
-              Number(messageId)
-          )
+              Number(
+                message.id,
+              ) !==
+              Number(messageId),
+          ),
         );
 
         return;
@@ -587,20 +732,27 @@ function ChatWindow({
          DELETE FOR EVERYONE
       ---------------------------------------------- */
 
-      if (mode === "everyone") {
+      if (
+        mode === "everyone"
+      ) {
         setMessages((current) =>
           current.map(
             (message) =>
-              Number(message.id) ===
+              Number(
+                message.id,
+              ) ===
               Number(messageId)
                 ? {
                     ...message,
-                    isDeleted: true,
+
+                    isDeleted:
+                      true,
+
                     content:
                       "Tin nhắn đã bị xóa",
                   }
-                : message
-          )
+                : message,
+          ),
         );
       }
     }
@@ -614,7 +766,7 @@ function ChatWindow({
   ===================================================== */
 
   async function markConversationRead(
-    conversationId
+    conversationId,
   ) {
     if (!conversationId) {
       return;
@@ -622,13 +774,13 @@ function ChatWindow({
 
     try {
       await markConversationAsRead(
-        conversationId
+        conversationId,
       );
 
       onConversationRead?.();
 
       /* ----------------------------------------------
-         SEND READ EVENT THROUGH WEBSOCKET
+         SEND READ EVENT
       ---------------------------------------------- */
 
       if (
@@ -639,8 +791,9 @@ function ChatWindow({
         websocket.send(
           JSON.stringify({
             type: "read",
+
             conversationId,
-          })
+          }),
         );
       }
 
@@ -649,25 +802,31 @@ function ChatWindow({
       ---------------------------------------------- */
 
       setMessages((current) =>
-        current.map((message) => {
-          if (
-            Number(message.senderId) !==
-            Number(currentUser.id)
-          ) {
-            return {
-              ...message,
-              isRead: true,
-            };
-          }
+        current.map(
+          (message) => {
+            if (
+              Number(
+                message.senderId,
+              ) !==
+              Number(
+                currentUser.id,
+              )
+            ) {
+              return {
+                ...message,
 
-          return message;
-        })
+                isRead: true,
+              };
+            }
+
+            return message;
+          },
+        ),
       );
-
     } catch (error) {
       console.error(
         "Mark conversation read error:",
-        error
+        error,
       );
     }
   }
@@ -686,7 +845,9 @@ function ChatWindow({
      REPLY
   ===================================================== */
 
-  function handleReply(message) {
+  function handleReply(
+    message,
+  ) {
     if (!message) {
       return;
     }
@@ -742,9 +903,12 @@ function ChatWindow({
      * receiverId = selectedUser.id
      *
      * Department:
-     * không có một receiver cụ thể
-     * nên receiverId = null.
+     * receiverId = null
+     *
+     * Group:
+     * receiverId = null
      */
+
     const receiverId =
       selectedUser
         ? selectedUser.id
@@ -782,35 +946,36 @@ function ChatWindow({
       isDeleted: false,
 
       replyToMessageId:
-        currentReply?.id || null,
+        currentReply?.id ||
+        null,
 
-      replyTo:
-        currentReply
-          ? {
-              id:
-                currentReply.id,
+      replyTo: currentReply
+        ? {
+            id:
+              currentReply.id,
 
-              senderId:
-                currentReply.senderId,
+            senderId:
+              currentReply.senderId,
 
-              senderName:
-                currentReply.senderName,
+            senderName:
+              currentReply.senderName,
 
-              content:
-                currentReply.content,
-            }
-          : null,
+            content:
+              currentReply.content,
+          }
+        : null,
     };
 
     setMessages((current) => [
       ...current,
+
       optimisticMessage,
     ]);
 
     setText("");
 
     /* ===================================================
-       SAU KHI GỬI THÌ THOÁT REPLY MODE
+       THOÁT REPLY MODE
     =================================================== */
 
     setReplyingTo(null);
@@ -831,8 +996,9 @@ function ChatWindow({
         content,
 
         replyToMessageId:
-          currentReply?.id || null,
-      })
+          currentReply?.id ||
+          null,
+      }),
     );
   }
 
@@ -857,7 +1023,7 @@ function ChatWindow({
 
     if (
       String(
-        deleteMessage.id
+        deleteMessage.id,
       ).startsWith("temp-")
     ) {
       setDeleteMessage(null);
@@ -867,23 +1033,26 @@ function ChatWindow({
 
     try {
       await deleteMessageForMe(
-        deleteMessage.id
+        deleteMessage.id,
       );
 
       setMessages((current) =>
         current.filter(
           (message) =>
-            Number(message.id) !==
-            Number(deleteMessage.id)
-        )
+            Number(
+              message.id,
+            ) !==
+            Number(
+              deleteMessage.id,
+            ),
+        ),
       );
 
       setDeleteMessage(null);
-
     } catch (error) {
       console.error(
         "Delete message for me error:",
-        error
+        error,
       );
     }
   }
@@ -903,7 +1072,7 @@ function ChatWindow({
 
     if (
       String(
-        deleteMessage.id
+        deleteMessage.id,
       ).startsWith("temp-")
     ) {
       setDeleteMessage(null);
@@ -913,30 +1082,35 @@ function ChatWindow({
 
     try {
       await deleteMessageForEveryone(
-        deleteMessage.id
+        deleteMessage.id,
       );
 
       setMessages((current) =>
         current.map(
           (message) =>
-            Number(message.id) ===
-            Number(deleteMessage.id)
+            Number(
+              message.id,
+            ) ===
+            Number(
+              deleteMessage.id,
+            )
               ? {
                   ...message,
+
                   isDeleted: true,
+
                   content:
                     "Tin nhắn đã bị xóa",
                 }
-              : message
-        )
+              : message,
+        ),
       );
 
       setDeleteMessage(null);
-
     } catch (error) {
       console.error(
         "Delete message for everyone error:",
-        error
+        error,
       );
     }
   }
@@ -951,7 +1125,7 @@ function ChatWindow({
     }
 
     setShowDeleteHistoryModal(
-      true
+      true,
     );
   }
 
@@ -964,28 +1138,90 @@ function ChatWindow({
       setDeletingHistory(true);
 
       await deleteConversationHistoryService(
-        conversation.id
+        conversation.id,
       );
 
       setMessages([]);
 
       setShowDeleteHistoryModal(
-        false
+        false,
       );
-
     } catch (error) {
       console.error(
         "Delete conversation history error:",
-        error
+        error,
       );
 
       alert(
-        "Không thể xóa lịch sử cuộc trò chuyện."
+        "Không thể xóa lịch sử cuộc trò chuyện.",
       );
-
     } finally {
       setDeletingHistory(false);
     }
+  }
+
+  /* =====================================================
+     GROUP DETAILS
+  ===================================================== */
+
+  function handleOpenGroupDetails() {
+    if (!selectedGroup) {
+      return;
+    }
+
+    setShowGroupDetails(true);
+  }
+
+  function handleGroupUpdated() {
+    /*
+     * GroupDetailsModal đã xử lý API.
+     *
+     * Báo cho ChatPage/useChat reload
+     * danh sách group và memberCount.
+     */
+
+    onGroupUpdated?.();
+  }
+
+  function handleGroupRemoved() {
+    /*
+     * Lấy conversationId trước khi
+     * selectedGroup bị xóa.
+     */
+
+    const conversationId =
+      selectedGroup?.conversationId ??
+      selectedGroup?.id ??
+      conversation?.id;
+
+    /* ----------------------------------------------
+       ĐÓNG MODAL
+    ---------------------------------------------- */
+
+    setShowGroupDetails(false);
+
+    /* ----------------------------------------------
+       BÁO PARENT XÓA GROUP
+    ---------------------------------------------- */
+
+    onGroupRemoved?.(
+      conversationId,
+    );
+
+    /* ----------------------------------------------
+       XÓA LOCAL DATA
+    ---------------------------------------------- */
+
+    setConversation(null);
+
+    conversationRef.current =
+      null;
+
+    setMessages([]);
+
+    setReplyingTo(null);
+
+    setText("");
   }
 
   /* =====================================================
@@ -994,11 +1230,11 @@ function ChatWindow({
 
   if (
     !selectedUser &&
-    !departmentConversation
+    !departmentConversation &&
+    !selectedGroup
   ) {
     return (
       <main className="chat-empty">
-
         <div className="chat-empty-logo">
           C
         </div>
@@ -1008,108 +1244,142 @@ function ChatWindow({
         </h2>
 
         <p>
-          Chọn một nhân viên hoặc phòng ban
-          để bắt đầu trò chuyện.
+          Chọn một nhân viên, phòng ban
+          hoặc nhóm để bắt đầu trò chuyện.
         </p>
-
       </main>
     );
   }
 
   /* =====================================================
-     DEPARTMENT CHAT
+     GROUP CHAT
   ===================================================== */
 
   if (
-    departmentConversation &&
-    !selectedUser
+    selectedGroup &&
+    !selectedUser &&
+    !departmentConversation
   ) {
     return (
       <>
         <main className="chat-container">
 
           {/* =================================================
-              DEPARTMENT HEADER
+              GROUP HEADER
           ================================================= */}
 
-          <div className="chat-header department-chat-header">
+          <div className="chat-header group-chat-header">
 
-          <div className="chat-header-user">
+            <div
+              className="chat-header-user group-header-clickable"
+              onClick={
+                handleOpenGroupDetails
+              }
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" ||
+                  e.key === " "
+                ) {
+                  handleOpenGroupDetails();
+                }
+              }}
+            >
+              <div className="group-header-icon">
 
-            <div className="department-header-icon">
-              <svg
-                viewBox="0 0 24 24"
-                width="22"
-                height="22"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M4 21V5.5C4 4.67 4.67 4 5.5 4h8c.83 0 1.5.67 1.5 1.5V21" />
-                <path d="M15 9h3.5c.83 0 1.5.67 1.5 1.5V21" />
-                <path d="M8 8h3" />
-                <path d="M8 12h3" />
-                <path d="M8 16h3" />
-                <path d="M18 13h.01" />
-                <path d="M18 17h.01" />
-                <path d="M2.5 21h19" />
-              </svg>
+                <svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="9"
+                    cy="8"
+                    r="3"
+                  />
+
+                  <circle
+                    cx="17"
+                    cy="9"
+                    r="2.5"
+                  />
+
+                  <path d="M3.5 20c0-3.04 2.46-5.5 5.5-5.5s5.5 2.46 5.5 5.5" />
+
+                  <path d="M14 15c.8-.55 1.78-.87 2.83-.87 2.58 0 4.67 1.88 4.67 4.2" />
+                </svg>
+
+              </div>
+
+              <div className="chat-header-info">
+
+                <div className="chat-header-name">
+                  {selectedGroup.name ||
+                    "Nhóm"}
+                </div>
+
+                <div className="group-header-status">
+
+                  <span className="group-status-dot" />
+
+                  {selectedGroup.memberCount
+                    ? `${selectedGroup.memberCount} thành viên`
+                    : "Nhóm chat nội bộ"}
+
+                </div>
+
+              </div>
+
             </div>
 
-            <div className="chat-header-info">
+            <div className="chat-header-actions">
 
-              <div className="chat-header-name">
-                {departmentConversation.departmentName ||
-                  "Phòng ban"}
+              <div className="group-header-label">
+                Group
               </div>
 
-              <div className="department-header-status">
-                <span className="department-status-dot" />
-                Phòng chat nội bộ
-              </div>
+              <button
+                type="button"
+                className="header-delete-button"
+                onClick={
+                  deleteConversationHistory
+                }
+                title="Xóa lịch sử trò chuyện"
+                aria-label="Xóa lịch sử trò chuyện"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 7h16" />
+
+                  <path d="M9 7V4h6v3" />
+
+                  <path d="M6.5 7 7 20h10l.5-13" />
+
+                  <path d="M10 11v5" />
+
+                  <path d="M14 11v5" />
+                </svg>
+              </button>
 
             </div>
 
           </div>
-
-  <div className="chat-header-actions">
-
-    <div className="department-header-label">
-      Internal
-    </div>
-
-    <button
-      type="button"
-      className="header-delete-button"
-      onClick={
-        deleteConversationHistory
-      }
-      title="Xóa lịch sử trò chuyện"
-      aria-label="Xóa lịch sử trò chuyện"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        width="18"
-        height="18"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M4 7h16" />
-        <path d="M9 7V4h6v3" />
-        <path d="M6.5 7 7 20h10l.5-13" />
-        <path d="M10 11v5" />
-        <path d="M14 11v5" />
-      </svg>
-    </button>
-
-  </div>
-
-</div>
 
           {/* =================================================
               MESSAGES
@@ -1119,14 +1389,17 @@ function ChatWindow({
 
             {loading ? (
               <div className="messages-loading">
-                <span className="loading-spinner" />
-                Đang tải tin nhắn...
-              </div>
 
+                <span className="loading-spinner" />
+
+                Đang tải tin nhắn...
+
+              </div>
             ) : messages.length === 0 ? (
               <div className="no-messages">
 
-                <div className="no-message-avatar department-empty-icon">
+                <div className="no-message-avatar group-empty-icon">
+
                   <svg
                     viewBox="0 0 24 24"
                     width="26"
@@ -1136,36 +1409,48 @@ function ChatWindow({
                     strokeWidth="1.7"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    aria-hidden="true"
                   >
-                    <path d="M4 21V5.5C4 4.67 4.67 4 5.5 4h8c.83 0 1.5.67 1.5 1.5V21" />
-                    <path d="M15 9h3.5c.83 0 1.5.67 1.5 1.5V21" />
-                    <path d="M8 8h3" />
-                    <path d="M8 12h3" />
-                    <path d="M8 16h3" />
-                    <path d="M18 13h.01" />
-                    <path d="M18 17h.01" />
-                    <path d="M2.5 21h19" />
+                    <circle
+                      cx="9"
+                      cy="8"
+                      r="3"
+                    />
+
+                    <circle
+                      cx="17"
+                      cy="9"
+                      r="2.5"
+                    />
+
+                    <path d="M3.5 20c0-3.04 2.46-5.5 5.5-5.5s5.5 2.46 5.5 5.5" />
+
+                    <path d="M14 15c.8-.55 1.78-.87 2.83-.87 2.58 0 4.67 1.88 4.67 4.2" />
                   </svg>
+
                 </div>
 
                 <h3>
-                  {departmentConversation.departmentName ||
-                    "Phòng ban"}
+                  {selectedGroup.name ||
+                    "Nhóm"}
                 </h3>
 
                 <p>
-                  Gửi tin nhắn đầu tiên cho
-                  phòng ban.
+                  Gửi tin nhắn đầu tiên
+                  cho nhóm.
                 </p>
 
               </div>
-
             ) : (
               messages.map(
                 (message) => (
                   <MessageItem
-                    key={message.id}
-                    message={message}
+                    key={
+                      message.id
+                    }
+                    message={
+                      message
+                    }
                     currentUser={
                       currentUser
                     }
@@ -1176,7 +1461,7 @@ function ChatWindow({
                       handleReply
                     }
                   />
-                )
+                ),
               )
             )}
 
@@ -1185,25 +1470,30 @@ function ChatWindow({
             )}
 
             <div
-              ref={messagesEndRef}
+              ref={
+                messagesEndRef
+              }
             />
 
           </div>
 
           {/* =================================================
-              DEPARTMENT COMPOSER
+              GROUP COMPOSER
           ================================================= */}
 
           <MessageComposer
             text={text}
             selectedUser={{
               id: null,
+
               fullName:
-                departmentConversation.departmentName ||
-                "Phòng ban",
+                selectedGroup.name ||
+                "Nhóm",
+
               username:
-                departmentConversation.departmentName ||
-                "Phòng ban",
+                selectedGroup.name ||
+                "Nhóm",
+
               isOnline: true,
             }}
             conversation={
@@ -1222,7 +1512,9 @@ function ChatWindow({
               cancelReply
             }
             onChange={(e) =>
-              setText(e.target.value)
+              setText(
+                e.target.value,
+              )
             }
             onSubmit={
               handleSubmit
@@ -1261,7 +1553,7 @@ function ChatWindow({
           <DeleteHistoryModal
             onClose={() =>
               setShowDeleteHistoryModal(
-                false
+                false,
               )
             }
             onConfirm={
@@ -1272,6 +1564,339 @@ function ChatWindow({
             }
           />
         )}
+
+        {/* ===================================================
+            GROUP DETAILS MODAL
+        =================================================== */}
+
+        {showGroupDetails &&
+          selectedGroup && (
+            <GroupDetailsModal
+              group={
+                selectedGroup
+              }
+              currentUser={
+                currentUser
+              }
+              onClose={() =>
+                setShowGroupDetails(
+                  false,
+                )
+              }
+              onGroupUpdated={
+                handleGroupUpdated
+              }
+              onLeaveGroup={
+                handleGroupRemoved
+              }
+              onDeleteGroup={
+                handleGroupRemoved
+              }
+            />
+          )}
+
+      </>
+    );
+  }
+
+  /* =====================================================
+     DEPARTMENT CHAT
+  ===================================================== */
+
+  if (
+    departmentConversation &&
+    !selectedUser &&
+    !selectedGroup
+  ) {
+    return (
+      <>
+        <main className="chat-container">
+
+          {/* =================================================
+              DEPARTMENT HEADER
+          ================================================= */}
+
+          <div className="chat-header department-chat-header">
+
+            <div className="chat-header-user">
+
+              <div className="department-header-icon">
+
+                <svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 21V5.5C4 4.67 4.67 4 5.5 4h8c.83 0 1.5.67 1.5 1.5V21" />
+
+                  <path d="M15 9h3.5c.83 0 1.5.67 1.5 1.5V21" />
+
+                  <path d="M8 8h3" />
+
+                  <path d="M8 12h3" />
+
+                  <path d="M8 16h3" />
+
+                  <path d="M18 13h.01" />
+
+                  <path d="M18 17h.01" />
+
+                  <path d="M2.5 21h19" />
+                </svg>
+
+              </div>
+
+              <div className="chat-header-info">
+
+                <div className="chat-header-name">
+                  {departmentConversation.departmentName ||
+                    "Phòng ban"}
+                </div>
+
+                <div className="department-header-status">
+
+                  <span className="department-status-dot" />
+
+                  Phòng chat nội bộ
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <div className="chat-header-actions">
+
+              <div className="department-header-label">
+                Internal
+              </div>
+
+              <button
+                type="button"
+                className="header-delete-button"
+                onClick={
+                  deleteConversationHistory
+                }
+                title="Xóa lịch sử trò chuyện"
+                aria-label="Xóa lịch sử trò chuyện"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 7h16" />
+
+                  <path d="M9 7V4h6v3" />
+
+                  <path d="M6.5 7 7 20h10l.5-13" />
+
+                  <path d="M10 11v5" />
+
+                  <path d="M14 11v5" />
+                </svg>
+              </button>
+
+            </div>
+
+          </div>
+
+          {/* =================================================
+              MESSAGES
+          ================================================= */}
+
+          <div className="messages-container">
+
+            {loading ? (
+              <div className="messages-loading">
+
+                <span className="loading-spinner" />
+
+                Đang tải tin nhắn...
+
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="no-messages">
+
+                <div className="no-message-avatar department-empty-icon">
+
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="26"
+                    height="26"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M4 21V5.5C4 4.67 4.67 4 5.5 4h8c.83 0 1.5.67 1.5 1.5V21" />
+
+                    <path d="M15 9h3.5c.83 0 1.5.67 1.5 1.5V21" />
+
+                    <path d="M8 8h3" />
+
+                    <path d="M8 12h3" />
+
+                    <path d="M8 16h3" />
+
+                    <path d="M18 13h.01" />
+
+                    <path d="M18 17h.01" />
+
+                    <path d="M2.5 21h19" />
+                  </svg>
+
+                </div>
+
+                <h3>
+                  {departmentConversation.departmentName ||
+                    "Phòng ban"}
+                </h3>
+
+                <p>
+                  Gửi tin nhắn đầu tiên
+                  cho phòng ban.
+                </p>
+
+              </div>
+            ) : (
+              messages.map(
+                (message) => (
+                  <MessageItem
+                    key={
+                      message.id
+                    }
+                    message={
+                      message
+                    }
+                    currentUser={
+                      currentUser
+                    }
+                    onDelete={
+                      setDeleteMessage
+                    }
+                    onReply={
+                      handleReply
+                    }
+                  />
+                ),
+              )
+            )}
+
+            {isTyping && (
+              <TypingIndicator />
+            )}
+
+            <div
+              ref={
+                messagesEndRef
+              }
+            />
+
+          </div>
+
+          {/* =================================================
+              DEPARTMENT COMPOSER
+          ================================================= */}
+
+          <MessageComposer
+            text={text}
+            selectedUser={{
+              id: null,
+
+              fullName:
+                departmentConversation.departmentName ||
+                "Phòng ban",
+
+              username:
+                departmentConversation.departmentName ||
+                "Phòng ban",
+
+              isOnline: true,
+            }}
+            conversation={
+              conversation
+            }
+            websocket={
+              websocket
+            }
+            websocketConnected={
+              websocketConnected
+            }
+            replyingTo={
+              replyingTo
+            }
+            onCancelReply={
+              cancelReply
+            }
+            onChange={(e) =>
+              setText(
+                e.target.value,
+              )
+            }
+            onSubmit={
+              handleSubmit
+            }
+          />
+
+        </main>
+
+        {/* ===================================================
+            DELETE MESSAGE MODAL
+        =================================================== */}
+
+        <DeleteMessageModal
+          message={
+            deleteMessage
+          }
+          currentUser={
+            currentUser
+          }
+          onClose={() =>
+            setDeleteMessage(null)
+          }
+          onDeleteForMe={
+            handleDeleteForMe
+          }
+          onDeleteForEveryone={
+            handleDeleteForEveryone
+          }
+        />
+
+        {/* ===================================================
+            DELETE HISTORY MODAL
+        =================================================== */}
+
+        {showDeleteHistoryModal && (
+          <DeleteHistoryModal
+            onClose={() =>
+              setShowDeleteHistoryModal(
+                false,
+              )
+            }
+            onConfirm={
+              confirmDeleteConversation
+            }
+            loading={
+              deletingHistory
+            }
+          />
+        )}
+
       </>
     );
   }
@@ -1300,14 +1925,17 @@ function ChatWindow({
 
           {loading ? (
             <div className="messages-loading">
-              <span className="loading-spinner" />
-              Đang tải tin nhắn...
-            </div>
 
+              <span className="loading-spinner" />
+
+              Đang tải tin nhắn...
+
+            </div>
           ) : messages.length === 0 ? (
             <div className="no-messages">
 
               <div className="no-message-avatar">
+
                 <Avatar
                   user={
                     selectedUser
@@ -1315,6 +1943,7 @@ function ChatWindow({
                   size="large"
                   showStatus
                 />
+
               </div>
 
               <h3>
@@ -1324,18 +1953,21 @@ function ChatWindow({
               </h3>
 
               <p>
-                Gửi tin nhắn đầu tiên để bắt đầu
-                cuộc trò chuyện.
+                Gửi tin nhắn đầu tiên để
+                bắt đầu cuộc trò chuyện.
               </p>
 
             </div>
-
           ) : (
             messages.map(
               (message) => (
                 <MessageItem
-                  key={message.id}
-                  message={message}
+                  key={
+                    message.id
+                  }
+                  message={
+                    message
+                  }
                   currentUser={
                     currentUser
                   }
@@ -1346,7 +1978,7 @@ function ChatWindow({
                     handleReply
                   }
                 />
-              )
+              ),
             )
           )}
 
@@ -1355,7 +1987,9 @@ function ChatWindow({
           )}
 
           <div
-            ref={messagesEndRef}
+            ref={
+              messagesEndRef
+            }
           />
 
         </div>
@@ -1385,7 +2019,9 @@ function ChatWindow({
             cancelReply
           }
           onChange={(e) =>
-            setText(e.target.value)
+            setText(
+              e.target.value,
+            )
           }
           onSubmit={
             handleSubmit
@@ -1424,7 +2060,7 @@ function ChatWindow({
         <DeleteHistoryModal
           onClose={() =>
             setShowDeleteHistoryModal(
-              false
+              false,
             )
           }
           onConfirm={
@@ -1435,6 +2071,7 @@ function ChatWindow({
           }
         />
       )}
+
     </>
   );
 }

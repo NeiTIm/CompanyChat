@@ -6,10 +6,16 @@ public class Conversation
 
     public string Type { get; set; } = "Private";
 
+    // Tên Group. Private/Department có thể để null.
+    public string? Name { get; set; }
+
+    // User tạo Group.
+    public int? CreatedBy { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Conversation thuộc Department nào.
-    // Private conversation sẽ để null.
+    // Private/Group không bắt buộc phải có.
     public int? DepartmentId { get; set; }
     public Department? Department { get; set; }
 

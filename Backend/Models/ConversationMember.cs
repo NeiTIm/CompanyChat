@@ -8,6 +8,9 @@ public class ConversationMember
     public int UserId { get; set; }
     public User User { get; set; } = null!;
 
+    // Owner / Admin / Member
+    public string Role { get; set; } = "Member";
+
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
 
     // Thời điểm user xóa lịch sử cuộc trò chuyện.

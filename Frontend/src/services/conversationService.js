@@ -43,7 +43,6 @@ export async function markConversationAsRead(conversationId) {
 /**
  * Xóa lịch sử conversation cho CURRENT USER
  *
- * Lưu ý:
  * - Không xóa Message khỏi database.
  * - Không ảnh hưởng người còn lại.
  * - Backend lưu HistoryDeletedAt cho CurrentUser.
@@ -57,13 +56,130 @@ export async function deleteConversationHistory(conversationId) {
 /**
  * Tạo hoặc lấy Department Conversation
  *
- * - Không cần truyền departmentId từ Frontend.
- * - Backend tự xác định Department dựa trên user đang đăng nhập.
- * - Nếu Department Conversation chưa tồn tại thì Backend sẽ tạo mới.
- * - Đồng thời Backend đảm bảo user thuộc Department được thêm vào Conversation.
+ * - Backend tự xác định Department
+ *   dựa trên user đang đăng nhập.
  */
 export async function getOrCreateDepartmentConversation() {
   const response = await api.post("/conversations/department");
+
+  return response.data;
+}
+
+/* =========================================================
+   GROUP CHAT
+========================================================= */
+
+/**
+ * Lấy danh sách Group của user hiện tại
+ */
+export async function getMyGroups() {
+  const response = await api.get("/conversations/groups");
+
+  return response.data;
+}
+
+/**
+ * Lấy thành viên của Group
+ */
+export async function getGroupMembers(conversationId) {
+  const response = await api.get(`/conversations/${conversationId}/members`);
+
+  return response.data;
+}
+
+/**
+ * Tạo Group
+ *
+ * @param {string} name
+ * @param {number[]} memberIds
+ */
+export async function createGroup(name, memberIds) {
+  const response = await api.post("/conversations/group", {
+    name,
+    memberIds,
+  });
+
+  return response.data;
+}
+
+/**
+ * Thêm thành viên vào Group
+ *
+ * @param {number} conversationId
+ * @param {number} userId
+ */
+export async function addGroupMember(conversationId, userId) {
+  const response = await api.post(`/conversations/${conversationId}/members`, {
+    userId,
+  });
+
+  return response.data;
+}
+
+/**
+ * Xóa thành viên khỏi Group
+ *
+ * @param {number} conversationId
+ * @param {number} userId
+ */
+export async function removeGroupMember(conversationId, userId) {
+  const response = await api.delete(
+    `/conversations/${conversationId}/members`,
+    {
+      data: {
+        userId,
+      },
+    },
+  );
+
+  return response.data;
+}
+
+/**
+ * Đổi quyền thành viên
+ *
+ * Role:
+ * - Admin
+ * - Member
+ */
+export async function updateGroupMemberRole(conversationId, userId, role) {
+  const response = await api.patch(
+    `/conversations/${conversationId}/members/${userId}/role`,
+    {
+      role,
+    },
+  );
+
+  return response.data;
+}
+
+/**
+ * Rời Group
+ */
+export async function leaveGroup(conversationId) {
+  const response = await api.delete(`/conversations/${conversationId}/leave`);
+
+  return response.data;
+}
+
+/**
+ * Chuyển quyền Owner
+ */
+export async function transferGroupOwnership(conversationId, userId) {
+  const response = await api.patch(
+    `/conversations/${conversationId}/transfer-owner/${userId}`,
+  );
+
+  return response.data;
+}
+
+/**
+ * Xóa Group
+ *
+ * Chỉ Owner được phép.
+ */
+export async function deleteGroup(conversationId) {
+  const response = await api.delete(`/conversations/${conversationId}`);
 
   return response.data;
 }
