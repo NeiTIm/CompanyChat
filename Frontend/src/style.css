@@ -4715,3 +4715,268 @@ button:disabled {
 
 }
 
+/* =========================================================
+   NOTIFICATION
+========================================================= */
+
+.notification-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+
+/* =========================================================
+   BELL BUTTON
+========================================================= */
+
+.notification-bell-button {
+  position: relative;
+
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 10px;
+
+  background: transparent;
+  color: #64748b;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.notification-bell-button:hover,
+.notification-bell-button.active {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+
+/* =========================================================
+   BADGE
+========================================================= */
+
+.notification-badge {
+  position: absolute;
+
+  top: -2px;
+  right: -2px;
+
+  min-width: 18px;
+  height: 18px;
+
+  padding: 0 5px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 999px;
+
+  background: #ef4444;
+  color: #ffffff;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  line-height: 1;
+}
+
+
+/* =========================================================
+   DROPDOWN
+========================================================= */
+
+.notification-dropdown {
+  position: absolute;
+
+  top: calc(100% + 10px);
+  right: 0;
+
+  width: 360px;
+  max-height: 480px;
+
+  background: #ffffff;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+
+  box-shadow:
+    0 12px 35px rgba(15, 23, 42, 0.14);
+
+  overflow: hidden;
+
+  z-index: 1000;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.notification-dropdown-header {
+  height: 52px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 16px;
+
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.notification-dropdown-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.notification-read-all-button {
+  border: none;
+  background: transparent;
+
+  color: #2563eb;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.notification-read-all-button:hover {
+  text-decoration: underline;
+}
+
+
+/* =========================================================
+   LIST
+========================================================= */
+
+.notification-list {
+  max-height: 428px;
+
+  overflow-y: auto;
+}
+
+
+/* =========================================================
+   ITEM
+========================================================= */
+
+.notification-item {
+  width: 100%;
+
+  display: flex;
+  align-items: flex-start;
+
+  gap: 10px;
+
+  padding: 13px 16px;
+
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+
+  text-align: left;
+
+  background: #ffffff;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease;
+}
+
+.notification-item:hover {
+  background: #f8fafc;
+}
+
+.notification-item.unread {
+  background: #f8fbff;
+}
+
+.notification-item.read {
+  background: #ffffff;
+}
+
+
+/* =========================================================
+   DOT
+========================================================= */
+
+.notification-item-dot {
+  width: 8px;
+  min-width: 8px;
+
+  padding-top: 5px;
+}
+
+.notification-item-dot span {
+  display: block;
+
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: #2563eb;
+}
+
+
+/* =========================================================
+   CONTENT
+========================================================= */
+
+.notification-item-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.notification-item-title {
+  margin-bottom: 3px;
+
+  color: #0f172a;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.notification-item-text {
+  color: #475569;
+
+  font-size: 12px;
+  line-height: 1.45;
+
+  word-break: break-word;
+}
+
+.notification-item-time {
+  margin-top: 5px;
+
+  color: #94a3b8;
+
+  font-size: 11px;
+}
+
+
+/* =========================================================
+   EMPTY
+========================================================= */
+
+.notification-empty {
+  padding: 35px 20px;
+
+  text-align: center;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+}

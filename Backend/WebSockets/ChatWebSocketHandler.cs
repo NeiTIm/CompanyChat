@@ -7,6 +7,7 @@ using CompanyChat.Api.Data;
 using CompanyChat.Api.Models;
 using CompanyChat.Api.Services;
 using CompanyChat.Api.Services.Chat;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace CompanyChat.Api.WebSockets;
@@ -314,6 +315,12 @@ public class ChatWebSocketHandler(
             var receiverId
             in messageResult.ReceiverIds)
         {
+            /*
+             * ==========================
+             * SEND MESSAGE
+             * ==========================
+             */
+
             var receiverPayload =
                 messageResult.Message with
                 {
@@ -351,6 +358,51 @@ public class ChatWebSocketHandler(
                         messageResult.MessageId,
                         receiverId,
                         cancellationToken);
+            }
+
+            /*
+             * ==========================
+             * SEND NOTIFICATION
+             * ==========================
+             */
+
+            var notification =
+                messageResult.Notifications
+                    .FirstOrDefault(
+                        x =>
+                            x.UserId ==
+                            receiverId);
+
+            if (notification is not null)
+            {
+                var notificationResponse =
+                    new
+                    {
+                        type = "notification",
+
+                        notification = new
+                        {
+                            notification.Id,
+                            notification.UserId,
+                            notification.Type,
+                            notification.Title,
+                            notification.Content,
+                            notification.ConversationId,
+                            notification.MessageId,
+                            notification.IsRead,
+                            notification.CreatedAt
+                        }
+                    };
+
+                var notificationJson =
+                    JsonSerializer.Serialize(
+                        notificationResponse,
+                        JsonOptions);
+
+                await connections.SendToUserAsync(
+                    receiverId,
+                    notificationJson,
+                    cancellationToken);
             }
         }
 

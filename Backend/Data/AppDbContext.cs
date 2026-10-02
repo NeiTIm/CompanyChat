@@ -22,7 +22,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         get;
         set;
     }
-
+    public DbSet<Notification> Notifications => Set<Notification>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // =====================================================
@@ -123,5 +123,44 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             .WithMany()
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Restrict);
+        // Notification thuộc về User
+        // Không cho xóa User nếu còn Notification
+        modelBuilder.Entity<Notification>()
+            .HasOne(x => x.User)
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Notification liên quan đến Conversation
+        // Không tự động xóa Notification khi xóa Conversation
+        modelBuilder.Entity<Notification>()
+            .HasOne(x => x.Conversation)
+            .WithMany()
+            .HasForeignKey(x => x.ConversationId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // Notification liên quan đến Message
+        // Không tự động xóa Notification khi xóa Message
+        modelBuilder.Entity<Notification>()
+            .HasOne(x => x.Message)
+            .WithMany()
+            .HasForeignKey(x => x.MessageId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // Index giúp tìm Notification chưa đọc của User nhanh hơn
+        modelBuilder.Entity<Notification>()
+            .HasIndex(x => new
+            {
+                x.UserId,
+                x.IsRead
+            });
+
+        // Index giúp lấy Notification mới nhất của User nhanh hơn
+        modelBuilder.Entity<Notification>()
+            .HasIndex(x => new
+            {
+                x.UserId,
+                x.CreatedAt
+            });
     }
 }

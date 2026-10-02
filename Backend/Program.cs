@@ -8,6 +8,8 @@ using Microsoft.IdentityModel.Tokens;
 using CompanyChat.Api.Services.Admin;
 using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Services.Chat;
+using CompanyChat.Api.Services.Notification;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -21,6 +23,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<ConversationAccessService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ChatMessageService>();
 builder.Services.AddScoped<DashboardService>();
 

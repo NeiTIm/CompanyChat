@@ -4,6 +4,7 @@ using CompanyChat.Api.Data;
 using CompanyChat.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using CompanyChat.Api.WebSockets;
+using CompanyChat.Api.Services.Notification;
 
 namespace CompanyChat.Api.Services.Chat;
 
@@ -25,14 +26,27 @@ public record ChatMessagePayload(
     DateTime SentAt,
     string DeliveryStatus);
 
+public record NotificationPayload(
+    long Id,
+    int UserId,
+    string Type,
+    string Title,
+    string Content,
+    int? ConversationId,
+    long? MessageId,
+    bool IsRead,
+    DateTime CreatedAt);
+
 public record ChatMessageResult(
     long MessageId,
     IReadOnlyList<int> ReceiverIds,
-    ChatMessagePayload Message);
+    ChatMessagePayload Message,
+    IReadOnlyList<NotificationPayload> Notifications);
 
 public class ChatMessageService(
     AppDbContext db,
-    ConversationAccessService conversationAccess)
+    ConversationAccessService accessService,
+    INotificationService notificationService)
 {
     public async Task<(ChatMessageResult? Result, string? Error)>
         CreateMessageAsync(
@@ -48,7 +62,7 @@ public class ChatMessageService(
          */
 
         var canAccess =
-            await conversationAccess.CanAccessAsync(
+            await accessService.CanAccessAsync(
                 currentUser,
                 request.ConversationId);
 
@@ -93,7 +107,7 @@ public class ChatMessageService(
          * - Chỉ có 1 receiver.
          *
          * Department:
-         * - Lấy tất cả member
+         * - Lấy tất cả member.
          * - Không gửi lại cho sender.
          */
 
@@ -327,6 +341,48 @@ public class ChatMessageService(
 
         /*
          * ==========================
+         * CREATE NOTIFICATIONS
+         * ==========================
+         */
+
+        var notifications =
+            new List<NotificationPayload>();
+
+        foreach (var receiverId in receiverIds)
+        {
+            var notification =
+                await notificationService.CreateAsync(
+                    receiverId,
+
+                    conversationType == "Department"
+                        ? "DepartmentMessage"
+                        : "Message",
+
+                    conversationType == "Department"
+                        ? "Tin nhắn phòng ban mới"
+                        : "Tin nhắn mới",
+
+                    $"{sender.FullName} đã gửi cho bạn một tin nhắn",
+
+                    conversation.Id,
+
+                    message.Id);
+
+            notifications.Add(
+                new NotificationPayload(
+                    notification.Id,
+                    notification.UserId,
+                    notification.Type,
+                    notification.Title,
+                    notification.Content,
+                    notification.ConversationId,
+                    notification.MessageId,
+                    notification.IsRead,
+                    notification.CreatedAt));
+        }
+
+        /*
+         * ==========================
          * GET REPLY MESSAGE
          * ==========================
          */
@@ -383,7 +439,8 @@ public class ChatMessageService(
             new ChatMessageResult(
                 message.Id,
                 receiverIds,
-                payload);
+                payload,
+                notifications);
 
         return (
             result,

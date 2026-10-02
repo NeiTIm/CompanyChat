@@ -1,8 +1,11 @@
 import UserList from "../components/user/UserList";
 import ChatWindow from "../components/chat/ChatWindow";
+import NotificationBell from "../components/notification/NotificationBell";
+
 
 import useWebSocket from "../hooks/useWebSocket";
 import useChat from "../hooks/useChat";
+import useNotifications from "../hooks/useNotifications";
 
 
 /* =========================================================
@@ -50,7 +53,7 @@ function SettingsIcon() {
     >
       <circle cx="12" cy="12" r="3" />
 
-      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.7 1.7-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2.4v-.2a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-1.7-1.7.06-.06A1.7 1.7 0 0 0 8.4 15a1.7 1.7 0 0 0-1.56-1.03H6v-2.4h.84A1.7 1.7 0 0 0 8.4 10a1.7 1.7 0 0 0-.34-1.88L8 8.06l1.7-1.7.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.56V5h2.4v.2a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.7 1.7-.06.06A1.7 1.7 0 0 0 19.4 10a1.7 1.7 0 0 0 1.56 1.03h.84v2.4h-.84A1.7 1.7 0 0 0 19.4 15Z" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.7 1.7-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-2.4v-.2a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-1.7-1.7.06-.06A1.7 1.7 0 0 0 8.4 15a1.7 1.7 0 0 0-1.56-1.03H6v-2.4h.84A1.7 1.7 0 0 0 8.4 10a1.7 1.7 0 0 0-.34-1.88L8 8.06l1.7-1.7.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.56V5h2.4v.2a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 1.7 1.7-.06.06A1.7 1.7 0 0 0 19.4 15Z" />
     </svg>
   );
 }
@@ -110,6 +113,21 @@ function ChatPage({
 
 
   /* =====================================================
+     NOTIFICATIONS
+  ===================================================== */
+
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    handleNotificationClick,
+    handleMarkAllAsRead,
+  } = useNotifications(
+    socketEvent
+  );
+
+
+  /* =====================================================
      LOGOUT
   ===================================================== */
 
@@ -151,6 +169,65 @@ function ChatPage({
     }
   }
 
+  async function handleOpenNotification(
+        notification
+      ) {
+        const target =
+          await handleNotificationClick(
+            notification
+          );
+
+        if (!target) {
+          return;
+        }
+
+        /* ==============================
+          PHÒNG BAN
+        ============================== */
+
+        if (
+          target.conversationType ===
+          "Department"
+        ) {
+          try {
+            await handleSelectDepartment();
+          } catch (error) {
+            console.error(
+              "Open department notification error:",
+              error
+            );
+          }
+
+          return;
+        }
+
+        /* ==============================
+          CHAT RIÊNG
+        ============================== */
+
+        if (
+          target.conversationType ===
+          "Private"
+        ) {
+          const user =
+            users.find(
+              (item) =>
+                Number(item.id) ===
+                Number(target.senderId)
+            );
+
+          if (!user) {
+            console.error(
+              "Notification sender not found:",
+              target.senderId
+            );
+
+            return;
+          }
+
+          handleSelectUser(user);
+        }
+      }
 
   /* =====================================================
      RENDER
@@ -180,6 +257,29 @@ function ChatPage({
 
         <div className="topbar-right">
 
+          {/* NOTIFICATION BELL */}
+          <NotificationBell
+              notifications={
+                notifications
+              }
+
+              unreadCount={
+                unreadCount
+              }
+
+              loading={
+                loading
+              }
+
+              onNotificationClick={
+                handleOpenNotification
+              }
+
+              onMarkAllAsRead={
+                handleMarkAllAsRead
+              }
+            />
+          
           <div className="current-user">
 
             <div className="current-user-name">
