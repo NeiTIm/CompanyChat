@@ -1,8 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { API_URL } from "../api";
 
@@ -11,29 +7,22 @@ import { API_URL } from "../api";
 ========================================================= */
 
 function useWebSocket(currentUser) {
-  const [websocket, setWebsocket] =
-    useState(null);
+  const [websocket, setWebsocket] = useState(null);
 
-  const [
-    websocketConnected,
-    setWebsocketConnected,
-  ] = useState(false);
+  const [websocketConnected, setWebsocketConnected] = useState(false);
 
-  const [socketEvent, setSocketEvent] =
-    useState(null);
+  const [socketEvent, setSocketEvent] = useState(null);
 
-  const websocketRef =
-    useRef(null);
+  const websocketRef = useRef(null);
 
   /* =====================================================
      CONNECT WEBSOCKET
   ===================================================== */
 
   useEffect(() => {
-    const token =
-      localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-    if (!token) {
+    if (!token || !currentUser?.id) {
       return;
     }
 
@@ -41,35 +30,24 @@ function useWebSocket(currentUser) {
        XÁC ĐỊNH WS / WSS
     =================================================== */
 
-    const websocketProtocol =
-      API_URL.startsWith("https://")
-        ? "wss://"
-        : "ws://";
+    const websocketProtocol = API_URL.startsWith("https://")
+      ? "wss://"
+      : "ws://";
 
-    const websocketHost =
-      API_URL.replace(
-        /^https?:\/\//,
-        ""
-      );
+    const websocketHost = API_URL.replace(/^https?:\/\//, "");
 
     const websocketUrl =
       websocketProtocol +
       websocketHost +
-      `/ws/chat?access_token=${encodeURIComponent(
-        token
-      )}`;
+      `/ws/chat?access_token=${encodeURIComponent(token)}`;
 
-    console.log(
-      "Connecting WebSocket:",
-      websocketUrl
-    );
+    console.log("Connecting WebSocket:", websocketUrl);
 
     /* ===================================================
        CREATE SOCKET
     =================================================== */
 
-    const socket =
-      new WebSocket(websocketUrl);
+    const socket = new WebSocket(websocketUrl);
 
     websocketRef.current = socket;
 
@@ -78,9 +56,14 @@ function useWebSocket(currentUser) {
     =================================================== */
 
     socket.onopen = () => {
-      console.log(
-        "WebSocket connected"
-      );
+      /*
+       * Chỉ xử lý nếu đây vẫn là socket hiện tại.
+       */
+      if (websocketRef.current !== socket) {
+        return;
+      }
+
+      console.log("WebSocket connected");
 
       setWebsocket(socket);
       setWebsocketConnected(true);
@@ -97,25 +80,24 @@ function useWebSocket(currentUser) {
     =================================================== */
 
     socket.onmessage = (event) => {
-      try {
-        const data =
-          JSON.parse(event.data);
+      /*
+       * Bỏ qua message từ socket cũ.
+       */
+      if (websocketRef.current !== socket) {
+        return;
+      }
 
-        console.log(
-          "WebSocket message:",
-          data
-        );
+      try {
+        const data = JSON.parse(event.data);
+
+        console.log("WebSocket message:", data);
 
         setSocketEvent({
           ...data,
           __receivedAt: Date.now(),
         });
-
       } catch (error) {
-        console.error(
-          "Invalid WebSocket message:",
-          error
-        );
+        console.error("Invalid WebSocket message:", error);
       }
     };
 
@@ -124,10 +106,15 @@ function useWebSocket(currentUser) {
     =================================================== */
 
     socket.onerror = (error) => {
-      console.error(
-        "WebSocket error:",
-        error
-      );
+      /*
+       * Socket cũ không được phép
+       * làm thay đổi trạng thái socket mới.
+       */
+      if (websocketRef.current !== socket) {
+        return;
+      }
+
+      console.error("WebSocket error:", error);
 
       setWebsocketConnected(false);
     };
@@ -137,9 +124,17 @@ function useWebSocket(currentUser) {
     =================================================== */
 
     socket.onclose = () => {
-      console.log(
-        "WebSocket disconnected"
-      );
+      /*
+       * Đây là phần QUAN TRỌNG NHẤT.
+       *
+       * Nếu socket này không còn là socket hiện tại
+       * thì không được set trạng thái disconnected.
+       */
+      if (websocketRef.current !== socket) {
+        return;
+      }
+
+      console.log("WebSocket disconnected");
 
       setWebsocket(null);
       setWebsocketConnected(false);
@@ -158,22 +153,30 @@ function useWebSocket(currentUser) {
     =================================================== */
 
     return () => {
-      socket.close();
+      /*
+       * Chỉ cleanup socket hiện tại.
+       */
+      if (websocketRef.current === socket) {
+        websocketRef.current = null;
+      }
 
-      websocketRef.current = null;
+      /*
+       * Đóng socket.
+       *
+       * onclose của socket này sẽ tự kiểm tra
+       * websocketRef nên không làm ảnh hưởng
+       * socket mới.
+       */
+      socket.close();
     };
-  }, [
-    currentUser.id,
-  ]);
+  }, [currentUser?.id]);
 
   /* =====================================================
      CLOSE WEBSOCKET
   ===================================================== */
 
   function closeWebSocket() {
-    if (
-      websocketRef.current
-    ) {
+    if (websocketRef.current) {
       websocketRef.current.close();
     }
   }

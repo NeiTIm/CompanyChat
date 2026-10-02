@@ -28,6 +28,9 @@ builder.Services.AddScoped<ChatMessageService>();
 builder.Services.AddScoped<DashboardService>();
 
 builder.Services.AddScoped<ChatWebSocketHandler>();
+builder.Services.AddScoped<PrivateChatHandler>();
+builder.Services.AddScoped<DepartmentChatHandler>();
+
 builder.Services.AddSingleton<ConnectionManager>();
 
 var jwtKey = builder.Configuration["Jwt:Key"]

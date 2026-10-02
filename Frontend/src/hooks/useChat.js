@@ -96,37 +96,51 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
       return;
     }
 
+    const userId = Number(socketEvent.userId);
+
+    const isOnline = Boolean(socketEvent.isOnline);
+
+    console.log("USER STATUS:", {
+      userId,
+      isOnline,
+      lastSeen: socketEvent.lastSeen,
+    });
+
     setUsers((current) =>
-      current.map((user) =>
-        Number(user.id) === Number(socketEvent.userId)
-          ? {
-              ...user,
+      current.map((user) => {
+        if (Number(user.id) !== userId) {
+          return user;
+        }
 
-              isOnline: socketEvent.isOnline,
+        /*
+         * Chỉ cập nhật lastSeen
+         * nếu Backend thực sự gửi.
+         *
+         * Tránh:
+         *
+         * lastSeen = undefined
+         */
+        const updatedUser = {
+          ...user,
 
-              lastSeen: socketEvent.lastSeen,
-            }
-          : user,
-      ),
+          isOnline,
+        };
+
+        if (socketEvent.lastSeen !== undefined) {
+          updatedUser.lastSeen = socketEvent.lastSeen;
+        }
+
+        return updatedUser;
+      }),
     );
   }, [socketEvent]);
 
   /* =====================================================
-     CONVERSATION
+     CONVERSATION CHANGE
   ===================================================== */
 
   function handleConversationChange(conversationId) {
-    /*
-     * Lưu conversation hiện tại
-     * để xử lý unread message.
-     */
-
     activeConversationRef.current = conversationId;
-
-    /*
-     * Báo cho Backend biết user
-     * đang mở conversation nào.
-     */
 
     if (!websocket || websocket.readyState !== WebSocket.OPEN) {
       return;
@@ -196,12 +210,6 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
       return;
     }
 
-    /*
-     * ===================================================
-     * GET MESSAGE
-     * ===================================================
-     */
-
     const message = socketEvent.message || socketEvent.data || socketEvent;
 
     if (!message) {
@@ -212,9 +220,6 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
      * ===================================================
      * OWN MESSAGE
      * ===================================================
-     *
-     * Tin nhắn do chính mình gửi
-     * không tính unread.
      */
 
     if (Number(message.senderId) === Number(currentUser.id)) {
@@ -233,9 +238,6 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
      * ===================================================
      * ACTIVE CONVERSATION
      * ===================================================
-     *
-     * Nếu đang mở đúng conversation
-     * thì ChatWindow đã xử lý mark read.
      */
 
     if (Number(activeConversationRef.current) === conversationId) {
@@ -246,9 +248,6 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
      * ===================================================
      * DEPARTMENT MESSAGE
      * ===================================================
-     *
-     * Nếu user không mở Department Chat
-     * thì tăng badge Department.
      */
 
     if (message.conversationType === "Department") {
@@ -261,8 +260,6 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
      * ===================================================
      * PRIVATE MESSAGE
      * ===================================================
-     *
-     * Badge sẽ được cộng cho người gửi.
      */
 
     if (message.conversationType === "Private") {
@@ -283,11 +280,6 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
   function handleSelectUser(user) {
     setSelectedUser(user);
 
-    /*
-     * Khi chọn Private Chat,
-     * bỏ Department Chat.
-     */
-
     setDepartmentConversation(null);
   }
 
@@ -300,11 +292,6 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
       const conversation = await getOrCreateDepartmentConversation();
 
       setDepartmentConversation(conversation);
-
-      /*
-       * Khi chọn Department Chat,
-       * bỏ Private Chat.
-       */
 
       setSelectedUser(null);
 

@@ -6,64 +6,172 @@ namespace CompanyChat.Api.Services;
 
 public class ConnectionManager
 {
-    private readonly ConcurrentDictionary<int, WebSocket> _connections = new();
+    /*
+     * UserId -> nhiều WebSocket connection
+     *
+     * Ví dụ:
+     *
+     * User 6
+     * ├── Chrome
+     * ├── Edge
+     * └── Mobile
+     */
+    private readonly ConcurrentDictionary<
+        int,
+        ConcurrentDictionary<WebSocket, byte>
+    > _connections = new();
 
     /*
      * UserId -> ConversationId đang mở
-     *
-     * Ví dụ:
-     * User 2 đang mở conversation 7
-     *
-     * 2 -> 7
      */
-    private readonly ConcurrentDictionary<int, int> _activeConversations = new();
+    private readonly ConcurrentDictionary<int, int>
+        _activeConversations = new();
 
-    public void Add(int userId, WebSocket socket)
+
+    /* =====================================================
+       ADD CONNECTION
+    ===================================================== */
+
+    public bool Add(
+        int userId,
+        WebSocket socket)
     {
-        _connections.AddOrUpdate(
-            userId,
-            socket,
-            (_, oldSocket) =>
-            {
-                try
-                {
-                    oldSocket.Abort();
-                }
-                catch
-                {
-                }
+        var sockets =
+            _connections.GetOrAdd(
+                userId,
+                _ => new ConcurrentDictionary<
+                    WebSocket,
+                    byte>());
 
-                return socket;
-            });
+        /*
+         * Nếu trước đó không có socket
+         * thì user đang Offline.
+         *
+         * Đây là connection đầu tiên.
+         */
+        var wasOffline =
+            sockets.IsEmpty;
+
+        sockets.TryAdd(
+            socket,
+            0);
+
+        return wasOffline;
     }
 
-    public bool Remove(int userId, WebSocket socket)
-    {
-        if (_connections.TryGetValue(userId, out var current) &&
-            ReferenceEquals(current, socket))
-        {
-            _activeConversations.TryRemove(
-                userId,
-                out _);
 
-            return _connections.TryRemove(
+    /* =====================================================
+       REMOVE CONNECTION
+    ===================================================== */
+
+    public bool Remove(
+        int userId,
+        WebSocket socket)
+    {
+        if (!_connections.TryGetValue(
                 userId,
-                out _);
+                out var sockets))
+        {
+            return false;
         }
 
-        return false;
+        /*
+         * Chỉ remove đúng socket này.
+         */
+        sockets.TryRemove(
+            socket,
+            out _);
+
+
+        /*
+         * Vẫn còn browser/device khác.
+         *
+         * User vẫn ONLINE.
+         */
+        if (!sockets.IsEmpty)
+        {
+            return false;
+        }
+
+
+        /*
+         * Không còn connection nào.
+         *
+         * Chỉ remove user nếu dictionary
+         * hiện tại vẫn chính là dictionary
+         * mà chúng ta vừa kiểm tra.
+         */
+        var removed =
+            ((ICollection<
+                KeyValuePair<
+                    int,
+                    ConcurrentDictionary<WebSocket, byte>>>)
+                _connections)
+            .Remove(
+                new KeyValuePair<
+                    int,
+                    ConcurrentDictionary<WebSocket, byte>>(
+                    userId,
+                    sockets));
+
+
+        if (!removed)
+        {
+            /*
+             * Một connection mới có thể
+             * vừa được Add vào cùng lúc.
+             *
+             * User vẫn ONLINE.
+             */
+            return false;
+        }
+
+
+        /*
+         * User thực sự OFFLINE.
+         */
+        _activeConversations.TryRemove(
+            userId,
+            out _);
+
+        return true;
     }
 
-    public bool IsOnline(int userId)
+
+    /* =====================================================
+       IS ONLINE
+    ===================================================== */
+
+    public bool IsOnline(
+        int userId)
     {
-        return _connections.ContainsKey(userId);
+        return
+            _connections.TryGetValue(
+                userId,
+                out var sockets)
+            &&
+            !sockets.IsEmpty;
     }
 
-    /*
-     * ============================================
-     * ACTIVE CONVERSATION
-     * ============================================
-     */
+
+    /* =====================================================
+       GET ONLINE USERS
+    ===================================================== */
+
+    public List<int> GetOnlineUserIds()
+    {
+        return _connections
+            .Where(
+                x => !x.Value.IsEmpty)
+            .Select(
+                x => x.Key)
+            .ToList();
+    }
+
+
+    /* =====================================================
+       ACTIVE CONVERSATION
+    ===================================================== */
 
     public void SetActiveConversation(
         int userId,
@@ -73,6 +181,7 @@ public class ConnectionManager
             conversationId;
     }
 
+
     public void ClearActiveConversation(
         int userId)
     {
@@ -80,6 +189,7 @@ public class ConnectionManager
             userId,
             out _);
     }
+
 
     public int? GetActiveConversation(
         int userId)
@@ -94,48 +204,40 @@ public class ConnectionManager
         return null;
     }
 
+
     public bool IsUserViewingConversation(
         int userId,
         int conversationId)
     {
-        return _activeConversations.TryGetValue(
-                   userId,
-                   out var activeConversationId)
-               &&
-               activeConversationId ==
-               conversationId;
+        return
+            _activeConversations.TryGetValue(
+                userId,
+                out var activeConversationId)
+            &&
+            activeConversationId ==
+                conversationId;
     }
 
-    public async Task<bool> SendToUserAsync(
-        int userId,
+
+    /* =====================================================
+       SEND TO ONE SOCKET
+    ===================================================== */
+
+    public async Task<bool> SendToSocketAsync(
+        WebSocket socket,
         string json,
         CancellationToken cancellationToken = default)
     {
-        if (!_connections.TryGetValue(
-                userId,
-                out var socket))
-        {
-            return false;
-        }
-
         if (socket.State != WebSocketState.Open)
         {
-            _connections.TryRemove(
-                userId,
-                out _);
-
-            _activeConversations.TryRemove(
-                userId,
-                out _);
-
             return false;
         }
+
+        var bytes =
+            Encoding.UTF8.GetBytes(json);
 
         try
         {
-            var bytes =
-                Encoding.UTF8.GetBytes(json);
-
             await socket.SendAsync(
                 bytes,
                 WebSocketMessageType.Text,
@@ -146,17 +248,102 @@ public class ConnectionManager
         }
         catch
         {
-            _connections.TryRemove(
-                userId,
-                out _);
-
-            _activeConversations.TryRemove(
-                userId,
-                out _);
-
             return false;
         }
     }
+
+
+    /* =====================================================
+       SEND TO USER
+    ===================================================== */
+
+    public async Task<bool> SendToUserAsync(
+        int userId,
+        string json,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_connections.TryGetValue(
+                userId,
+                out var sockets))
+        {
+            return false;
+        }
+
+        var delivered = false;
+
+        /*
+         * Copy socket list.
+         *
+         * Tránh collection bị thay đổi
+         * trong lúc đang foreach.
+         */
+        var socketList =
+            sockets.Keys.ToList();
+
+        foreach (var socket in socketList)
+        {
+            if (socket.State !=
+                WebSocketState.Open)
+            {
+                sockets.TryRemove(
+                    socket,
+                    out _);
+
+                continue;
+            }
+
+            var success =
+                await SendToSocketAsync(
+                    socket,
+                    json,
+                    cancellationToken);
+
+            if (success)
+            {
+                delivered = true;
+            }
+            else
+            {
+                sockets.TryRemove(
+                    socket,
+                    out _);
+            }
+        }
+
+
+        /*
+         * Không còn socket.
+         */
+        if (sockets.IsEmpty)
+        {
+            var removed =
+                ((ICollection<
+                    KeyValuePair<
+                        int,
+                        ConcurrentDictionary<WebSocket, byte>>>)
+                    _connections)
+                .Remove(
+                    new KeyValuePair<
+                        int,
+                        ConcurrentDictionary<WebSocket, byte>>(
+                        userId,
+                        sockets));
+
+            if (removed)
+            {
+                _activeConversations.TryRemove(
+                    userId,
+                    out _);
+            }
+        }
+
+        return delivered;
+    }
+
+
+    /* =====================================================
+       BROADCAST
+    ===================================================== */
 
     public async Task BroadcastAsync(
         string json,

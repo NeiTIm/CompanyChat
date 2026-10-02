@@ -14,7 +14,8 @@ public class MessagesController(
     ConversationAccessService conversationAccess) : ControllerBase
 {
     private int CurrentUserId =>
-        conversationAccess.GetUserId(User);
+        conversationAccess.GetUserId(User)
+        ?? throw new UnauthorizedAccessException();
 
 
     // =========================================================

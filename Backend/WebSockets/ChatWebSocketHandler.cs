@@ -2,36 +2,82 @@ using System.Net.WebSockets;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+
 using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
-using CompanyChat.Api.Models;
 using CompanyChat.Api.Services;
 using CompanyChat.Api.Services.Chat;
 
-using Microsoft.EntityFrameworkCore;
-
 namespace CompanyChat.Api.WebSockets;
 
-public class ChatWebSocketHandler(
-    AppDbContext db,
-    ConnectionManager connections,
-    ConversationAccessService conversationAccess,
-    ChatMessageService chatMessageService,
-    ILogger<ChatWebSocketHandler> logger)
+public class ChatWebSocketHandler
 {
-    private static readonly JsonSerializerOptions JsonOptions =
-        new(JsonSerializerDefaults.Web);
+    private readonly AppDbContext db;
+
+    private readonly ConnectionManager connections;
+
+    private readonly ConversationAccessService
+        conversationAccess;
+
+    private readonly ChatMessageService
+        chatMessageService;
+
+    private readonly PrivateChatHandler
+        privateChatHandler;
+
+    private readonly DepartmentChatHandler
+        departmentChatHandler;
+
+    private readonly ILogger<ChatWebSocketHandler>
+        logger;
+
+
+    public ChatWebSocketHandler(
+        AppDbContext db,
+        ConnectionManager connections,
+        ConversationAccessService conversationAccess,
+        ChatMessageService chatMessageService,
+        PrivateChatHandler privateChatHandler,
+        DepartmentChatHandler departmentChatHandler,
+        ILogger<ChatWebSocketHandler> logger)
+    {
+        this.db = db;
+
+        this.connections =
+            connections;
+
+        this.conversationAccess =
+            conversationAccess;
+
+        this.chatMessageService =
+            chatMessageService;
+
+        this.privateChatHandler =
+            privateChatHandler;
+
+        this.departmentChatHandler =
+            departmentChatHandler;
+
+        this.logger =
+            logger;
+    }
+
+
+    /* ==================================================
+       HANDLE WEBSOCKET CONNECTION
+    ================================================== */
 
     public async Task HandleAsync(
         HttpContext context,
         WebSocket socket)
     {
-        var idText =
-            context.User.FindFirstValue(
+        var userIdClaim =
+            context.User.FindFirst(
                 ClaimTypes.NameIdentifier);
 
-        if (!int.TryParse(
-                idText,
+        if (userIdClaim == null ||
+            !int.TryParse(
+                userIdClaim.Value,
                 out var userId))
         {
             await socket.CloseAsync(
@@ -42,669 +88,577 @@ public class ChatWebSocketHandler(
             return;
         }
 
-        connections.Add(
-            userId,
-            socket);
 
-        var user =
-            await db.Users.FindAsync(userId);
+        /* ==================================================
+           ADD CONNECTION
+        ================================================== */
 
-        /*
-         * ==========================
-         * USER ONLINE
-         * ==========================
-         */
+        var becameOnline =
+            connections.Add(
+                userId,
+                socket);
 
-        if (user is not null)
+
+        /* ==================================================
+           SEND CURRENT ONLINE USERS
+           
+           Browser vừa đăng nhập phải biết
+           những user khác đang Online.
+        ================================================== */
+
+        var onlineUserIds =
+            connections.GetOnlineUserIds();
+
+        foreach (var onlineUserId in onlineUserIds)
         {
-            user.IsOnline = true;
-            user.LastSeen = null;
+            /*
+             * Không cần gửi chính mình.
+             */
+            if (onlineUserId == userId)
+            {
+                continue;
+            }
 
-            await db.SaveChangesAsync();
+            var onlineJson =
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        type = "user_status",
 
-            await BroadcastUserStatusAsync(
-                user,
-                true);
+                        userId = onlineUserId,
+
+                        isOnline = true
+                    });
+
+            await connections.SendToSocketAsync(
+                socket,
+                onlineJson,
+                CancellationToken.None);
         }
+
+
+        /* ==================================================
+           USER ONLINE
+           
+           Chỉ broadcast khi user thực sự
+           chuyển Offline -> Online.
+        ================================================== */
+
+        if (becameOnline)
+        {
+            var userOnlineJson =
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        type = "user_status",
+
+                        userId,
+
+                        isOnline = true
+                    });
+
+            await connections.BroadcastAsync(
+                userOnlineJson);
+        }
+
 
         try
         {
             await ReceiveLoopAsync(
-                context.User,
-                userId,
+                context,
                 socket,
-                context.RequestAborted);
+                userId);
         }
-        catch (OperationCanceledException)
+        catch (Exception ex)
         {
-        }
-        catch (WebSocketException ex)
-        {
-            logger.LogWarning(
+            logger.LogError(
                 ex,
-                "WebSocket error for user {UserId}.",
+                "WebSocket error for user {UserId}",
                 userId);
         }
         finally
         {
-            var removed =
+            /* ==================================================
+               REMOVE CONNECTION
+            ================================================== */
+
+            var becameOffline =
                 connections.Remove(
                     userId,
                     socket);
 
-            if (removed &&
-                user is not null)
+
+            /* ==================================================
+               USER OFFLINE
+               
+               Chỉ broadcast khi connection
+               cuối cùng của user đóng.
+            ================================================== */
+
+            if (becameOffline)
             {
-                user.IsOnline = false;
+                var userOfflineJson =
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            type =
+                                "user_status",
 
-                user.LastSeen =
-                    DateTime.UtcNow;
+                            userId,
 
-                await db.SaveChangesAsync();
+                            isOnline = false,
 
-                await BroadcastUserStatusAsync(
-                    user,
-                    false);
+                            lastSeen =
+                                DateTime.UtcNow
+                        });
+
+                await connections.BroadcastAsync(
+                    userOfflineJson);
             }
 
-            try
+
+            /* ==================================================
+               CLOSE SOCKET
+            ================================================== */
+
+            if (socket.State ==
+                    WebSocketState.Open ||
+
+                socket.State ==
+                    WebSocketState.CloseReceived)
             {
-                if (socket.State ==
-                        WebSocketState.Open ||
-                    socket.State ==
-                        WebSocketState.CloseReceived)
+                try
                 {
                     await socket.CloseAsync(
                         WebSocketCloseStatus.NormalClosure,
-                        "Disconnected",
+                        "Connection closed",
                         CancellationToken.None);
                 }
-            }
-            catch
-            {
+                catch
+                {
+                    // Ignore close errors.
+                }
             }
         }
     }
 
-    private async Task BroadcastUserStatusAsync(
-        User user,
-        bool isOnline)
-    {
-        var json =
-            JsonSerializer.Serialize(
-                new
-                {
-                    type = "user_status",
 
-                    userId =
-                        user.Id,
-
-                    isOnline,
-
-                    lastSeen =
-                        isOnline
-                            ? null
-                            : user.LastSeen
-                },
-                JsonOptions);
-
-        await connections.BroadcastAsync(
-            json);
-    }
+    /* ==================================================
+       RECEIVE LOOP
+    ================================================== */
 
     private async Task ReceiveLoopAsync(
-        ClaimsPrincipal currentUser,
-        int senderId,
+        HttpContext context,
         WebSocket socket,
-        CancellationToken cancellationToken)
+        int senderId)
     {
+        var currentUser =
+            context.User;
+
         var buffer =
-            new byte[4096];
+            new byte[64 * 1024];
+
 
         while (
             socket.State ==
-                WebSocketState.Open &&
-            !cancellationToken
-                .IsCancellationRequested)
+            WebSocketState.Open)
         {
-            using var stream =
-                new MemoryStream();
+            var result =
+                await socket.ReceiveAsync(
+                    new ArraySegment<byte>(
+                        buffer),
+                    CancellationToken.None);
 
-            WebSocketReceiveResult result;
 
-            do
+            /* ==================================================
+               CLIENT ĐÓNG CONNECTION
+            ================================================== */
+
+            if (result.MessageType ==
+                WebSocketMessageType.Close)
             {
-                result =
-                    await socket.ReceiveAsync(
-                        buffer,
-                        cancellationToken);
+                break;
+            }
 
-                if (result.MessageType ==
-                    WebSocketMessageType.Close)
-                {
-                    return;
-                }
 
-                stream.Write(
+            /* ==================================================
+               CHỈ XỬ LÝ TEXT
+            ================================================== */
+
+            if (result.MessageType !=
+                WebSocketMessageType.Text)
+            {
+                continue;
+            }
+
+
+            var json =
+                Encoding.UTF8.GetString(
                     buffer,
                     0,
                     result.Count);
 
-            } while (
-                !result.EndOfMessage);
 
-            var json =
-                Encoding.UTF8.GetString(
-                    stream.ToArray());
+            ChatMessage? message;
 
-            ChatMessage? request;
+
+            /* ==================================================
+               DESERIALIZE
+            ================================================== */
 
             try
             {
-                request =
+                message =
                     JsonSerializer.Deserialize<ChatMessage>(
                         json,
-                        JsonOptions);
+                        new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive =
+                                true
+                        });
             }
             catch
             {
                 await SendErrorAsync(
                     senderId,
-                    "Invalid JSON.");
+                    "Dữ liệu gửi lên không hợp lệ.",
+                    CancellationToken.None);
 
                 continue;
             }
 
-            if (request is null)
+
+            if (message == null)
             {
                 continue;
             }
 
-            /*
-            * ==========================
-            * CONVERSATION CHANGE
-            * ==========================
-            */
 
-            if (request.Type ==
-                "conversation_change")
+            /* ==================================================
+               ROUTE MESSAGE
+            ================================================== */
+
+            switch (message.Type)
             {
-                await HandleConversationChangeAsync(
-                    currentUser,
-                    senderId,
-                    request,
-                    cancellationToken);
+                case "conversation_change":
 
-                continue;
+                    await HandleConversationChangeAsync(
+                        currentUser,
+                        senderId,
+                        message);
+
+                    break;
+
+
+                case "typing_start":
+
+                    await HandleTypingAsync(
+                        currentUser,
+                        senderId,
+                        message,
+                        true);
+
+                    break;
+
+
+                case "typing_stop":
+
+                    await HandleTypingAsync(
+                        currentUser,
+                        senderId,
+                        message,
+                        false);
+
+                    break;
+
+
+                case "message":
+
+                    await HandleMessageAsync(
+                        currentUser,
+                        senderId,
+                        message);
+
+                    break;
+
+
+                default:
+
+                    await SendErrorAsync(
+                        senderId,
+                        "Loại message không được hỗ trợ.",
+                        CancellationToken.None);
+
+                    break;
             }
-
-            /*
-            * ==========================
-            * TYPING
-            * ==========================
-            */
-
-            if (request.Type ==
-                    "typing_start" ||
-                request.Type ==
-                    "typing_stop")
-            {
-                await HandleTypingAsync(
-                    currentUser,
-                    senderId,
-                    request,
-                    cancellationToken);
-
-                continue;
-            }
-
-            /*
-             * ==========================
-             * MESSAGE
-             * ==========================
-             */
-
-            if (request.Type != "message")
-            {
-                continue;
-            }
-
-            if (string.IsNullOrWhiteSpace(
-                    request.Content))
-            {
-                continue;
-            }
-
-            await HandleMessageAsync(
-                currentUser,
-                senderId,
-                request,
-                cancellationToken);
         }
     }
+
+
+    /* ==================================================
+       HANDLE MESSAGE
+    ================================================== */
 
     private async Task HandleMessageAsync(
         ClaimsPrincipal currentUser,
         int senderId,
-        ChatMessage request,
-        CancellationToken cancellationToken)
+        ChatMessage request)
     {
-        /*
-         * ==========================
-         * CREATE MESSAGE
-         * ==========================
-         */
-
         var result =
-            await chatMessageService.CreateMessageAsync(
-                currentUser,
-                senderId,
-                request,
-                cancellationToken);
+            await chatMessageService
+                .CreateMessageAsync(
+                    currentUser,
+                    senderId,
+                    request,
+                    CancellationToken.None);
 
-        if (result.Error is not null)
+
+        if (!string.IsNullOrEmpty(
+                result.Error))
         {
             await SendErrorAsync(
                 senderId,
-                result.Error);
+                result.Error,
+                CancellationToken.None);
 
             return;
         }
 
+
         var messageResult =
             result.Result!;
 
-        /*
-         * ==========================
-         * SEND TO RECEIVERS
-         * ==========================
-         *
-         * Private:
-         *     1 receiver
-         *
-         * Department:
-         *     nhiều receivers
-         */
 
-        var deliveredReceiverIds =
-            new List<int>();
+        /* ==================================================
+           MESSAGE JSON
+        ================================================== */
 
-        foreach (
-            var receiverId
-            in messageResult.ReceiverIds)
-        {
-            /*
-             * ==========================
-             * SEND MESSAGE
-             * ==========================
-             */
-
-            var receiverPayload =
-                messageResult.Message with
-                {
-                    DeliveryStatus =
-                        "delivered"
-                };
-
-            var receiverResponse =
+        var messageJson =
+            JsonSerializer.Serialize(
                 new
                 {
                     type = "message",
 
                     message =
-                        receiverPayload
-                };
+                        messageResult.Message
+                });
 
-            var receiverJson =
-                JsonSerializer.Serialize(
-                    receiverResponse,
-                    JsonOptions);
 
+        /* ==================================================
+           SEND MESSAGE TO RECEIVERS
+        ================================================== */
+
+        foreach (
+            var receiverId
+            in messageResult.ReceiverIds)
+        {
             var delivered =
                 await connections.SendToUserAsync(
                     receiverId,
-                    receiverJson,
-                    cancellationToken);
+                    messageJson);
+
 
             if (delivered)
             {
-                deliveredReceiverIds.Add(
-                    receiverId);
-
                 await chatMessageService
                     .MarkDeliveredAsync(
                         messageResult.MessageId,
                         receiverId,
-                        cancellationToken);
-            }
-
-            /*
-             * ==========================
-             * SEND NOTIFICATION
-             * ==========================
-             */
-
-            var notification =
-                messageResult.Notifications
-                    .FirstOrDefault(
-                        x =>
-                            x.UserId ==
-                            receiverId);
-
-            if (notification is not null)
-            {
-                var notificationResponse =
-                    new
-                    {
-                        type = "notification",
-
-                        notification = new
-                        {
-                            notification.Id,
-                            notification.UserId,
-                            notification.Type,
-                            notification.Title,
-                            notification.Content,
-                            notification.ConversationId,
-                            notification.MessageId,
-                            notification.IsRead,
-                            notification.CreatedAt
-                        }
-                    };
-
-                var notificationJson =
-                    JsonSerializer.Serialize(
-                        notificationResponse,
-                        JsonOptions);
-
-                await connections.SendToUserAsync(
-                    receiverId,
-                    notificationJson,
-                    cancellationToken);
+                        CancellationToken.None);
             }
         }
 
-        /*
-         * ==========================
-         * SEND BACK TO SENDER
-         * ==========================
-         *
-         * Nếu ít nhất một receiver
-         * nhận được qua WebSocket
-         * => delivered.
-         *
-         * Nếu không có receiver online
-         * => sent.
-         */
 
-        var senderDeliveryStatus =
-            deliveredReceiverIds.Count > 0
+        /* ==================================================
+           SEND NOTIFICATIONS
+        ================================================== */
+
+        foreach (
+            var notification
+            in messageResult.Notifications)
+        {
+            var notificationJson =
+                JsonSerializer.Serialize(
+                    new
+                    {
+                        type =
+                            "notification",
+
+                        notification
+                    });
+
+
+            await connections.SendToUserAsync(
+                notification.UserId,
+                notificationJson);
+        }
+
+
+        /* ==================================================
+           SENDER DELIVERY STATUS
+        ================================================== */
+
+        var hasOnlineReceiver =
+            messageResult.ReceiverIds
+                .Any(
+                    receiverId =>
+                        connections.IsOnline(
+                            receiverId));
+
+
+        var senderStatus =
+            hasOnlineReceiver
                 ? "delivered"
                 : "sent";
 
-        var senderPayload =
+
+        var senderMessage =
             messageResult.Message with
             {
                 DeliveryStatus =
-                    senderDeliveryStatus
+                    senderStatus
             };
 
-        var senderResponse =
-            new
-            {
-                type = "message",
-
-                message =
-                    senderPayload
-            };
 
         var senderJson =
             JsonSerializer.Serialize(
-                senderResponse,
-                JsonOptions);
+                new
+                {
+                    type = "message",
+
+                    message =
+                        senderMessage
+                });
+
 
         await connections.SendToUserAsync(
             senderId,
-            senderJson,
-            cancellationToken);
+            senderJson);
     }
-    // Xử lý khi user thay đổi conversation đang mở.
+
+
+    /* ==================================================
+       CHANGE ACTIVE CONVERSATION
+    ================================================== */
+
     private async Task HandleConversationChangeAsync(
-    ClaimsPrincipal currentUser,
-    int userId,
-    ChatMessage request,
-    CancellationToken cancellationToken)
+        ClaimsPrincipal currentUser,
+        int senderId,
+        ChatMessage request)
     {
-        /*
-         * Không có conversation
-         */
-        if (request.ConversationId <= 0)
-        {
-            connections.ClearActiveConversation(
-                userId);
-
-            return;
-        }
-
-        /*
-         * Kiểm tra user có quyền truy cập
-         * conversation này hay không.
-         */
-        var canAccess =
-            await conversationAccess.CanAccessAsync(
-                currentUser,
-                request.ConversationId);
-
-        if (!canAccess)
+        if (!await conversationAccess
+                .CanAccessAsync(
+                    currentUser,
+                    request.ConversationId))
         {
             await SendErrorAsync(
-                userId,
-                "You do not have access to this conversation.");
+                senderId,
+                "Bạn không có quyền truy cập cuộc trò chuyện.",
+                CancellationToken.None);
 
             return;
         }
 
-        /*
-         * Lưu conversation đang mở.
-         */
+
         connections.SetActiveConversation(
-            userId,
+            senderId,
             request.ConversationId);
     }
+
+
+    /* ==================================================
+       HANDLE TYPING
+    ================================================== */
 
     private async Task HandleTypingAsync(
         ClaimsPrincipal currentUser,
         int senderId,
         ChatMessage request,
-        CancellationToken cancellationToken)
+        bool isTyping)
     {
-        /*
-         * ==========================
-         * SECURITY
-         * ==========================
-         */
-
-        var canAccess =
-            await conversationAccess.CanAccessAsync(
-                currentUser,
-                request.ConversationId);
-
-        if (!canAccess)
-        {
-            await SendErrorAsync(
-                senderId,
-                "You do not have access to this conversation.");
-
-            return;
-        }
-
-        /*
-         * ==========================
-         * GET CONVERSATION TYPE
-         * ==========================
-         */
-
         var conversationType =
-            await db.Conversations
-                .AsNoTracking()
-                .Where(
-                    x =>
-                        x.Id ==
-                        request.ConversationId)
-                .Select(
-                    x => x.Type)
-                .FirstOrDefaultAsync(
-                    cancellationToken);
+            await conversationAccess
+                .GetConversationTypeAsync(
+                    request.ConversationId);
 
-        if (conversationType is null)
+
+        if (conversationType == null)
         {
             await SendErrorAsync(
                 senderId,
-                "Conversation does not exist.");
+                "Không tìm thấy cuộc trò chuyện.",
+                CancellationToken.None);
 
             return;
         }
 
-        /*
-         * ==========================
-         * PRIVATE TYPING
-         * ==========================
-         */
 
-        if (conversationType == "Private")
+        switch (conversationType)
         {
-            if (!request.ReceiverId.HasValue)
-            {
+            case "Private":
+
+                await privateChatHandler
+                    .HandleTypingAsync(
+                        currentUser,
+                        senderId,
+                        request,
+                        isTyping,
+                        CancellationToken.None);
+
+                break;
+
+
+            case "Department":
+
+                await departmentChatHandler
+                    .HandleTypingAsync(
+                        currentUser,
+                        senderId,
+                        request,
+                        isTyping,
+                        CancellationToken.None);
+
+                break;
+
+
+            default:
+
                 await SendErrorAsync(
                     senderId,
-                    "Receiver is required.");
+                    "Loại cuộc trò chuyện không được hỗ trợ.",
+                    CancellationToken.None);
 
-                return;
-            }
-
-            var receiverId =
-                request.ReceiverId.Value;
-
-            var receiverIsMember =
-                await db.ConversationMembers
-                    .AsNoTracking()
-                    .AnyAsync(
-                        x =>
-                            x.ConversationId ==
-                                request.ConversationId &&
-                            x.UserId ==
-                                receiverId,
-                        cancellationToken);
-
-            if (!receiverIsMember)
-            {
-                await SendErrorAsync(
-                    senderId,
-                    "Receiver is not a member of this conversation.");
-
-                return;
-            }
-
-            await SendTypingToUserAsync(
-                senderId,
-                receiverId,
-                request,
-                cancellationToken);
-
-            return;
+                break;
         }
-
-        /*
-         * ==========================
-         * DEPARTMENT TYPING
-         * ==========================
-         *
-         * Gửi typing tới tất cả
-         * thành viên khác trong department.
-         */
-
-        if (conversationType == "Department")
-        {
-            var receiverIds =
-                await db.ConversationMembers
-                    .AsNoTracking()
-                    .Where(
-                        x =>
-                            x.ConversationId ==
-                                request.ConversationId &&
-                            x.UserId !=
-                                senderId)
-                    .Select(
-                        x => x.UserId)
-                    .ToListAsync(
-                        cancellationToken);
-
-            foreach (var receiverId
-                     in receiverIds)
-            {
-                await SendTypingToUserAsync(
-                    senderId,
-                    receiverId,
-                    request,
-                    cancellationToken);
-            }
-
-            return;
-        }
-
-        await SendErrorAsync(
-            senderId,
-            "Unsupported conversation type.");
     }
 
-    private async Task SendTypingToUserAsync(
-        int senderId,
-        int receiverId,
-        ChatMessage request,
-        CancellationToken cancellationToken)
-    {
-        var response =
-            new
-            {
-                type = "typing",
 
-                conversationId =
-                    request.ConversationId,
-
-                userId =
-                    senderId,
-
-                isTyping =
-                    request.Type ==
-                        "typing_start"
-            };
-
-        var json =
-            JsonSerializer.Serialize(
-                response,
-                JsonOptions);
-
-        await connections.SendToUserAsync(
-            receiverId,
-            json,
-            cancellationToken);
-    }
+    /* ==================================================
+       SEND ERROR
+    ================================================== */
 
     private async Task SendErrorAsync(
         int userId,
-        string message)
+        string message,
+        CancellationToken cancellationToken)
     {
+        var payload =
+            new
+            {
+                type = "error",
+
+                message
+            };
+
+
         var json =
             JsonSerializer.Serialize(
-                new
-                {
-                    type = "error",
-                    message
-                },
-                JsonOptions);
+                payload);
+
 
         await connections.SendToUserAsync(
             userId,
-            json);
+            json,
+            cancellationToken);
     }
 }

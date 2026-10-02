@@ -5,33 +5,39 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CompanyChat.Api.Authorization;
 
-public class ConversationAccessService(AppDbContext db)
+public class ConversationAccessService
 {
+    private readonly AppDbContext db;
+
+    public ConversationAccessService(AppDbContext db)
+    {
+        this.db = db;
+    }
+
     /*
-     * =========================================================
+     * ==================================================
      * GET CURRENT USER ID
-     * =========================================================
+     * ==================================================
      */
 
-    public int GetUserId(ClaimsPrincipal user)
+    public int? GetUserId(ClaimsPrincipal user)
     {
-        var userId = user.FindFirstValue(
+        var value = user.FindFirstValue(
             ClaimTypes.NameIdentifier);
 
-        if (!int.TryParse(userId, out var id))
+        if (int.TryParse(value, out var userId))
         {
-            throw new UnauthorizedAccessException(
-                "User ID is missing from token.");
+            return userId;
         }
 
-        return id;
+        return null;
     }
 
 
     /*
-     * =========================================================
+     * ==================================================
      * GET CURRENT USER
-     * =========================================================
+     * ==================================================
      */
 
     private async Task<User?> GetCurrentUserAsync(
@@ -39,17 +45,21 @@ public class ConversationAccessService(AppDbContext db)
     {
         var userId = GetUserId(user);
 
+        if (!userId.HasValue)
+        {
+            return null;
+        }
+
         return await db.Users
-            .AsNoTracking()
             .FirstOrDefaultAsync(
-                x => x.Id == userId);
+                x => x.Id == userId.Value);
     }
 
 
     /*
-     * =========================================================
+     * ==================================================
      * GET CONVERSATION
-     * =========================================================
+     * ==================================================
      */
 
     private async Task<Conversation?> GetConversationAsync(
@@ -63,9 +73,11 @@ public class ConversationAccessService(AppDbContext db)
 
 
     /*
-     * =========================================================
-     * IS MEMBER
-     * =========================================================
+     * ==================================================
+     * CHECK MEMBER - CLAIMS PRINCIPAL
+     *
+     * Giữ method cũ để Controller không bị ảnh hưởng.
+     * ==================================================
      */
 
     public async Task<bool> IsMemberAsync(
@@ -74,22 +86,44 @@ public class ConversationAccessService(AppDbContext db)
     {
         var userId = GetUserId(user);
 
-        return await db.ConversationMembers
-            .AsNoTracking()
-            .AnyAsync(
-                x =>
-                    x.ConversationId ==
-                        conversationId &&
+        if (!userId.HasValue)
+        {
+            return false;
+        }
 
-                    x.UserId ==
-                        userId);
+        return await IsMemberAsync(
+            userId.Value,
+            conversationId);
     }
 
 
     /*
-     * =========================================================
-     * GET MEMBER
-     * =========================================================
+     * ==================================================
+     * CHECK MEMBER - USER ID
+     *
+     * Dùng cho WebSocket Handler.
+     * ==================================================
+     */
+
+    public async Task<bool> IsMemberAsync(
+        int userId,
+        int conversationId)
+    {
+        return await db.ConversationMembers
+            .AsNoTracking()
+            .AnyAsync(
+                x =>
+                    x.ConversationId == conversationId &&
+                    x.UserId == userId);
+    }
+
+
+    /*
+     * ==================================================
+     * GET MEMBER - CLAIMS PRINCIPAL
+     *
+     * Giữ method cũ để Controller không bị ảnh hưởng.
+     * ==================================================
      */
 
     public async Task<ConversationMember?> GetMemberAsync(
@@ -98,38 +132,61 @@ public class ConversationAccessService(AppDbContext db)
     {
         var userId = GetUserId(user);
 
-        return await db.ConversationMembers
-            .FirstOrDefaultAsync(
-                x =>
-                    x.ConversationId ==
-                        conversationId &&
+        if (!userId.HasValue)
+        {
+            return null;
+        }
 
-                    x.UserId ==
-                        userId);
+        return await GetMemberAsync(
+            userId.Value,
+            conversationId);
     }
 
 
     /*
-     * =========================================================
-     * CAN ACCESS CONVERSATION
-     * =========================================================
+     * ==================================================
+     * GET MEMBER - USER ID
      *
-     * RULE:
-     *
-     * 1. User phải đăng nhập.
-     *
-     * 2. User phải là member của conversation.
-     *
-     * 3. Private conversation:
-     *      member là đủ.
-     *
-     * 4. Department conversation:
-     *      user phải thuộc đúng Department
-     *      của conversation.
-     *
-     * 5. Admin KHÔNG được bypass membership.
-     *
-     * =========================================================
+     * Dùng khi đã có UserId.
+     * ==================================================
+     */
+
+    public async Task<ConversationMember?> GetMemberAsync(
+        int userId,
+        int conversationId)
+    {
+        return await db.ConversationMembers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                x =>
+                    x.ConversationId == conversationId &&
+                    x.UserId == userId);
+    }
+
+
+    /*
+     * ==================================================
+     * GET CONVERSATION TYPE
+     * ==================================================
+     */
+
+    public async Task<string?> GetConversationTypeAsync(
+        int conversationId)
+    {
+        return await db.Conversations
+            .AsNoTracking()
+            .Where(
+                x => x.Id == conversationId)
+            .Select(
+                x => x.Type)
+            .FirstOrDefaultAsync();
+    }
+
+
+    /*
+     * ==================================================
+     * CHECK CONVERSATION ACCESS
+     * ==================================================
      */
 
     public async Task<bool> CanAccessAsync(
@@ -141,36 +198,30 @@ public class ConversationAccessService(AppDbContext db)
             return false;
         }
 
-
-        /*
-         * =====================================================
-         * LẤY CURRENT USER
-         * =====================================================
-         */
-
         var currentUser =
             await GetCurrentUserAsync(user);
 
-        if (currentUser is null)
+        if (currentUser == null)
         {
             return false;
         }
 
+        var conversation =
+            await GetConversationAsync(
+                conversationId);
+
+        if (conversation == null)
+        {
+            return false;
+        }
 
         /*
-         * =====================================================
-         * KIỂM TRA MEMBER
-         * =====================================================
-         *
-         * Đây là lớp bảo vệ quan trọng nhất.
-         *
-         * Admin cũng không được tự động
-         * truy cập Private Conversation.
+         * User phải là member
          */
 
         var isMember =
             await IsMemberAsync(
-                user,
+                currentUser.Id,
                 conversationId);
 
         if (!isMember)
@@ -180,31 +231,9 @@ public class ConversationAccessService(AppDbContext db)
 
 
         /*
-         * =====================================================
-         * LẤY CONVERSATION
-         * =====================================================
-         */
-
-        var conversation =
-            await GetConversationAsync(
-                conversationId);
-
-        if (conversation is null)
-        {
-            return false;
-        }
-
-
-        /*
-         * =====================================================
-         * PRIVATE CONVERSATION
-         * =====================================================
-         *
-         * Private:
-         *
-         *     DepartmentId = null
-         *
-         * Chỉ cần là member.
+         * ==================================================
+         * PRIVATE CHAT
+         * ==================================================
          */
 
         if (conversation.Type == "Private")
@@ -214,56 +243,45 @@ public class ConversationAccessService(AppDbContext db)
 
 
         /*
-         * =====================================================
-         * DEPARTMENT CONVERSATION
-         * =====================================================
-         *
-         * Department conversation bắt buộc
-         * phải có DepartmentId.
+         * ==================================================
+         * DEPARTMENT CHAT
+         * ==================================================
          */
 
         if (conversation.Type == "Department")
         {
-            /*
-             * Conversation chưa được gắn Department
-             * -> không cho truy cập.
-             */
-
-            if (conversation.DepartmentId is null)
+            if (!conversation.DepartmentId.HasValue)
             {
                 return false;
             }
 
-
-            /*
-             * User chưa thuộc Department
-             * -> không cho truy cập.
-             */
-
-            if (currentUser.DepartmentId is null)
+            if (!currentUser.DepartmentId.HasValue)
             {
                 return false;
             }
 
-
-            /*
-             * User phải thuộc đúng Department
-             * của conversation.
-             */
-
-            return currentUser.DepartmentId ==
-                conversation.DepartmentId;
+            return
+                conversation.DepartmentId.Value ==
+                currentUser.DepartmentId.Value;
         }
 
 
         /*
-         * =====================================================
-         * LOẠI CONVERSATION KHÔNG XÁC ĐỊNH
-         * =====================================================
+         * ==================================================
+         * GROUP CHAT
          *
-         * Không whitelist loại conversation
-         * -> mặc định từ chối.
+         * Chưa làm Group Chat.
+         *
+         * Để sẵn access theo member cho tương lai.
+         * Không ảnh hưởng Private / Department.
+         * ==================================================
          */
+
+        if (conversation.Type == "Group")
+        {
+            return true;
+        }
+
 
         return false;
     }
