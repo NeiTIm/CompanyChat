@@ -1,0 +1,385 @@
+
+
+
+
+/* =========================================================
+   DELETE MODAL
+   ========================================================= */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(15, 23, 42, 0.42);
+
+  backdrop-filter: blur(5px);
+
+  animation: fadeIn 0.15s ease;
+}
+
+.delete-modal {
+  width: min(430px, 100%);
+
+  padding: 25px;
+
+  border: 1px solid var(--border);
+
+  border-radius: 17px;
+
+  background: var(--white);
+
+  box-shadow: var(--shadow-lg);
+
+  animation: modalIn 0.18s ease;
+}
+
+.delete-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 15px;
+}
+
+.delete-modal-icon {
+  width: 39px;
+  height: 39px;
+
+  margin-bottom: 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: #fff1f2;
+}
+
+.delete-modal h3 {
+  margin: 0;
+
+  color: var(--text);
+
+  font-size: 17px;
+}
+
+.delete-modal-header p {
+  margin: 5px 0 0;
+
+  color: var(--text-muted);
+
+  font-size: 12px;
+}
+
+.delete-modal-close {
+  width: 31px;
+  height: 31px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  background: transparent;
+  color: #94a3b8;
+
+  font-size: 21px;
+
+  cursor: pointer;
+
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.delete-modal-close:hover {
+  background: var(--bg-soft);
+  color: var(--text-secondary);
+}
+
+.delete-message-preview {
+  margin: 18px 0 13px;
+
+  padding: 11px 13px;
+
+  border: 1px solid var(--border);
+
+  border-radius: 9px;
+
+  background: #f8fafc;
+
+  color: var(--text-secondary);
+
+  font-size: 13px;
+  line-height: 1.5;
+
+  word-break: break-word;
+}
+
+.delete-options {
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+.delete-option {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 12px;
+
+  border: 1px solid var(--border);
+
+  border-radius: 11px;
+
+  background: var(--white);
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    transform var(--transition-fast),
+    box-shadow var(--transition);
+}
+
+.delete-option:hover {
+  background: #f8fafc;
+
+  border-color: #cbd5e1;
+
+  transform: translateY(-1px);
+
+  box-shadow: var(--shadow-xs);
+}
+
+.delete-option.danger:hover {
+  background: #fff7f7;
+
+  border-color: #fecaca;
+}
+
+.delete-option-icon {
+  width: 35px;
+  height: 35px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 9px;
+
+  background: #f1f5f9;
+}
+
+.delete-option.danger .delete-option-icon {
+  background: #fff1f2;
+}
+
+.delete-option-text {
+  min-width: 0;
+
+  flex: 1;
+}
+
+.delete-option-text strong {
+  display: block;
+
+  color: var(--text-secondary);
+
+  font-size: 13px;
+}
+
+.delete-option.danger .delete-option-text strong {
+  color: var(--danger-dark);
+}
+
+.delete-option-text small {
+  display: block;
+
+  margin-top: 3px;
+
+  color: var(--text-light);
+
+  font-size: 10px;
+}
+
+.delete-arrow {
+  color: #94a3b8;
+
+  font-size: 20px;
+}
+
+.delete-cancel-button {
+  width: 100%;
+  height: 42px;
+
+  margin-top: 13px;
+
+  border-radius: 9px;
+
+  background: #f1f5f9;
+  color: var(--text-secondary);
+
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background var(--transition);
+}
+
+.delete-cancel-button:hover {
+  background: #e2e8f0;
+}
+
+
+/* =========================================================
+   DELETE HISTORY MODAL
+   ========================================================= */
+
+.delete-history-modal {
+  width: 420px;
+  max-width: calc(100vw - 32px);
+
+  padding: 28px;
+
+  background: var(--white);
+
+  border: 1px solid var(--border);
+
+  border-radius: 17px;
+
+  box-shadow: var(--shadow-lg);
+
+  text-align: center;
+
+  animation: modalScale 0.2s ease;
+}
+
+.delete-history-icon {
+  width: 60px;
+  height: 60px;
+
+  margin: 0 auto 17px;
+
+  border-radius: 50%;
+
+  background: #fee2e2;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 28px;
+}
+
+.delete-history-modal h3 {
+  margin: 0 0 9px;
+
+  color: var(--text);
+
+  font-size: 20px;
+  font-weight: 750;
+}
+
+.delete-history-modal p {
+  margin: 0;
+
+  color: var(--text-muted);
+
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.delete-history-modal .delete-warning {
+  margin-top: 11px;
+
+  padding: 10px 12px;
+
+  background: #fff7ed;
+
+  border: 1px solid #fed7aa;
+
+  border-radius: 9px;
+
+  color: #c2410c;
+
+  font-size: 12px;
+}
+
+.modal-actions {
+  display: flex;
+
+  gap: 10px;
+
+  margin-top: 22px;
+}
+
+.modal-actions button {
+  flex: 1;
+
+  height: 42px;
+
+  border-radius: 9px;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    transform var(--transition-fast);
+}
+
+.modal-actions button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.cancel-button {
+  border: 1px solid #d5dee9;
+
+  background: var(--white);
+  color: var(--text-secondary);
+}
+
+.cancel-button:hover {
+  background: #f8fafc;
+}
+
+.confirm-delete-button {
+  background: var(--danger);
+  color: var(--white);
+}
+
+.confirm-delete-button:hover {
+  background: var(--danger-dark);
+}
+
+.confirm-delete-button:disabled,
+.cancel-button:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+}

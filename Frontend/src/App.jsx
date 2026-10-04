@@ -4,7 +4,8 @@ import LoginPage from "./pages/LoginPage";
 import ChatPage from "./pages/ChatPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 
-import "./style.css";
+// import "./style.css";
+import "./styles/index.css";
 
 /* =========================================================
    ROOT APP

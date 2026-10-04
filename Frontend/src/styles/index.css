@@ -1,0 +1,72 @@
+/* =========================================================
+   COMPANY CHAT - CSS ENTRY POINT
+========================================================= */
+
+/* =========================================================
+   CORE
+========================================================= */
+
+@import "./core/variables.css";
+@import "./core/reset.css";
+@import "./core/scrollbar.css";
+@import "./core/animations.css";
+
+
+/* =========================================================
+   AUTH
+========================================================= */
+
+@import "./auth/login.css";
+
+
+/* =========================================================
+   CHAT
+========================================================= */
+
+@import "./chat/layout.css";
+@import "./chat/header.css";
+@import "./chat/messages.css";
+@import "./chat/reply.css";
+@import "./chat/typing.css";
+@import "./chat/composer.css";
+@import "./chat/responsive.css";
+
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+@import "./sidebar/sidebar.css";
+@import "./sidebar/users.css";
+@import "./sidebar/department.css";
+@import "./sidebar/groups.css";
+@import "./sidebar/responsive.css";
+
+
+/* =========================================================
+   NOTIFICATION
+========================================================= */
+
+@import "./notification/notification.css";
+
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+@import "./modal/base.css";
+@import "./modal/delete.css";
+@import "./modal/group-details.css";
+@import "./modal/create-group.css";
+
+
+/* =========================================================
+   ADMIN
+========================================================= */
+
+@import "./admin/layout.css";
+@import "./admin/sidebar.css";
+@import "./admin/dashboard.css";
+@import "./admin/users.css";
+@import "./admin/user-detail.css";
+@import "./admin/responsive.css";

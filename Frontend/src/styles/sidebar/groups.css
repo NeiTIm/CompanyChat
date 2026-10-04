@@ -1,0 +1,862 @@
+
+/* =========================================================
+   GROUP SIDEBAR
+========================================================= */
+
+/* =========================================================
+   GROUP CHAT SECTION
+   Modern / Clean / Professional
+========================================================= */
+
+.group-chat-section {
+  position: relative;
+
+  width: 100%;
+
+  padding: 10px 8px 8px;
+
+  border-top: 1px solid #e5e7eb;
+
+  background: #ffffff;
+}
+
+
+/* =========================================================
+   SECTION HEADER
+========================================================= */
+
+.group-chat-section .group-chat-header {
+  min-height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 5px 7px;
+
+  border: 0;
+
+  background: transparent;
+
+  box-shadow: none;
+}
+
+
+/* =========================================================
+   TITLE
+========================================================= */
+
+.group-chat-title {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  color: #334155;
+
+  font-size: 12px;
+  font-weight: 750;
+
+  letter-spacing: 0.02em;
+}
+
+.group-chat-title::before {
+  content: "";
+
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: #6366f1;
+
+  box-shadow:
+    0 0 0 3px rgba(99, 102, 241, 0.10);
+}
+
+
+/* =========================================================
+   CREATE GROUP BUTTON
+========================================================= */
+
+.group-chat-create-button {
+  width: 30px;
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 1px solid #c7d2fe;
+  border-radius: 9px;
+
+  background: #eef2ff;
+
+  color: #4f46e5;
+
+  font-size: 20px;
+  font-weight: 450;
+  line-height: 1;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.group-chat-create-button:hover {
+  border-color: #a5b4fc;
+
+  background: #e0e7ff;
+
+  color: #4338ca;
+
+  box-shadow:
+    0 4px 12px rgba(79, 70, 229, 0.12);
+
+  transform: translateY(-1px);
+}
+
+.group-chat-create-button:active {
+  transform: scale(0.92);
+}
+
+.group-chat-create-button:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 2px;
+}
+
+
+/* =========================================================
+   GROUP LIST
+========================================================= */
+
+.group-chat-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  max-height: 300px;
+
+  overflow-y: auto;
+
+  padding-right: 2px;
+}
+
+
+/* =========================================================
+   GROUP ITEM
+========================================================= */
+
+.group-chat-item {
+  position: relative;
+
+  width: 100%;
+  min-height: 62px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 8px 9px;
+
+  border: 1px solid transparent;
+  border-radius: 13px;
+
+  background: transparent;
+
+  color: inherit;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 0.17s ease,
+    border-color 0.17s ease,
+    box-shadow 0.17s ease,
+    transform 0.17s ease;
+}
+
+.group-chat-item:hover {
+  background: #f8fafc;
+
+  border-color: #e2e8f0;
+
+  transform: translateX(2px);
+}
+
+
+/* =========================================================
+   ACTIVE GROUP
+========================================================= */
+
+.group-chat-item.active {
+  border-color: #c7d2fe;
+
+  background:
+    linear-gradient(
+      90deg,
+      #eef2ff 0%,
+      #f5f7ff 100%
+    );
+
+  box-shadow:
+    0 4px 12px rgba(79, 70, 229, 0.07);
+}
+
+.group-chat-item.active::before {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+
+  width: 3px;
+
+  border-radius: 0 5px 5px 0;
+
+  background: #6366f1;
+}
+
+.group-chat-item.active:hover {
+  transform: none;
+}
+
+
+/* =========================================================
+   GROUP ICON
+========================================================= */
+
+.group-chat-icon {
+  width: 40px;
+  height: 40px;
+
+  flex: 0 0 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #eef2ff,
+      #e0e7ff
+    );
+
+  color: #4f46e5;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.group-chat-item:hover .group-chat-icon {
+  transform: scale(1.04);
+}
+
+.group-chat-item.active .group-chat-icon {
+  background:
+    linear-gradient(
+      145deg,
+      #6366f1,
+      #4f46e5
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 6px 14px rgba(79, 70, 229, 0.20);
+}
+
+.group-chat-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+
+/* =========================================================
+   GROUP INFO
+========================================================= */
+
+.group-chat-info {
+  min-width: 0;
+
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.group-chat-name {
+  min-width: 0;
+
+  overflow: hidden;
+
+  color: #1e293b;
+
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.25;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-chat-item.active .group-chat-name {
+  color: #3730a3;
+
+  font-weight: 700;
+}
+
+.group-chat-members {
+  color: #94a3b8;
+
+  font-size: 10.5px;
+  font-weight: 500;
+
+  line-height: 1.2;
+}
+
+.group-chat-item.active .group-chat-members {
+  color: #6366f1;
+}
+
+
+/* =========================================================
+   UNREAD BADGE
+========================================================= */
+
+.group-chat-unread {
+  min-width: 21px;
+  height: 21px;
+
+  flex: 0 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 4px;
+  padding: 0 6px;
+
+  border-radius: 999px;
+
+  background: #6366f1;
+
+  color: #ffffff;
+
+  font-size: 9.5px;
+  font-weight: 750;
+  line-height: 1;
+
+  box-shadow:
+    0 3px 8px rgba(99, 102, 241, 0.20);
+
+  animation: groupUnreadPop 0.2s ease-out;
+}
+
+@keyframes groupUnreadPop {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+
+/* =========================================================
+   EMPTY GROUP
+========================================================= */
+
+.group-chat-empty {
+  min-height: 115px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 18px 12px;
+
+  border: 1px dashed #dbe3ef;
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #f8fafc,
+      #fafbff
+    );
+
+  text-align: center;
+}
+
+.group-chat-empty::before {
+  content: "👥";
+
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 8px;
+
+  border-radius: 11px;
+
+  background: #eef2ff;
+
+  font-size: 17px;
+}
+
+.group-chat-empty-title {
+  color: #475569;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.group-chat-empty-description {
+  margin-top: 4px;
+
+  color: #94a3b8;
+
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+.group-chat-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.group-chat-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.group-chat-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background: #cbd5e1;
+}
+
+.group-chat-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 640px) {
+  .group-chat-section {
+    padding: 8px 6px;
+  }
+
+  .group-chat-list {
+    max-height: 260px;
+  }
+
+  .group-chat-item {
+    min-height: 58px;
+
+    gap: 9px;
+
+    padding: 7px 8px;
+  }
+
+  .group-chat-icon {
+    width: 37px;
+    height: 37px;
+
+    flex-basis: 37px;
+
+    border-radius: 11px;
+  }
+
+  .group-chat-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .group-chat-name {
+    font-size: 12px;
+  }
+
+  .group-chat-members {
+    font-size: 10px;
+  }
+
+  .group-chat-create-button {
+    width: 28px;
+    height: 28px;
+  }
+}
+/* =========================================================
+   GROUP SEARCH
+========================================================= */
+
+.group-chat-header-actions {
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+}
+
+
+/* =========================================================
+   GROUP COUNT
+========================================================= */
+
+.group-chat-count {
+  min-width: 19px;
+  height: 19px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 2px;
+  padding: 0 5px;
+
+  border-radius: 999px;
+
+  background: #f1f5f9;
+
+  color: #64748b;
+
+  font-size: 9px;
+  font-weight: 750;
+
+  line-height: 1;
+}
+
+
+/* =========================================================
+   SEARCH TOGGLE
+========================================================= */
+
+.group-search-toggle {
+  width: 30px;
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 1px solid transparent;
+  border-radius: 9px;
+
+  background: transparent;
+
+  color: #64748b;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.group-search-toggle:hover,
+.group-search-toggle.active {
+  border-color: #c7d2fe;
+
+  background: #eef2ff;
+
+  color: #4f46e5;
+}
+
+.group-search-toggle:hover {
+  transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   SEARCH BOX
+========================================================= */
+
+.group-search-box {
+  position: relative;
+
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+
+  margin: 2px 2px 8px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+
+  background: #f8fafc;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.group-search-box:focus-within,
+.group-search-box.has-value {
+  border-color: #a5b4fc;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 0 0 3px rgba(99, 102, 241, 0.08);
+}
+
+
+/* =========================================================
+   SEARCH ICON
+========================================================= */
+
+.group-search-icon {
+  width: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #94a3b8;
+
+  transition:
+    color 0.18s ease;
+}
+
+.group-search-box:focus-within
+.group-search-icon {
+  color: #6366f1;
+}
+
+
+/* =========================================================
+   SEARCH INPUT
+========================================================= */
+
+.group-search-input {
+  min-width: 0;
+
+  flex: 1;
+
+  height: 100%;
+
+  padding: 0 4px;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+
+  color: #1e293b;
+
+  font-family: inherit;
+
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.group-search-input::placeholder {
+  color: #94a3b8;
+}
+
+
+/* =========================================================
+   CLEAR SEARCH
+========================================================= */
+
+.group-search-clear {
+  width: 27px;
+  height: 27px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-right: 5px;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: #f1f5f9;
+
+  color: #64748b;
+
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-search-clear:hover {
+  background: #fee2e2;
+
+  color: #dc2626;
+
+  transform: scale(1.05);
+}
+
+
+/* =========================================================
+   SEARCH RESULT
+========================================================= */
+
+.group-search-result {
+  min-height: 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 5px 7px;
+
+  color: #94a3b8;
+
+  font-size: 9.5px;
+  font-weight: 550;
+}
+
+.group-search-result kbd {
+  padding: 2px 5px;
+
+  border: 1px solid #e2e8f0;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+
+  background: #f8fafc;
+
+  color: #94a3b8;
+
+  font-family: inherit;
+
+  font-size: 8px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   SEARCH EMPTY
+========================================================= */
+
+.group-search-empty {
+  min-height: 125px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 18px 12px;
+
+  border: 1px dashed #dbe3ef;
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #f8fafc,
+      #fafbff
+    );
+
+  text-align: center;
+
+  animation: groupSearchEmptyEnter 0.2s ease;
+}
+
+@keyframes groupSearchEmptyEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.group-search-empty-icon {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 9px;
+
+  border-radius: 13px;
+
+  background: #eef2ff;
+
+  color: #6366f1;
+}
+
+.group-search-empty-title {
+  color: #475569;
+
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.group-search-empty-description {
+  margin-top: 4px;
+
+  color: #94a3b8;
+
+  font-size: 9.5px;
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .group-chat-item,
+  .group-chat-icon,
+  .group-chat-create-button,
+  .group-chat-unread {
+    animation: none;
+    transition: none;
+  }
+}

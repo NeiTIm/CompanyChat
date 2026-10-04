@@ -1,0 +1,260 @@
+/* =========================================================
+   APP
+   ========================================================= */
+
+.app {
+  width: 100%;
+  height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+
+  background: var(--bg);
+}
+/* =========================================================
+   TOPBAR
+   ========================================================= */
+
+.topbar {
+  height: var(--topbar-height);
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 20px;
+
+  background: var(--white);
+
+  border-bottom: 1px solid var(--border);
+
+  position: relative;
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.brand-logo {
+  width: 37px;
+  height: 37px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: var(--primary);
+  color: var(--white);
+
+  font-size: 17px;
+  font-weight: 800;
+
+  box-shadow:
+    0 5px 14px rgba(37, 99, 235, 0.18);
+}
+
+.brand-name {
+  color: var(--text);
+
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.current-user {
+  text-align: right;
+}
+
+.current-user-name {
+  color: var(--text);
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.current-user-role {
+  margin-top: 2px;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+
+  color: var(--text-muted);
+
+  font-size: 11px;
+}
+
+.current-status-dot {
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+}
+
+.current-status-dot.online {
+  background: var(--success);
+
+  box-shadow:
+    0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.current-status-dot.offline {
+  background: #94a3b8;
+}
+
+.logout-button {
+  height: 35px;
+
+  padding: 0 13px;
+
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+
+  background: var(--white);
+  color: var(--text-secondary);
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    color var(--transition);
+}
+
+.logout-button:hover {
+  background: var(--bg-soft);
+  border-color: #cbd5e1;
+  color: var(--text);
+}
+/* =========================================================
+   BODY
+   ========================================================= */
+
+.app-body {
+  flex: 1;
+
+  min-height: 0;
+
+  display: flex;
+
+  background: var(--bg);
+}
+
+
+
+
+/* =========================================================
+   CHAT EMPTY
+   ========================================================= */
+
+.chat-empty {
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(37, 99, 235, 0.045),
+      transparent 40%
+    ),
+    #f8fafc;
+}
+
+.chat-empty-logo {
+  width: 72px;
+  height: 72px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #dbeafe;
+  border-radius: 18px;
+
+  background: var(--primary-light);
+  color: var(--primary);
+
+  font-size: 29px;
+  font-weight: 800;
+}
+
+.chat-empty h2 {
+  margin: 18px 0 6px;
+
+  color: var(--text);
+
+  font-size: 19px;
+  font-weight: 750;
+}
+
+.chat-empty p {
+  margin: 0;
+
+  color: var(--text-muted);
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   CHAT CONTAINER
+   ========================================================= */
+
+.chat-container {
+  flex: 1;
+
+  min-width: 0;
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  background: #f8fafc;
+}
+/* =========================================================
+   CONNECTION WARNING
+   ========================================================= */
+
+.connection-warning {
+  margin-top: 6px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+
+  color: var(--text-muted);
+
+  font-size: 9px;
+}
+
+.warning-dot {
+  width: 5px;
+  height: 5px;
+
+  border-radius: 50%;
+
+  background: var(--warning);
+}

@@ -1,0 +1,174 @@
+
+
+
+
+
+
+
+/* =========================================================
+   RESPONSIVE - CHAT
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .sidebar {
+    width: 270px;
+  }
+
+  .message-column {
+    max-width: 74%;
+  }
+
+  .messages-container {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .composer-container {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+@media (max-width: 700px) {
+  .sidebar {
+    width: 245px;
+  }
+
+  .brand-name {
+    display: none;
+  }
+
+  .current-user {
+    display: none;
+  }
+
+  .chat-header {
+    padding: 0 14px;
+  }
+
+  .realtime-status span:last-child {
+    display: none;
+  }
+
+  .message-column {
+    max-width: 80%;
+  }
+
+  .messages-container {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  .reply-button {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    height: 56px;
+
+    padding: 0 12px;
+  }
+
+  .sidebar {
+    width: 68px;
+  }
+
+  .sidebar-header {
+    padding: 13px 7px;
+  }
+
+  .sidebar-header h2 {
+    font-size: 0;
+
+    text-align: center;
+  }
+
+  .sidebar-header h2::after {
+    content: "NV";
+
+    font-size: 14px;
+  }
+
+  .employee-summary {
+    display: none;
+  }
+
+  .search-box {
+    margin: 0 7px 8px;
+
+    justify-content: center;
+  }
+
+  .search-box input {
+    display: none;
+  }
+
+  .search-icon {
+    margin: 0;
+  }
+
+  .user-item {
+    justify-content: center;
+
+    padding: 8px;
+  }
+
+  .user-info {
+    display: none;
+  }
+
+  .chat-header {
+    height: 58px;
+  }
+
+  .chat-header-name {
+    font-size: 13px;
+  }
+
+  .chat-presence {
+    font-size: 9px;
+  }
+
+  .messages-container {
+    padding: 13px 10px;
+  }
+
+  .message-column {
+    max-width: 84%;
+  }
+
+  .message-bubble {
+    padding: 8px 11px;
+
+    font-size: 13px;
+  }
+
+  .composer-container {
+    padding: 6px 9px 9px;
+  }
+
+  .message-composer input {
+    height: 42px;
+
+    padding: 0 12px;
+  }
+
+  .send-button {
+    width: 42px;
+    height: 42px;
+  }
+
+  .delivery-legend {
+    display: none;
+  }
+
+  .header-delete-button {
+    display: none;
+  }
+
+  .replying-banner {
+    padding: 7px 9px;
+  }
+}

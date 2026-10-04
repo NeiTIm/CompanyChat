@@ -1,0 +1,1204 @@
+
+/* =========================================================
+   MODAL OVERLAY
+========================================================= */
+
+.group-details-modal {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(820px, calc(100vh - 40px));
+
+  display: flex;
+  flex-direction: column;
+
+  background: #ffffff;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+
+  box-shadow:
+    0 28px 80px rgba(15, 23, 42, 0.18),
+    0 8px 24px rgba(15, 23, 42, 0.08);
+
+  overflow: hidden;
+
+  animation: groupModalEnter 0.22s ease-out;
+}
+
+@keyframes groupModalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.group-details-header {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  min-height: 132px;
+
+  padding: 24px 26px;
+
+  background:
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(99, 102, 241, 0.12),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      #f8fafc 0%,
+      #eef2ff 100%
+    );
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+
+/* =========================================================
+   HEADER CONTENT
+========================================================= */
+
+.group-details-header > div:first-child {
+  min-width: 0;
+
+  display: grid;
+
+  grid-template-columns: 58px minmax(0, 1fr);
+
+  grid-template-rows: auto auto;
+
+  column-gap: 15px;
+
+  align-items: center;
+}
+
+.group-details-icon {
+  grid-row: 1 / 3;
+
+  width: 58px;
+  height: 58px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #6366f1,
+      #4f46e5
+    );
+
+  color: #ffffff;
+
+  font-size: 27px;
+
+  box-shadow:
+    0 10px 22px rgba(79, 70, 229, 0.25);
+
+  user-select: none;
+}
+
+.group-details-header h3 {
+  margin: 0;
+
+  min-width: 0;
+
+  overflow: hidden;
+
+  color: #111827;
+
+  font-size: 20px;
+  font-weight: 750;
+  line-height: 1.3;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-details-header p {
+  margin: 4px 0 0;
+
+  color: #64748b;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+
+/* =========================================================
+   CLOSE BUTTON
+========================================================= */
+
+.group-details-close {
+  flex: 0 0 auto;
+
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 16px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+
+  background: rgba(255, 255, 255, 0.8);
+
+  color: #64748b;
+
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 1;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.group-details-close:hover {
+  background: #ffffff;
+
+  border-color: #cbd5e1;
+
+  color: #111827;
+
+  transform: rotate(4deg);
+}
+
+.group-details-close:active {
+  transform: scale(0.94);
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.group-details-error {
+  margin: 14px 20px 0;
+  padding: 11px 14px;
+
+  display: flex;
+  align-items: center;
+
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+
+  font-size: 13px;
+  font-weight: 550;
+
+  animation: groupErrorEnter 0.2s ease;
+}
+
+@keyframes groupErrorEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* =========================================================
+   ADD MEMBER SECTION
+========================================================= */
+
+.group-add-section {
+  padding: 16px 20px 8px;
+}
+
+.group-add-member-button {
+  width: 100%;
+  min-height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  border: 1px dashed #c7d2fe;
+  border-radius: 14px;
+
+  background: #f5f7ff;
+
+  color: #4f46e5;
+
+  font-size: 14px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.group-add-member-button span:first-child {
+  width: 25px;
+  height: 25px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  background: #e0e7ff;
+
+  font-size: 19px;
+  font-weight: 500;
+
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.group-add-member-button:hover {
+  background: #eef2ff;
+
+  border-color: #a5b4fc;
+
+  box-shadow:
+    0 5px 16px rgba(79, 70, 229, 0.08);
+
+  transform: translateY(-1px);
+}
+
+.group-add-member-button:hover span:first-child {
+  background: #c7d2fe;
+
+  transform: rotate(90deg);
+}
+
+.group-add-member-button:active {
+  transform: translateY(0);
+}
+
+.group-add-member-button:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   USER LIST - ADD MEMBER
+========================================================= */
+
+.group-user-list {
+  max-height: 220px;
+
+  margin-top: 10px;
+  padding: 6px;
+
+  overflow-y: auto;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 15px;
+
+  background: #f8fafc;
+
+  animation: groupUserListEnter 0.18s ease;
+}
+
+@keyframes groupUserListEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* =========================================================
+   USER ITEM
+========================================================= */
+
+.group-user-item {
+  width: 100%;
+  min-height: 58px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 9px 10px;
+
+  border: 0;
+  border-radius: 11px;
+
+  background: transparent;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-user-item:hover {
+  background: #ffffff;
+
+  transform: translateX(2px);
+}
+
+.group-user-item:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   USER AVATAR
+========================================================= */
+
+.group-user-avatar {
+  width: 39px;
+  height: 39px;
+
+  flex: 0 0 39px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #e0e7ff,
+      #c7d2fe
+    );
+
+  color: #4338ca;
+
+  font-size: 14px;
+  font-weight: 750;
+}
+
+
+/* =========================================================
+   USER INFO
+========================================================= */
+
+.group-user-info {
+  min-width: 0;
+
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.group-user-info strong {
+  overflow: hidden;
+
+  color: #1e293b;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-user-info small {
+  overflow: hidden;
+
+  color: #94a3b8;
+
+  font-size: 11px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-user-add {
+  width: 30px;
+  height: 30px;
+
+  flex: 0 0 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 9px;
+
+  background: #eef2ff;
+
+  color: #4f46e5;
+
+  font-size: 19px;
+
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-user-item:hover .group-user-add {
+  background: #e0e7ff;
+
+  transform: scale(1.08);
+}
+
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
+.group-empty-text {
+  padding: 22px 14px;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   MEMBERS SECTION
+========================================================= */
+
+.group-members-section {
+  min-height: 0;
+
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 17px 20px 8px;
+}
+
+.group-section-title {
+  display: flex;
+  align-items: center;
+
+  margin-bottom: 10px;
+
+  color: #334155;
+
+  font-size: 13px;
+  font-weight: 750;
+
+  letter-spacing: 0.02em;
+}
+
+.group-section-title::after {
+  content: "";
+
+  height: 1px;
+
+  flex: 1;
+
+  margin-left: 10px;
+
+  background: #e2e8f0;
+}
+
+
+/* =========================================================
+   MEMBERS LIST
+========================================================= */
+
+.group-members-list {
+  min-height: 0;
+  max-height: 390px;
+
+  overflow-y: auto;
+
+  padding-right: 4px;
+}
+
+
+/* =========================================================
+   MEMBER ITEM
+========================================================= */
+
+.group-member-item {
+  position: relative;
+
+  min-height: 66px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 9px 10px;
+
+  margin-bottom: 5px;
+
+  border: 1px solid transparent;
+  border-radius: 14px;
+
+  background: #ffffff;
+
+  transition:
+    background 0.17s ease,
+    border-color 0.17s ease,
+    box-shadow 0.17s ease,
+    transform 0.17s ease;
+}
+
+.group-member-item:hover {
+  background: #f8fafc;
+
+  border-color: #e2e8f0;
+
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.04);
+
+  transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   MEMBER AVATAR
+========================================================= */
+
+.group-member-avatar {
+  position: relative;
+
+  width: 44px;
+  height: 44px;
+
+  flex: 0 0 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 2px solid #ffffff;
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #e2e8f0,
+      #cbd5e1
+    );
+
+  color: #334155;
+
+  font-size: 15px;
+  font-weight: 750;
+
+  box-shadow:
+    0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+
+/* =========================================================
+   ONLINE DOT
+========================================================= */
+
+.group-online-dot {
+  position: absolute;
+
+  right: -2px;
+  bottom: -2px;
+
+  width: 12px;
+  height: 12px;
+
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+
+  background: #22c55e;
+
+  box-shadow:
+    0 0 0 2px rgba(34, 197, 94, 0.12);
+}
+
+
+/* =========================================================
+   MEMBER INFO
+========================================================= */
+
+.group-member-info {
+  min-width: 0;
+
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.group-member-name {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  overflow: hidden;
+
+  color: #1e293b;
+
+  font-size: 13.5px;
+  font-weight: 650;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-member-role {
+  color: #94a3b8;
+
+  font-size: 11px;
+  font-weight: 500;
+}
+
+
+/* =========================================================
+   "BẠN" BADGE
+========================================================= */
+
+.group-you {
+  flex: 0 0 auto;
+
+  padding: 3px 7px;
+
+  border-radius: 6px;
+
+  background: #eef2ff;
+
+  color: #4f46e5;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  line-height: 1;
+}
+
+
+/* =========================================================
+   MEMBER ACTIONS
+========================================================= */
+
+.group-member-actions {
+  flex: 0 0 auto;
+
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+
+  margin-left: 8px;
+}
+
+
+/* =========================================================
+   ROLE BADGE
+========================================================= */
+
+.group-role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 52px;
+
+  padding: 5px 8px;
+
+  border-radius: 7px;
+
+  font-size: 10px;
+  font-weight: 750;
+
+  line-height: 1;
+}
+
+.group-role-badge.owner {
+  background: #fef3c7;
+
+  color: #a16207;
+}
+
+.group-role-badge.admin {
+  background: #ede9fe;
+
+  color: #6d28d9;
+}
+
+
+/* =========================================================
+   ACTION BUTTON
+========================================================= */
+
+.group-member-action {
+  min-height: 29px;
+
+  padding: 5px 9px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  color: #475569;
+
+  font-size: 10.5px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-member-action:hover {
+  border-color: #c7d2fe;
+
+  background: #eef2ff;
+
+  color: #4338ca;
+
+  transform: translateY(-1px);
+}
+
+.group-member-action:active {
+  transform: translateY(0);
+}
+
+.group-member-action.danger {
+  border-color: #fecaca;
+
+  background: #fffafa;
+
+  color: #dc2626;
+}
+
+.group-member-action.danger:hover {
+  border-color: #fca5a5;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+}
+
+.group-member-action:disabled {
+  opacity: 0.45;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+.group-loading {
+  min-height: 150px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.group-loading::after {
+  content: "";
+
+  width: 14px;
+  height: 14px;
+
+  margin-left: 9px;
+
+  border: 2px solid #e2e8f0;
+  border-top-color: #6366f1;
+
+  border-radius: 50%;
+
+  animation: groupLoadingSpin 0.7s linear infinite;
+}
+
+@keyframes groupLoadingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.group-details-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 9px;
+
+  min-height: 70px;
+
+  padding: 13px 20px;
+
+  border-top: 1px solid #e5e7eb;
+
+  background: #ffffff;
+}
+
+
+/* =========================================================
+   LEAVE BUTTON
+========================================================= */
+
+.group-leave-button {
+  min-height: 38px;
+
+  padding: 0 14px;
+
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+
+  background: #fff7ed;
+
+  color: #c2410c;
+
+  font-size: 12px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-leave-button:hover {
+  border-color: #fdba74;
+
+  background: #ffedd5;
+
+  transform: translateY(-1px);
+}
+
+.group-leave-button:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   DELETE GROUP
+========================================================= */
+
+.group-delete-button {
+  min-height: 38px;
+
+  padding: 0 14px;
+
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+
+  background: #fef2f2;
+
+  color: #dc2626;
+
+  font-size: 12px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-delete-button:hover {
+  border-color: #fca5a5;
+
+  background: #fee2e2;
+
+  transform: translateY(-1px);
+}
+
+.group-delete-button:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   CLOSE BUTTON
+========================================================= */
+
+.group-close-button {
+  min-height: 38px;
+
+  padding: 0 17px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+
+  background: #f8fafc;
+
+  color: #334155;
+
+  font-size: 12px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-close-button:hover {
+  border-color: #cbd5e1;
+
+  background: #f1f5f9;
+
+  transform: translateY(-1px);
+}
+
+.group-close-button:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   CUSTOM SCROLLBAR
+========================================================= */
+
+.group-details-modal ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.group-details-modal ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.group-details-modal ::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background: #cbd5e1;
+}
+
+.group-details-modal ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 640px) {
+  .group-details-modal {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+
+    border-radius: 20px;
+  }
+
+  .group-details-header {
+    min-height: 112px;
+
+    padding: 19px;
+  }
+
+  .group-details-header > div:first-child {
+    grid-template-columns: 48px minmax(0, 1fr);
+
+    column-gap: 12px;
+  }
+
+  .group-details-icon {
+    width: 48px;
+    height: 48px;
+
+    border-radius: 15px;
+
+    font-size: 22px;
+  }
+
+  .group-details-header h3 {
+    font-size: 17px;
+  }
+
+  .group-details-close {
+    width: 35px;
+    height: 35px;
+  }
+
+  .group-add-section {
+    padding: 13px 14px 6px;
+  }
+
+  .group-members-section {
+    padding: 14px 14px 6px;
+  }
+
+  .group-members-list {
+    max-height: 330px;
+  }
+
+  .group-member-item {
+    min-height: 62px;
+
+    padding: 8px;
+  }
+
+  .group-member-avatar {
+    width: 40px;
+    height: 40px;
+
+    flex-basis: 40px;
+  }
+
+  .group-member-actions {
+    gap: 3px;
+  }
+
+  .group-member-action {
+    padding: 5px 7px;
+
+    font-size: 9.5px;
+  }
+
+  .group-role-badge {
+    min-width: auto;
+
+    padding: 5px 6px;
+
+    font-size: 9px;
+  }
+
+  .group-details-footer {
+    padding: 11px 14px;
+
+    gap: 7px;
+  }
+
+  .group-leave-button,
+  .group-delete-button,
+  .group-close-button {
+    min-height: 36px;
+
+    padding: 0 11px;
+
+    font-size: 11px;
+  }
+}
+
+
+/* =========================================================
+   VERY SMALL SCREEN
+========================================================= */
+
+@media (max-width: 430px) {
+  .group-details-modal {
+    width: calc(100vw - 12px);
+
+    border-radius: 18px;
+  }
+
+  .group-member-info {
+    max-width: 120px;
+  }
+
+  .group-member-actions {
+    margin-left: 3px;
+  }
+
+  .group-member-action {
+    padding: 4px 6px;
+
+    font-size: 9px;
+  }
+
+  .group-role-badge {
+    display: none;
+  }
+
+  .group-details-footer {
+    justify-content: stretch;
+  }
+
+  .group-details-footer button {
+    flex: 1;
+  }
+}

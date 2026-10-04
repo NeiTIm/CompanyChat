@@ -1,0 +1,31 @@
+
+
+/* =========================================================
+   SMALL SCREEN MODAL
+   ========================================================= */
+
+@media (max-width: 480px) {
+  .login-card {
+    padding: 30px 22px;
+  }
+
+  .delete-modal {
+    padding: 20px;
+  }
+
+  .delete-history-modal {
+    padding: 23px 20px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+
+  .admin-user-detail {
+    padding: 24px 20px;
+  }
+}
