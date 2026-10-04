@@ -336,33 +336,26 @@ public class NotificationService(AppDbContext db)
     }
 
     public async Task<object?>
-        GetNotificationTargetAsync(
-            long notificationId,
-            int userId)
+    GetNotificationTargetAsync(
+        long notificationId,
+        int userId)
     {
         var notification =
             await db.Notifications
                 .AsNoTracking()
-                .Include(
-                    x =>
-                        x.Message)
-                .Include(
-                    x =>
-                        x.Conversation)
+                .Include(x => x.Message)
+                .Include(x => x.Conversation)
                 .FirstOrDefaultAsync(
                     x =>
-                        x.Id ==
-                            notificationId &&
-                        x.UserId ==
-                            userId);
+                        x.Id == notificationId &&
+                        x.UserId == userId);
 
         if (notification is null)
         {
             return null;
         }
 
-        if (notification.ConversationId
-            is null)
+        if (notification.ConversationId is null)
         {
             return null;
         }
@@ -372,15 +365,18 @@ public class NotificationService(AppDbContext db)
                 .Conversation?
                 .Type;
 
-        if (
-            conversationType ==
-            "Department")
+        /*
+         * =================================================
+         * DEPARTMENT
+         * =================================================
+         */
+
+        if (conversationType == "Department")
         {
             return new
             {
                 conversationId =
-                    notification
-                        .ConversationId,
+                    notification.ConversationId,
 
                 senderId =
                     (int?)null,
@@ -389,13 +385,15 @@ public class NotificationService(AppDbContext db)
             };
         }
 
-        if (
-            conversationType ==
-            "Private")
+        /*
+         * =================================================
+         * PRIVATE
+         * =================================================
+         */
+
+        if (conversationType == "Private")
         {
-            if (
-                notification.Message
-                is null)
+            if (notification.Message is null)
             {
                 return null;
             }
@@ -403,8 +401,34 @@ public class NotificationService(AppDbContext db)
             return new
             {
                 conversationId =
+                    notification.ConversationId,
+
+                senderId =
                     notification
-                        .ConversationId,
+                        .Message
+                        .SenderId,
+
+                conversationType
+            };
+        }
+
+        /*
+         * =================================================
+         * GROUP
+         * =================================================
+         */
+
+        if (conversationType == "Group")
+        {
+            if (notification.Message is null)
+            {
+                return null;
+            }
+
+            return new
+            {
+                conversationId =
+                    notification.ConversationId,
 
                 senderId =
                     notification

@@ -49,12 +49,17 @@ public class GroupChatHandler
         CancellationToken cancellationToken)
     {
         /*
-         * Kiểm tra quyền truy cập group.
+         * ==================================================
+         * CHECK ACCESS
+         * ==================================================
          */
 
-        if (!await conversationAccess.CanAccessAsync(
+        var canAccess =
+            await conversationAccess.CanAccessAsync(
                 currentUser,
-                request.ConversationId))
+                request.ConversationId);
+
+        if (!canAccess)
         {
             await SendErrorAsync(
                 senderId,
@@ -66,7 +71,38 @@ public class GroupChatHandler
 
 
         /*
-         * Lấy tất cả member ngoại trừ sender.
+         * ==================================================
+         * CHECK CONVERSATION TYPE
+         * ==================================================
+         */
+
+        var isGroup =
+            await db.Conversations
+                .AsNoTracking()
+                .AnyAsync(
+                    x =>
+                        x.Id ==
+                            request.ConversationId &&
+
+                        x.Type ==
+                            "Group",
+                    cancellationToken);
+
+        if (!isGroup)
+        {
+            await SendErrorAsync(
+                senderId,
+                "Cuộc trò chuyện không phải Group.",
+                cancellationToken);
+
+            return;
+        }
+
+
+        /*
+         * ==================================================
+         * GET GROUP MEMBERS
+         * ==================================================
          */
 
         var receiverIds =
@@ -81,20 +117,34 @@ public class GroupChatHandler
                             senderId)
                 .Select(
                     x => x.UserId)
+                .Distinct()
                 .ToListAsync(
                     cancellationToken);
 
 
         /*
-         * Tạo typing event.
+         * Không có member khác.
+         */
+
+        if (receiverIds.Count == 0)
+        {
+            return;
+        }
+
+
+        /*
+         * ==================================================
+         * CREATE TYPING EVENT
+         * ==================================================
          */
 
         var payload =
             new
             {
-                type = isTyping
-                    ? "typing_start"
-                    : "typing_stop",
+                type =
+                    isTyping
+                        ? "typing_start"
+                        : "typing_stop",
 
                 conversationId =
                     request.ConversationId,
@@ -110,7 +160,9 @@ public class GroupChatHandler
 
 
         /*
-         * Gửi tới tất cả member.
+         * ==================================================
+         * SEND TO ALL MEMBERS
+         * ==================================================
          */
 
         foreach (var receiverId in receiverIds)

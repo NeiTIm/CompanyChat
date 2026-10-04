@@ -8,7 +8,7 @@ using CompanyChat.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
+using System.Text.Json;
 namespace CompanyChat.Api.Controllers;
 
 [ApiController]
@@ -20,8 +20,8 @@ public class ConversationsController(
     ConversationAccessService conversationAccess) : ControllerBase
 {
     private int CurrentUserId =>
-     conversationAccess.GetUserId(User)
-     ?? throw new UnauthorizedAccessException();
+        conversationAccess.GetUserId(User)
+        ?? throw new UnauthorizedAccessException();
 
 
     /*
@@ -259,18 +259,49 @@ public class ConversationsController(
          * =================================================
          */
 
-        var currentMember =
-            await conversationAccess.GetMemberAsync(
-                User,
-                conversationId);
+        // Lấy đúng ConversationMember của user hiện tại
+var currentMember =
+    await db.ConversationMembers
+        .FirstOrDefaultAsync(x =>
+            x.ConversationId ==
+                conversationId &&
+            x.UserId ==
+                CurrentUserId);
 
-        if (currentMember is null)
-        {
-            return Forbid();
-        }
+if (currentMember is null)
+{
+    return Forbid();
+}
 
-        var historyDeletedAt =
-            currentMember.HistoryDeletedAt;
+var historyDeletedAt =
+    currentMember.HistoryDeletedAt;
+
+        Console.WriteLine(
+$"[GET MESSAGES] " +
+$"UserId={CurrentUserId}, " +
+$"ConversationId={conversationId}, " +
+$"HistoryDeletedAt={historyDeletedAt}");
+        /*
+         * =================================================
+         * LẤY DANH SÁCH MEMBER HIỆN TẠI
+         * =================================================
+         *
+         * Dùng cho Group DeliveryStatus.
+         *
+         * Nếu một user đã rời Group thì UserState cũ
+         * của user đó không còn được tính vào status.
+         */
+
+        var activeMemberIds =
+            await db.ConversationMembers
+                .Where(
+                    x =>
+                        x.ConversationId ==
+                        conversationId)
+                .Select(
+                    x =>
+                        x.UserId)
+                .ToListAsync();
 
 
         /*
@@ -375,6 +406,14 @@ public class ConversationsController(
                                     state.MessageId)
                         .SenderId;
 
+                /*
+                 * Không cần gửi status cho chính mình.
+                 */
+                if (senderId == CurrentUserId)
+                {
+                    continue;
+                }
+
                 await SendMessageStatusAsync(
                     senderId,
                     state.MessageId,
@@ -394,7 +433,9 @@ public class ConversationsController(
                 x =>
                 {
                     var deliveryStatus =
-                        GetDeliveryStatus(x);
+                        GetDeliveryStatus(
+                            x,
+                            activeMemberIds);
 
                     return new MessageDto(
                         x.Id,
@@ -543,6 +584,15 @@ public class ConversationsController(
             var state
             in unreadStates)
         {
+            /*
+             * Không cần gửi read status cho chính mình.
+             */
+            if (state.Message.SenderId ==
+                CurrentUserId)
+            {
+                continue;
+            }
+
             await SendMessageStatusAsync(
                 state.Message.SenderId,
                 state.MessageId,
@@ -565,10 +615,31 @@ public class ConversationsController(
      * ==================================================
      * DELIVERY STATUS
      * ==================================================
+     *
+     * Private:
+     *     Có 1 receiver.
+     *
+     * Department:
+     *     Có nhiều receiver.
+     *
+     * Group:
+     *     Có nhiều receiver.
+     *
+     * Với Group:
+     *
+     *     Tất cả receiver read
+     *          -> read
+     *
+     *     Có ít nhất một receiver delivered
+     *          -> delivered
+     *
+     *     Chưa receiver nào delivered
+     *          -> sent
      */
 
     private static string GetDeliveryStatus(
-        Message message)
+        Message message,
+        IReadOnlyCollection<int> activeMemberIds)
     {
         /*
          * Message của người khác:
@@ -576,30 +647,73 @@ public class ConversationsController(
          * trạng thái gửi.
          */
 
-        if (message.SenderId != 0)
+        if (message.SenderId == 0)
         {
-            var receiverState =
-                message.UserStates
-                    .FirstOrDefault(
-                        x =>
-                            x.UserId !=
-                            message.SenderId);
-
-            if (receiverState is null)
-            {
-                return "sent";
-            }
-
-            if (receiverState.IsRead)
-            {
-                return "read";
-            }
-
-            if (receiverState.IsDelivered)
-            {
-                return "delivered";
-            }
+            return "sent";
         }
+
+
+        /*
+         * =================================================
+         * LẤY RECEIVER HIỆN TẠI
+         * =================================================
+         *
+         * Không lấy những user đã rời Group.
+         */
+
+        var receiverStates =
+            message.UserStates
+                .Where(
+                    x =>
+                        x.UserId !=
+                            message.SenderId &&
+
+                        activeMemberIds.Contains(
+                            x.UserId))
+                .ToList();
+
+
+        /*
+         * Không có receiver.
+         */
+
+        if (receiverStates.Count == 0)
+        {
+            return "sent";
+        }
+
+
+        /*
+         * =================================================
+         * TẤT CẢ RECEIVER ĐÃ READ
+         * =================================================
+         */
+
+        if (receiverStates.All(
+                x => x.IsRead))
+        {
+            return "read";
+        }
+
+
+        /*
+         * =================================================
+         * CÓ ÍT NHẤT MỘT RECEIVER ĐÃ DELIVERED
+         * =================================================
+         */
+
+        if (receiverStates.Any(
+                x => x.IsDelivered))
+        {
+            return "delivered";
+        }
+
+
+        /*
+         * =================================================
+         * CHƯA AI NHẬN
+         * =================================================
+         */
 
         return "sent";
     }
@@ -642,62 +756,65 @@ public class ConversationsController(
 
     [HttpDelete("{conversationId:int}/history")]
     public async Task<IActionResult>
-        DeleteConversationHistory(
-            int conversationId)
+    DeleteConversationHistory(
+        int conversationId)
     {
-        /*
-         * =================================================
-         * KIỂM TRA QUYỀN TRUY CẬP
-         * =================================================
-         */
-
         var canAccess =
-            await conversationAccess.CanAccessAsync(
-                User,
-                conversationId);
+            await conversationAccess
+                .CanAccessAsync(
+                    User,
+                    conversationId);
 
         if (!canAccess)
         {
             return Forbid();
         }
 
+        var currentUserId = CurrentUserId;
 
-        /*
-         * Lấy ConversationMember
-         */
-
+        // Lấy đúng ConversationMember của user hiện tại
         var member =
-            await conversationAccess.GetMemberAsync(
-                User,
-                conversationId);
+            await db.ConversationMembers
+                .FirstOrDefaultAsync(x =>
+                    x.ConversationId ==
+                        conversationId &&
+                    x.UserId ==
+                        currentUserId);
 
         if (member is null)
         {
             return Forbid();
         }
 
-
-        /*
-         * Ghi nhận thời điểm CurrentUser
-         * xóa lịch sử.
-         *
-         * User còn lại không bị ảnh hưởng.
-         */
-
+        // Chỉ ẩn lịch sử đối với user hiện tại
         member.HistoryDeletedAt =
             DateTime.UtcNow;
 
         await db.SaveChangesAsync();
 
+        // Đọc lại từ database để đảm bảo dữ liệu đã được lưu
+        var savedHistoryDeletedAt =
+            await db.ConversationMembers
+                .Where(x =>
+                    x.ConversationId ==
+                        conversationId &&
+                    x.UserId ==
+                        currentUserId)
+                .Select(x => x.HistoryDeletedAt)
+                .FirstOrDefaultAsync();
+
+        Console.WriteLine(
+            $"[DELETE HISTORY] " +
+            $"UserId={currentUserId}, " +
+            $"ConversationId={conversationId}, " +
+            $"HistoryDeletedAt={savedHistoryDeletedAt}");
 
         return Ok(
             new
             {
                 conversationId,
-
                 historyDeletedAt =
-                    member.HistoryDeletedAt,
-
+                    savedHistoryDeletedAt,
                 message =
                     "Conversation history deleted."
             });
@@ -923,11 +1040,12 @@ public class ConversationsController(
                 conversation.CreatedAt));
     }
 
+
     /*
-    * ==================================================
-    * CREATE GROUP CONVERSATION
-    * ==================================================
-    */
+     * ==================================================
+     * CREATE GROUP CONVERSATION
+     * ==================================================
+     */
 
     [HttpPost("group")]
     public async Task<IActionResult> CreateGroup(
@@ -948,7 +1066,8 @@ public class ConversationsController(
         {
             return BadRequest(new
             {
-                message = "Group name cannot exceed 100 characters."
+                message =
+                    "Group name cannot exceed 100 characters."
             });
         }
 
@@ -1061,11 +1180,12 @@ public class ConversationsController(
         });
     }
 
+
     /*
-    * ==================================================
-    * GET MY GROUPS
-    * ==================================================
-    */
+     * ==================================================
+     * GET MY GROUPS
+     * ==================================================
+     */
 
     [HttpGet("groups")]
     public async Task<IActionResult> GetMyGroups()
@@ -1110,11 +1230,12 @@ public class ConversationsController(
         return Ok(groups);
     }
 
+
     /*
-    * ==================================================
-    * GET GROUP MEMBERS
-    * ==================================================
-    */
+     * ==================================================
+     * GET GROUP MEMBERS
+     * ==================================================
+     */
 
     [HttpGet("{conversationId:int}/members")]
     public async Task<IActionResult> GetGroupMembers(
@@ -1245,11 +1366,12 @@ public class ConversationsController(
             });
     }
 
+
     /*
-    * ==================================================
-    * ADD MEMBER TO GROUP
-    * ==================================================
-    */
+     * ==================================================
+     * ADD MEMBER TO GROUP
+     * ==================================================
+     */
 
     [HttpPost("{conversationId:int}/members")]
     public async Task<IActionResult> AddGroupMember(
@@ -1434,11 +1556,12 @@ public class ConversationsController(
             });
     }
 
+
     /*
-    * ==================================================
-    * REMOVE MEMBER FROM GROUP
-    * ==================================================
-    */
+     * ==================================================
+     * REMOVE MEMBER FROM GROUP
+     * ==================================================
+     */
 
     [HttpDelete("{conversationId:int}/members")]
     public async Task<IActionResult> RemoveGroupMember(
@@ -1606,11 +1729,12 @@ public class ConversationsController(
             });
     }
 
+
     /*
-    * ==================================================
-    * UPDATE GROUP MEMBER ROLE
-    * ==================================================
-    */
+     * ==================================================
+     * UPDATE GROUP MEMBER ROLE
+     * ==================================================
+     */
 
     [HttpPatch("{conversationId:int}/members/{userId:int}/role")]
     public async Task<IActionResult> UpdateGroupMemberRole(
@@ -1640,6 +1764,7 @@ public class ConversationsController(
                 });
         }
 
+
         /*
          * ==================================================
          * LẤY MEMBER HIỆN TẠI
@@ -1658,6 +1783,7 @@ public class ConversationsController(
             return Forbid();
         }
 
+
         /*
          * ==================================================
          * CHỈ OWNER ĐƯỢC ĐỔI ROLE
@@ -1668,6 +1794,7 @@ public class ConversationsController(
         {
             return Forbid();
         }
+
 
         /*
          * ==================================================
@@ -1684,6 +1811,7 @@ public class ConversationsController(
                         "You cannot change your own role."
                 });
         }
+
 
         /*
          * ==================================================
@@ -1704,6 +1832,7 @@ public class ConversationsController(
                         "Role must be Admin or Member."
                 });
         }
+
 
         /*
          * ==================================================
@@ -1728,6 +1857,7 @@ public class ConversationsController(
                 });
         }
 
+
         /*
          * ==================================================
          * KHÔNG CHO ĐỔI OWNER
@@ -1744,6 +1874,7 @@ public class ConversationsController(
                 });
         }
 
+
         /*
          * ==================================================
          * KIỂM TRA ROLE HIỆN TẠI
@@ -1759,6 +1890,7 @@ public class ConversationsController(
                         $"User is already {newRole}."
                 });
         }
+
 
         /*
          * ==================================================
@@ -1781,11 +1913,12 @@ public class ConversationsController(
             });
     }
 
+
     /*
- * ==================================================
- * LEAVE GROUP
- * ==================================================
- */
+     * ==================================================
+     * LEAVE GROUP
+     * ==================================================
+     */
 
     [HttpDelete("{conversationId:int}/leave")]
     public async Task<IActionResult> LeaveGroup(
@@ -1813,6 +1946,7 @@ public class ConversationsController(
                 });
         }
 
+
         /*
          * ==================================================
          * TÌM MEMBER HIỆN TẠI
@@ -1831,6 +1965,7 @@ public class ConversationsController(
             return Forbid();
         }
 
+
         /*
          * ==================================================
          * OWNER KHÔNG ĐƯỢC RỜI GROUP
@@ -1846,6 +1981,7 @@ public class ConversationsController(
                         "Owner must transfer ownership before leaving the group."
                 });
         }
+
 
         /*
          * ==================================================
@@ -1866,11 +2002,12 @@ public class ConversationsController(
             });
     }
 
+
     /*
-    * ==================================================
-    * TRANSFER GROUP OWNERSHIP
-    * ==================================================
-    */
+     * ==================================================
+     * TRANSFER GROUP OWNERSHIP
+     * ==================================================
+     */
 
     [HttpPatch("{conversationId:int}/transfer-owner/{userId:int}")]
     public async Task<IActionResult> TransferGroupOwnership(
@@ -1899,6 +2036,7 @@ public class ConversationsController(
                 });
         }
 
+
         /*
          * ==================================================
          * LẤY OWNER HIỆN TẠI
@@ -1917,6 +2055,7 @@ public class ConversationsController(
             return Forbid();
         }
 
+
         /*
          * ==================================================
          * CHỈ OWNER ĐƯỢC CHUYỂN QUYỀN
@@ -1927,6 +2066,7 @@ public class ConversationsController(
         {
             return Forbid();
         }
+
 
         /*
          * ==================================================
@@ -1943,6 +2083,7 @@ public class ConversationsController(
                         "You are already the owner."
                 });
         }
+
 
         /*
          * ==================================================
@@ -1967,6 +2108,7 @@ public class ConversationsController(
                 });
         }
 
+
         /*
          * ==================================================
          * CHUYỂN QUYỀN
@@ -1989,11 +2131,12 @@ public class ConversationsController(
             });
     }
 
+
     /*
-    * ==================================================
-    * DELETE GROUP
-    * ==================================================
-    */
+     * ==================================================
+     * DELETE GROUP
+     * ==================================================
+     */
 
     [HttpDelete("{conversationId:int}")]
     public async Task<IActionResult> DeleteGroup(
@@ -2021,6 +2164,7 @@ public class ConversationsController(
                 });
         }
 
+
         /*
          * ==================================================
          * KIỂM TRA MEMBER HIỆN TẠI
@@ -2039,6 +2183,7 @@ public class ConversationsController(
             return Forbid();
         }
 
+
         /*
          * ==================================================
          * CHỈ OWNER ĐƯỢC XÓA GROUP
@@ -2049,6 +2194,7 @@ public class ConversationsController(
         {
             return Forbid();
         }
+
 
         /*
          * ==================================================
@@ -2062,6 +2208,7 @@ public class ConversationsController(
                     x.ConversationId == conversationId)
                 .Select(x => x.Id)
                 .ToListAsync();
+
 
         /*
          * ==================================================
@@ -2094,6 +2241,7 @@ public class ConversationsController(
                 conversationNotifications);
         }
 
+
         /*
          * ==================================================
          * XÓA MESSAGE USER STATE
@@ -2109,6 +2257,7 @@ public class ConversationsController(
         db.MessageUserStates.RemoveRange(
             messageStates);
 
+
         /*
          * ==================================================
          * XÓA MESSAGE
@@ -2122,6 +2271,7 @@ public class ConversationsController(
                 .ToListAsync();
 
         db.Messages.RemoveRange(messages);
+
 
         /*
          * ==================================================
@@ -2138,6 +2288,7 @@ public class ConversationsController(
         db.ConversationMembers.RemoveRange(
             members);
 
+
         /*
          * ==================================================
          * XÓA CONVERSATION
@@ -2153,6 +2304,181 @@ public class ConversationsController(
             {
                 conversationId,
                 message = "Group deleted successfully."
+            });
+    }
+
+    /*
+ * ==================================================
+ * DELETE MESSAGE FOR EVERYONE
+ * ==================================================
+ */
+
+    [HttpDelete("messages/{messageId:long}/everyone")]
+    public async Task<IActionResult>
+        DeleteMessageForEveryone(
+            long messageId)
+    {
+        /*
+         * ==================================================
+         * LẤY MESSAGE
+         * ==================================================
+         */
+
+        var message =
+            await db.Messages
+                .FirstOrDefaultAsync(
+                    x => x.Id == messageId);
+
+        if (message is null)
+        {
+            return NotFound(
+                new
+                {
+                    message =
+                        "Message not found."
+                });
+        }
+
+
+        /*
+         * ==================================================
+         * KIỂM TRA QUYỀN TRUY CẬP
+         * ==================================================
+         */
+
+        var canAccess =
+            await conversationAccess
+                .CanAccessAsync(
+                    User,
+                    message.ConversationId);
+
+        if (!canAccess)
+        {
+            return Forbid();
+        }
+
+
+        /*
+         * ==================================================
+         * CHỈ NGƯỜI GỬI ĐƯỢC XÓA MỌI NGƯỜI
+         * ==================================================
+         */
+
+        if (message.SenderId != CurrentUserId)
+        {
+            return Forbid();
+        }
+
+
+        /*
+         * ==================================================
+         * ĐÃ XÓA RỒI
+         * ==================================================
+         */
+
+        if (message.IsDeleted)
+        {
+            return Ok(
+                new
+                {
+                    messageId,
+                    conversationId =
+                        message.ConversationId,
+
+                    message =
+                        "Message already deleted."
+                });
+        }
+
+
+        /*
+         * ==================================================
+         * ĐÁNH DẤU MESSAGE ĐÃ XÓA
+         * ==================================================
+         */
+
+        message.IsDeleted = true;
+        message.DeletedAt = DateTime.UtcNow;
+        message.DeletedBy = CurrentUserId;
+
+
+        await db.SaveChangesAsync();
+
+
+        /*
+         * ==================================================
+         * LẤY MEMBER CỦA CONVERSATION
+         * ==================================================
+         */
+
+        var memberIds =
+            await db.ConversationMembers
+                .AsNoTracking()
+                .Where(
+                    x =>
+                        x.ConversationId ==
+                        message.ConversationId)
+                .Select(
+                    x => x.UserId)
+                .Distinct()
+                .ToListAsync();
+
+
+        /*
+         * ==================================================
+         * TẠO WEBSOCKET EVENT
+         * ==================================================
+         */
+
+        var deletedJson =
+            JsonSerializer.Serialize(
+                new
+                {
+                    type =
+                        "message_deleted",
+
+                    conversationId =
+                        message.ConversationId,
+
+                    messageId =
+                        message.Id,
+
+                    mode =
+                        "everyone"
+                });
+
+
+        /*
+         * ==================================================
+         * GỬI CHO TẤT CẢ MEMBER
+         * ==================================================
+         */
+
+        foreach (var memberId in memberIds)
+        {
+            await connections.SendToUserAsync(
+                memberId,
+                deletedJson);
+        }
+
+
+        /*
+         * ==================================================
+         * RESPONSE
+         * ==================================================
+         */
+
+        return Ok(
+            new
+            {
+                messageId =
+                    message.Id,
+
+                conversationId =
+                    message.ConversationId,
+
+                message =
+                    "Message deleted for everyone."
             });
     }
 }

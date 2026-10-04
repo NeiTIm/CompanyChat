@@ -2,10 +2,10 @@ using System.Security.Claims;
 using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
 using CompanyChat.Api.Models;
-using Microsoft.EntityFrameworkCore;
-using CompanyChat.Api.WebSockets;
-using CompanyChat.Api.Services.Notification;
 using CompanyChat.Api.Services;
+using CompanyChat.Api.Services.Notification;
+using CompanyChat.Api.WebSockets;
+using Microsoft.EntityFrameworkCore;
 
 namespace CompanyChat.Api.Services.Chat;
 
@@ -50,6 +50,12 @@ public class ChatMessageService(
     INotificationService notificationService,
     ConnectionManager connections)
 {
+    /*
+     * ==================================================
+     * CREATE MESSAGE
+     * ==================================================
+     */
+
     public async Task<(ChatMessageResult? Result, string? Error)>
         CreateMessageAsync(
             ClaimsPrincipal currentUser,
@@ -58,9 +64,33 @@ public class ChatMessageService(
             CancellationToken cancellationToken)
     {
         /*
-         * ==========================
-         * SECURITY / DATA SCOPE
-         * ==========================
+         * ==================================================
+         * VALIDATE CONTENT
+         * ==================================================
+         */
+
+        if (string.IsNullOrWhiteSpace(request.Content))
+        {
+            return (
+                null,
+                "Message content is required.");
+        }
+
+        var content =
+            request.Content.Trim();
+
+        if (content.Length > 5000)
+        {
+            return (
+                null,
+                "Message cannot exceed 5000 characters.");
+        }
+
+
+        /*
+         * ==================================================
+         * CHECK ACCESS
+         * ==================================================
          */
 
         var canAccess =
@@ -75,10 +105,11 @@ public class ChatMessageService(
                 "You do not have access to this conversation.");
         }
 
+
         /*
-         * ==========================
+         * ==================================================
          * GET CONVERSATION
-         * ==========================
+         * ==================================================
          */
 
         var conversation =
@@ -87,7 +118,7 @@ public class ChatMessageService(
                 .FirstOrDefaultAsync(
                     x =>
                         x.Id ==
-                        request.ConversationId,
+                            request.ConversationId,
                     cancellationToken);
 
         if (conversation is null)
@@ -97,20 +128,15 @@ public class ChatMessageService(
                 "Conversation does not exist.");
         }
 
+
         var conversationType =
             conversation.Type;
 
+
         /*
-         * ==========================
+         * ==================================================
          * GET RECEIVERS
-         * ==========================
-         *
-         * Private:
-         * - Chỉ có 1 receiver.
-         *
-         * Department / Group:
-         * - Lấy tất cả member.
-         * - Không gửi lại cho sender.
+         * ==================================================
          */
 
         List<int> receiverIds;
@@ -118,7 +144,7 @@ public class ChatMessageService(
         if (conversationType == "Private")
         {
             /*
-             * Private bắt buộc phải có ReceiverId.
+             * Private phải có ReceiverId.
              */
 
             if (!request.ReceiverId.HasValue)
@@ -131,8 +157,16 @@ public class ChatMessageService(
             var receiverId =
                 request.ReceiverId.Value;
 
+            if (receiverId == senderId)
+            {
+                return (
+                    null,
+                    "You cannot send a message to yourself.");
+            }
+
+
             /*
-             * Receiver phải là member.
+             * Receiver phải thuộc conversation.
              */
 
             var receiverIsMember =
@@ -142,6 +176,7 @@ public class ChatMessageService(
                         x =>
                             x.ConversationId ==
                                 request.ConversationId &&
+
                             x.UserId ==
                                 receiverId,
                         cancellationToken);
@@ -163,9 +198,10 @@ public class ChatMessageService(
             conversationType == "Group")
         {
             /*
-             * Department / Group:
-             * - Lấy tất cả member.
-             * - Không gửi lại cho sender.
+             * Group / Department:
+             *
+             * Gửi cho tất cả member
+             * ngoại trừ sender.
              */
 
             receiverIds =
@@ -175,10 +211,12 @@ public class ChatMessageService(
                         x =>
                             x.ConversationId ==
                                 request.ConversationId &&
+
                             x.UserId !=
                                 senderId)
                     .Select(
                         x => x.UserId)
+                    .Distinct()
                     .ToListAsync(
                         cancellationToken);
 
@@ -198,26 +236,31 @@ public class ChatMessageService(
                 "Unsupported conversation type.");
         }
 
+
         /*
-         * ==========================
-         * REPLY SECURITY CHECK
-         * ==========================
+         * ==================================================
+         * REPLY VALIDATION
+         * ==================================================
          */
+
+        Message? replyMessage = null;
 
         if (request.ReplyToMessageId.HasValue)
         {
-            var replyMessageExists =
+            replyMessage =
                 await db.Messages
                     .AsNoTracking()
-                    .AnyAsync(
+                    .Include(x => x.Sender)
+                    .FirstOrDefaultAsync(
                         x =>
                             x.Id ==
                                 request.ReplyToMessageId.Value &&
+
                             x.ConversationId ==
                                 request.ConversationId,
                         cancellationToken);
 
-            if (!replyMessageExists)
+            if (replyMessage is null)
             {
                 return (
                     null,
@@ -225,11 +268,15 @@ public class ChatMessageService(
             }
         }
 
+
         /*
-         * ==========================
+         * ==================================================
          * CREATE MESSAGE
-         * ==========================
+         * ==================================================
          */
+
+        var now =
+            DateTime.UtcNow;
 
         var message =
             new Message
@@ -241,10 +288,10 @@ public class ChatMessageService(
                     senderId,
 
                 Content =
-                    request.Content.Trim(),
+                    content,
 
                 SentAt =
-                    DateTime.UtcNow,
+                    now,
 
                 ReplyToMessageId =
                     request.ReplyToMessageId
@@ -255,28 +302,23 @@ public class ChatMessageService(
         await db.SaveChangesAsync(
             cancellationToken);
 
-        /*
-         * ==========================
-         * CREATE MESSAGE STATES
-         * ==========================
-         *
-         * Sender:
-         * - Delivered = true
-         * - Read = true
-         *
-         * Receivers:
-         * - Delivered = false
-         * - Read = false
-         */
 
-        var now =
-            DateTime.UtcNow;
+        /*
+         * ==================================================
+         * CREATE MESSAGE USER STATES
+         * ==================================================
+         */
 
         var states =
             new List<MessageUserState>();
 
+
         /*
-         * Sender state
+         * Sender
+         *
+         * Sender đã gửi message nên:
+         * Delivered = true
+         * Read = true
          */
 
         states.Add(
@@ -298,11 +340,15 @@ public class ChatMessageService(
                     true,
 
                 ReadAt =
-                    now
+                    now,
+
+                IsDeletedForMe =
+                    false
             });
 
+
         /*
-         * Receiver states
+         * Receivers
          */
 
         foreach (var receiverId in receiverIds)
@@ -320,6 +366,9 @@ public class ChatMessageService(
                         false,
 
                     IsRead =
+                        false,
+
+                    IsDeletedForMe =
                         false
                 });
         }
@@ -329,25 +378,34 @@ public class ChatMessageService(
         await db.SaveChangesAsync(
             cancellationToken);
 
+
         /*
-         * ==========================
+         * ==================================================
          * GET SENDER
-         * ==========================
+         * ==================================================
          */
 
         var sender =
             await db.Users
                 .AsNoTracking()
-                .FirstAsync(
+                .FirstOrDefaultAsync(
                     x =>
                         x.Id ==
-                        senderId,
+                            senderId,
                     cancellationToken);
 
+        if (sender is null)
+        {
+            return (
+                null,
+                "Sender does not exist.");
+        }
+
+
         /*
-         * ==========================
+         * ==================================================
          * CREATE NOTIFICATIONS
-         * ==========================
+         * ==================================================
          */
 
         var notifications =
@@ -356,10 +414,10 @@ public class ChatMessageService(
         foreach (var receiverId in receiverIds)
         {
             /*
-             * Nếu người nhận đang mở đúng
-             * conversation này thì không tạo notification.
+             * Nếu receiver đang mở conversation:
              *
-             * Tin nhắn realtime vẫn được gửi bình thường.
+             * - Vẫn gửi realtime message.
+             * - Không tạo notification.
              */
 
             if (connections.IsUserViewingConversation(
@@ -369,27 +427,49 @@ public class ChatMessageService(
                 continue;
             }
 
+
+            var notificationType =
+                conversationType switch
+                {
+                    "Group" =>
+                        "GroupMessage",
+
+                    "Department" =>
+                        "DepartmentMessage",
+
+                    _ =>
+                        "Message"
+                };
+
+
+            var notificationTitle =
+                conversationType switch
+                {
+                    "Group" =>
+                        "Tin nhắn nhóm mới",
+
+                    "Department" =>
+                        "Tin nhắn phòng ban mới",
+
+                    _ =>
+                        "Tin nhắn mới"
+                };
+
+
             var notification =
                 await notificationService.CreateAsync(
                     receiverId,
 
-                    conversationType == "Department"
-                        ? "DepartmentMessage"
-                        : conversationType == "Group"
-                            ? "GroupMessage"
-                            : "Message",
+                    notificationType,
 
-                    conversationType == "Department"
-                        ? "Tin nhắn phòng ban mới"
-                        : conversationType == "Group"
-                            ? "Tin nhắn nhóm mới"
-                            : "Tin nhắn mới",
+                    notificationTitle,
 
                     $"{sender.FullName} đã gửi cho bạn một tin nhắn",
 
                     conversation.Id,
 
                     message.Id);
+
 
             notifications.Add(
                 new NotificationPayload(
@@ -404,25 +484,12 @@ public class ChatMessageService(
                     notification.CreatedAt));
         }
 
-        /*
-         * ==========================
-         * GET REPLY MESSAGE
-         * ==========================
-         */
 
-        var replyMessage =
-            request.ReplyToMessageId.HasValue
-                ? await db.Messages
-                    .AsNoTracking()
-                    .Include(x => x.Sender)
-                    .FirstOrDefaultAsync(
-                        x =>
-                            x.Id ==
-                                request.ReplyToMessageId.Value &&
-                            x.ConversationId ==
-                                request.ConversationId,
-                        cancellationToken)
-                : null;
+        /*
+         * ==================================================
+         * REPLY DTO
+         * ==================================================
+         */
 
         ReplyMessagePayload? replyTo =
             replyMessage is null
@@ -433,10 +500,11 @@ public class ChatMessageService(
                     replyMessage.Sender.FullName,
                     replyMessage.Content);
 
+
         /*
-         * ==========================
-         * BUILD MESSAGE PAYLOAD
-         * ==========================
+         * ==================================================
+         * MESSAGE PAYLOAD
+         * ==================================================
          */
 
         var payload =
@@ -452,10 +520,11 @@ public class ChatMessageService(
                 message.SentAt,
                 "sent");
 
+
         /*
-         * ==========================
+         * ==================================================
          * RESULT
-         * ==========================
+         * ==================================================
          */
 
         var result =
@@ -465,12 +534,20 @@ public class ChatMessageService(
                 payload,
                 notifications);
 
+
         return (
             result,
             null);
     }
 
-    public async Task MarkDeliveredAsync(
+
+    /*
+     * ==================================================
+     * MARK DELIVERED
+     * ==================================================
+     */
+
+    public async Task<bool> MarkDeliveredAsync(
         long messageId,
         int receiverId,
         CancellationToken cancellationToken)
@@ -481,18 +558,19 @@ public class ChatMessageService(
                     x =>
                         x.MessageId ==
                             messageId &&
+
                         x.UserId ==
                             receiverId,
                     cancellationToken);
 
         if (state is null)
         {
-            return;
+            return false;
         }
 
         if (state.IsDelivered)
         {
-            return;
+            return false;
         }
 
         state.IsDelivered = true;
@@ -502,5 +580,7 @@ public class ChatMessageService(
 
         await db.SaveChangesAsync(
             cancellationToken);
+
+        return true;
     }
 }

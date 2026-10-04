@@ -3,6 +3,8 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 
+using Microsoft.EntityFrameworkCore;
+using CompanyChat.Api.Models;
 using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
 using CompanyChat.Api.Services;
@@ -108,9 +110,6 @@ public class ChatWebSocketHandler
 
         /* ==================================================
            SEND CURRENT ONLINE USERS
-           
-           Browser vừa đăng nhập phải biết
-           những user khác đang Online.
         ================================================== */
 
         var onlineUserIds =
@@ -118,9 +117,7 @@ public class ChatWebSocketHandler
 
         foreach (var onlineUserId in onlineUserIds)
         {
-            /*
-             * Không cần gửi chính mình.
-             */
+            // Không cần gửi trạng thái của chính mình.
 
             if (onlineUserId == userId)
             {
@@ -177,6 +174,17 @@ public class ChatWebSocketHandler
                 socket,
                 userId);
         }
+        catch (OperationCanceledException)
+        {
+            // Connection bị hủy bình thường.
+        }
+        catch (WebSocketException ex)
+        {
+            logger.LogWarning(
+                ex,
+                "WebSocket disconnected for user {UserId}",
+                userId);
+        }
         catch (Exception ex)
         {
             logger.LogError(
@@ -199,8 +207,8 @@ public class ChatWebSocketHandler
             /* ==================================================
                USER OFFLINE
                
-               Chỉ broadcast khi connection
-               cuối cùng của user đóng.
+               Chỉ broadcast khi connection cuối cùng
+               của user đóng.
             ================================================== */
 
             if (becameOffline)
@@ -209,8 +217,7 @@ public class ChatWebSocketHandler
                     JsonSerializer.Serialize(
                         new
                         {
-                            type =
-                                "user_status",
+                            type = "user_status",
 
                             userId,
 
@@ -253,6 +260,11 @@ public class ChatWebSocketHandler
 
     /* ==================================================
        RECEIVE LOOP
+       
+       Đọc đầy đủ WebSocket message.
+       
+       Không giả định:
+       1 ReceiveAsync = 1 JSON hoàn chỉnh.
     ================================================== */
 
     private async Task ReceiveLoopAsync(
@@ -271,27 +283,55 @@ public class ChatWebSocketHandler
             socket.State ==
             WebSocketState.Open)
         {
-            var result =
-                await socket.ReceiveAsync(
-                    new ArraySegment<byte>(
-                        buffer),
-                    CancellationToken.None);
+            using var messageStream =
+                new MemoryStream();
+
+            WebSocketReceiveResult result;
 
 
             /* ==================================================
-               CLIENT ĐÓNG CONNECTION
+               ĐỌC ĐỦ MESSAGE
             ================================================== */
 
-            if (result.MessageType ==
-                WebSocketMessageType.Close)
+            do
             {
-                break;
+                result =
+                    await socket.ReceiveAsync(
+                        new ArraySegment<byte>(
+                            buffer),
+                        CancellationToken.None);
+
+
+                /* ==================================================
+                   CLIENT ĐÓNG CONNECTION
+                ================================================== */
+
+                if (result.MessageType ==
+                    WebSocketMessageType.Close)
+                {
+                    return;
+                }
+
+
+                /* ==================================================
+                   CHỈ XỬ LÝ TEXT
+                ================================================== */
+
+                if (result.MessageType !=
+                    WebSocketMessageType.Text)
+                {
+                    continue;
+                }
+
+
+                await messageStream.WriteAsync(
+                    buffer.AsMemory(
+                        0,
+                        result.Count));
+
             }
+            while (!result.EndOfMessage);
 
-
-            /* ==================================================
-               CHỈ XỬ LÝ TEXT
-            ================================================== */
 
             if (result.MessageType !=
                 WebSocketMessageType.Text)
@@ -302,9 +342,7 @@ public class ChatWebSocketHandler
 
             var json =
                 Encoding.UTF8.GetString(
-                    buffer,
-                    0,
-                    result.Count);
+                    messageStream.ToArray());
 
 
             ChatMessage? message;
@@ -325,7 +363,7 @@ public class ChatWebSocketHandler
                                 true
                         });
             }
-            catch
+            catch (JsonException)
             {
                 await SendErrorAsync(
                     senderId,
@@ -351,6 +389,16 @@ public class ChatWebSocketHandler
                 case "conversation_change":
 
                     await HandleConversationChangeAsync(
+                        currentUser,
+                        senderId,
+                        message);
+
+                    break;
+
+
+                case "read":
+
+                    await HandleReadAsync(
                         currentUser,
                         senderId,
                         message);
@@ -405,6 +453,14 @@ public class ChatWebSocketHandler
 
     /* ==================================================
        HANDLE MESSAGE
+       
+       ChatMessageService xử lý:
+       - Private
+       - Department
+       - Group
+       - Reply
+       - MessageUserState
+       - Notification
     ================================================== */
 
     private async Task HandleMessageAsync(
@@ -420,6 +476,10 @@ public class ChatWebSocketHandler
                     request,
                     CancellationToken.None);
 
+
+        /* ==================================================
+           CREATE MESSAGE ERROR
+        ================================================== */
 
         if (!string.IsNullOrEmpty(
                 result.Error))
@@ -454,6 +514,12 @@ public class ChatWebSocketHandler
 
         /* ==================================================
            SEND MESSAGE TO RECEIVERS
+           
+           Group:
+           message được gửi tới từng member.
+           
+           Nếu gửi thành công:
+           MessageUserState.IsDelivered = true.
         ================================================== */
 
         foreach (
@@ -479,6 +545,9 @@ public class ChatWebSocketHandler
 
         /* ==================================================
            SEND NOTIFICATIONS
+           
+           Notification đã được quyết định
+           ở ChatMessageService.
         ================================================== */
 
         foreach (
@@ -504,20 +573,35 @@ public class ChatWebSocketHandler
 
         /* ==================================================
            SENDER DELIVERY STATUS
+           
+           Không dùng:
+           
+           Any(IsOnline)
+           
+           Vì Group có nhiều receiver.
+           
+           Dựa vào MessageUserState thực tế:
+           
+           - tất cả read       -> read
+           - có receiver
+             delivered        -> delivered
+           - chưa receiver    -> sent
         ================================================== */
 
-        var hasOnlineReceiver =
-            messageResult.ReceiverIds
-                .Any(
-                    receiverId =>
-                        connections.IsOnline(
-                            receiverId));
+        var receiverStates =
+            await db.MessageUserStates
+                .AsNoTracking()
+                .Where(x =>
+                    x.MessageId ==
+                        messageResult.MessageId &&
+
+                    x.UserId != senderId)
+                .ToListAsync();
 
 
         var senderStatus =
-            hasOnlineReceiver
-                ? "delivered"
-                : "sent";
+            GetGroupDeliveryStatus(
+                receiverStates);
 
 
         var senderMessage =
@@ -539,9 +623,58 @@ public class ChatWebSocketHandler
                 });
 
 
+        /* ==================================================
+           SEND MESSAGE BACK TO SENDER
+           
+           Dùng để replace optimistic message
+           ở React.
+        ================================================== */
+
         await connections.SendToUserAsync(
             senderId,
             senderJson);
+    }
+
+
+    /* ==================================================
+       GET DELIVERY STATUS
+       
+       Dùng được cho:
+       - Private
+       - Department
+       - Group
+       
+       Group:
+       - Không có receiver -> sent
+       - Tất cả read -> read
+       - Có ít nhất một receiver delivered -> delivered
+       - Chưa ai nhận -> sent
+    ================================================== */
+
+    private static string GetGroupDeliveryStatus(
+        List<MessageUserState> receiverStates)
+    {
+        if (receiverStates.Count == 0)
+        {
+            return "sent";
+        }
+
+
+        if (receiverStates.All(
+                x => x.IsRead))
+        {
+            return "read";
+        }
+
+
+        if (receiverStates.Any(
+                x => x.IsDelivered))
+        {
+            return "delivered";
+        }
+
+
+        return "sent";
     }
 
 
@@ -575,7 +708,211 @@ public class ChatWebSocketHandler
 
 
     /* ==================================================
+       HANDLE READ
+       
+       Khi user mở Group:
+       React gửi:
+       
+       {
+           type: "read",
+           conversationId: 23
+       }
+       
+       Backend chỉ mark read những message:
+       - thuộc conversation
+       - thuộc user hiện tại
+       - chưa read
+       - chưa DeleteForMe
+       - nằm sau HistoryDeletedAt
+    ================================================== */
+
+    private async Task HandleReadAsync(
+        ClaimsPrincipal currentUser,
+        int senderId,
+        ChatMessage request)
+    {
+        /* ==================================================
+           CHECK ACCESS
+        ================================================== */
+
+        if (!await conversationAccess
+                .CanAccessAsync(
+                    currentUser,
+                    request.ConversationId))
+        {
+            await SendErrorAsync(
+                senderId,
+                "Bạn không có quyền truy cập cuộc trò chuyện.",
+                CancellationToken.None);
+
+            return;
+        }
+
+
+        /* ==================================================
+           LẤY HISTORY DELETED AT
+           
+           Nếu user từng xóa lịch sử:
+           
+           HistoryDeletedAt = 10:00
+           
+           thì message trước 10:00
+           không được mark read.
+        ================================================== */
+
+        var member =
+            await db.ConversationMembers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.ConversationId ==
+                            request.ConversationId &&
+
+                        x.UserId ==
+                            senderId);
+
+
+        if (member == null)
+        {
+            await SendErrorAsync(
+                senderId,
+                "Bạn không còn là thành viên của cuộc trò chuyện.",
+                CancellationToken.None);
+
+            return;
+        }
+
+
+        var historyDeletedAt =
+            member.HistoryDeletedAt;
+
+
+        /* ==================================================
+           LẤY MESSAGE CHƯA READ
+        ================================================== */
+
+        var unreadStates =
+            await db.MessageUserStates
+                .Include(x => x.Message)
+                .Where(x =>
+                    x.UserId ==
+                        senderId &&
+
+                    x.Message.ConversationId ==
+                        request.ConversationId &&
+
+                    !x.IsRead &&
+
+                    !x.IsDeletedForMe &&
+
+                    (
+                        historyDeletedAt == null ||
+
+                        x.Message.SentAt >
+                            historyDeletedAt.Value
+                    ))
+                .ToListAsync();
+
+
+        if (unreadStates.Count == 0)
+        {
+            return;
+        }
+
+
+        /* ==================================================
+           MARK READ
+        ================================================== */
+
+        var now =
+            DateTime.UtcNow;
+
+        foreach (var state in unreadStates)
+        {
+            state.IsRead =
+                true;
+
+            state.ReadAt =
+                now;
+
+
+            if (state.DeliveredAt == null)
+            {
+                state.IsDelivered =
+                    true;
+
+                state.DeliveredAt =
+                    now;
+            }
+        }
+
+
+        await db.SaveChangesAsync();
+
+
+        /* ==================================================
+           BÁO CHO SENDER
+           
+           Message đã được read.
+           
+           Với Group:
+           có thể có nhiều sender khác nhau.
+        ================================================== */
+
+        foreach (var state in unreadStates)
+        {
+            if (state.Message.SenderId ==
+                senderId)
+            {
+                continue;
+            }
+
+
+            await SendMessageStatusAsync(
+                state.Message.SenderId,
+                state.MessageId,
+                "read");
+        }
+    }
+
+
+    /* ==================================================
+       SEND MESSAGE STATUS
+    ================================================== */
+
+    private async Task SendMessageStatusAsync(
+        int userId,
+        long messageId,
+        string status)
+    {
+        var json =
+            JsonSerializer.Serialize(
+                new
+                {
+                    type =
+                        "message_status",
+
+                    messageId,
+
+                    status
+                });
+
+
+        await connections.SendToUserAsync(
+            userId,
+            json);
+    }
+
+
+    /* ==================================================
        HANDLE TYPING
+       
+       ChatWebSocketHandler chỉ route.
+       
+       Logic riêng:
+       - PrivateChatHandler
+       - DepartmentChatHandler
+       - GroupChatHandler
     ================================================== */
 
     private async Task HandleTypingAsync(
