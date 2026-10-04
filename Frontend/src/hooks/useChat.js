@@ -8,57 +8,40 @@ import {
   getMyGroups,
 } from "../services/conversationService";
 
-function useChat(
-  currentUser,
-  socketEvent,
-  websocket,
-  websocketConnected,
-) {
+function useChat(currentUser, socketEvent, websocket, websocketConnected) {
   /* =====================================================
      USERS
   ===================================================== */
 
   const [users, setUsers] = useState([]);
-
-  const [selectedUser, setSelectedUser] =
-    useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   /* =====================================================
      DEPARTMENT
   ===================================================== */
 
-  const [departmentConversation, setDepartmentConversation] =
-    useState(null);
+  const [departmentConversation, setDepartmentConversation] = useState(null);
 
   /* =====================================================
      GROUP
   ===================================================== */
 
-  const [groups, setGroups] =
-    useState([]);
-
-  const [selectedGroup, setSelectedGroup] =
-    useState(null);
+  const [groups, setGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(null);
 
   /* =====================================================
      UNREAD
   ===================================================== */
 
-  const [unreadCounts, setUnreadCounts] =
-    useState({});
-
-  const [departmentUnreadCount, setDepartmentUnreadCount] =
-    useState(0);
-
-  const [groupUnreadCounts, setGroupUnreadCounts] =
-    useState({});
+  const [unreadCounts, setUnreadCounts] = useState({});
+  const [departmentUnreadCount, setDepartmentUnreadCount] = useState(0);
+  const [groupUnreadCounts, setGroupUnreadCounts] = useState({});
 
   /* =====================================================
      ACTIVE CONVERSATION
   ===================================================== */
 
-  const activeConversationRef =
-    useRef(null);
+  const activeConversationRef = useRef(null);
 
   /* =====================================================
      LOAD DATA
@@ -78,12 +61,9 @@ function useChat(
     try {
       const data = await getUsers();
 
-      setUsers(data);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error(
-        "Load users error:",
-        error,
-      );
+      console.error("Load users error:", error);
     }
   }
 
@@ -95,12 +75,9 @@ function useChat(
     try {
       const data = await getMyGroups();
 
-      setGroups(data);
+      setGroups(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error(
-        "Load groups error:",
-        error,
-      );
+      console.error("Load groups error:", error);
     }
   }
 
@@ -110,27 +87,38 @@ function useChat(
 
   async function loadUnreadCounts() {
     try {
-      const data =
-        await getUnreadCounts();
+      const data = await getUnreadCounts();
+
+      if (!Array.isArray(data)) {
+        return;
+      }
 
       const privateCounts = {};
-
       const groupCounts = {};
 
       let departmentCount = 0;
 
       data.forEach((item) => {
+        const conversationType = item.conversationType ?? item.ConversationType;
+
+        const conversationId = Number(
+          item.conversationId ?? item.ConversationId ?? 0,
+        );
+
+        const userId = Number(item.userId ?? item.UserId ?? 0);
+
+        const unreadCount = Number(item.unreadCount ?? item.UnreadCount ?? 0);
+
+        if (unreadCount <= 0) {
+          return;
+        }
+
         /* ===============================================
            DEPARTMENT
         =============================================== */
 
-        if (
-          item.conversationType ===
-          "Department"
-        ) {
-          departmentCount +=
-            item.unreadCount;
-
+        if (conversationType === "Department") {
+          departmentCount += unreadCount;
           return;
         }
 
@@ -138,13 +126,10 @@ function useChat(
            GROUP
         =============================================== */
 
-        if (
-          item.conversationType ===
-          "Group"
-        ) {
-          groupCounts[
-            item.conversationId
-          ] = item.unreadCount;
+        if (conversationType === "Group") {
+          if (conversationId > 0) {
+            groupCounts[conversationId] = unreadCount;
+          }
 
           return;
         }
@@ -153,32 +138,18 @@ function useChat(
            PRIVATE
         =============================================== */
 
-        if (
-          item.conversationType ===
-          "Private"
-        ) {
-          privateCounts[
-            item.userId
-          ] = item.unreadCount;
+        if (conversationType === "Private") {
+          if (userId > 0) {
+            privateCounts[userId] = unreadCount;
+          }
         }
       });
 
-      setUnreadCounts(
-        privateCounts,
-      );
-
-      setDepartmentUnreadCount(
-        departmentCount,
-      );
-
-      setGroupUnreadCounts(
-        groupCounts,
-      );
+      setUnreadCounts(privateCounts);
+      setDepartmentUnreadCount(departmentCount);
+      setGroupUnreadCounts(groupCounts);
     } catch (error) {
-      console.error(
-        "Load unread counts error:",
-        error,
-      );
+      console.error("Load unread counts error:", error);
     }
   }
 
@@ -191,27 +162,17 @@ function useChat(
       return;
     }
 
-    if (
-      socketEvent.type !==
-      "user_status"
-    ) {
+    if (socketEvent.type !== "user_status") {
       return;
     }
 
-    const userId = Number(
-      socketEvent.userId,
-    );
+    const userId = Number(socketEvent.userId ?? socketEvent.UserId);
 
-    const isOnline = Boolean(
-      socketEvent.isOnline,
-    );
+    const isOnline = Boolean(socketEvent.isOnline ?? socketEvent.IsOnline);
 
     setUsers((current) =>
       current.map((user) => {
-        if (
-          Number(user.id) !==
-          userId
-        ) {
+        if (Number(user.id) !== userId) {
           return user;
         }
 
@@ -220,12 +181,10 @@ function useChat(
           isOnline,
         };
 
-        if (
-          socketEvent.lastSeen !==
-          undefined
-        ) {
-          updatedUser.lastSeen =
-            socketEvent.lastSeen;
+        const lastSeen = socketEvent.lastSeen ?? socketEvent.LastSeen;
+
+        if (lastSeen !== undefined) {
+          updatedUser.lastSeen = lastSeen;
         }
 
         return updatedUser;
@@ -237,30 +196,24 @@ function useChat(
      CONVERSATION CHANGE
   ===================================================== */
 
-  function handleConversationChange(
-    conversationId,
-  ) {
-    activeConversationRef.current =
-      conversationId;
+  function handleConversationChange(conversationId) {
+    const id = Number(conversationId);
 
-    if (
-      !websocket ||
-      websocket.readyState !==
-        WebSocket.OPEN
-    ) {
+    if (!id) {
+      activeConversationRef.current = null;
       return;
     }
 
-    if (!conversationId) {
+    activeConversationRef.current = id;
+
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
       return;
     }
 
     websocket.send(
       JSON.stringify({
         type: "conversation_change",
-
-        conversationId:
-          conversationId,
+        conversationId: id,
       }),
     );
   }
@@ -274,11 +227,7 @@ function useChat(
        DEPARTMENT
     =============================================== */
 
-    if (
-      departmentConversation &&
-      !selectedUser &&
-      !selectedGroup
-    ) {
+    if (departmentConversation && !selectedUser && !selectedGroup) {
       setDepartmentUnreadCount(0);
 
       return;
@@ -289,25 +238,21 @@ function useChat(
     =============================================== */
 
     if (selectedGroup) {
-      const conversationId =
-        Number(
-          selectedGroup.id ??
-            selectedGroup.conversationId,
-        );
-
-      setGroupUnreadCounts(
-        (current) => {
-          const copy = {
-            ...current,
-          };
-
-          delete copy[
-            conversationId
-          ];
-
-          return copy;
-        },
+      const conversationId = Number(
+        selectedGroup.conversationId ?? selectedGroup.id ?? 0,
       );
+
+      if (!conversationId) {
+        return;
+      }
+
+      setGroupUnreadCounts((current) => {
+        const copy = { ...current };
+
+        delete copy[conversationId];
+
+        return copy;
+      });
 
       return;
     }
@@ -316,27 +261,25 @@ function useChat(
        PRIVATE
     =============================================== */
 
-    if (!selectedUser) {
-      return;
-    }
+    if (selectedUser) {
+      const userId = Number(selectedUser.id);
 
-    setUnreadCounts(
-      (current) => {
-        const copy = {
-          ...current,
-        };
+      if (!userId) {
+        return;
+      }
 
-        delete copy[
-          selectedUser.id
-        ];
+      setUnreadCounts((current) => {
+        const copy = { ...current };
+
+        delete copy[userId];
 
         return copy;
-      },
-    );
+      });
+    }
   }
 
   /* =====================================================
-     UNREAD MESSAGE
+     RECEIVE MESSAGE → UPDATE UNREAD
   ===================================================== */
 
   useEffect(() => {
@@ -344,51 +287,46 @@ function useChat(
       return;
     }
 
-    if (
-      socketEvent.type !==
-      "message"
-    ) {
+    if (socketEvent.type !== "message") {
       return;
     }
 
-    const message =
-      socketEvent.message ||
-      socketEvent.data ||
+    const rawMessage =
+      socketEvent.message ??
+      socketEvent.Message ??
+      socketEvent.data ??
       socketEvent;
 
-    if (!message) {
+    if (!rawMessage) {
       return;
     }
 
+    const senderId = Number(rawMessage.senderId ?? rawMessage.SenderId ?? 0);
+
     /* ===============================================
-       OWN MESSAGE
+       IGNORE OWN MESSAGE
     =============================================== */
 
-    if (
-      Number(message.senderId) ===
-      Number(currentUser.id)
-    ) {
+    if (senderId === Number(currentUser?.id)) {
       return;
     }
 
-    /* ===============================================
-       CONVERSATION ID
-    =============================================== */
+    const conversationId = Number(
+      rawMessage.conversationId ?? rawMessage.ConversationId ?? 0,
+    );
 
-    const conversationId =
-      Number(
-        message.conversationId,
-      );
+    if (!conversationId) {
+      return;
+    }
+
+    const conversationType =
+      rawMessage.conversationType ?? rawMessage.ConversationType;
 
     /* ===============================================
        ACTIVE CONVERSATION
     =============================================== */
 
-    if (
-      Number(
-        activeConversationRef.current,
-      ) === conversationId
-    ) {
+    if (Number(activeConversationRef.current) === conversationId) {
       return;
     }
 
@@ -396,13 +334,8 @@ function useChat(
        DEPARTMENT
     =============================================== */
 
-    if (
-      message.conversationType ===
-      "Department"
-    ) {
-      setDepartmentUnreadCount(
-        (current) => current + 1,
-      );
+    if (conversationType === "Department") {
+      setDepartmentUnreadCount((current) => current + 1);
 
       return;
     }
@@ -411,20 +344,11 @@ function useChat(
        GROUP
     =============================================== */
 
-    if (
-      message.conversationType ===
-      "Group"
-    ) {
-      setGroupUnreadCounts(
-        (current) => ({
-          ...current,
-
-          [conversationId]:
-            (current[
-              conversationId
-            ] || 0) + 1,
-        }),
-      );
+    if (conversationType === "Group") {
+      setGroupUnreadCounts((current) => ({
+        ...current,
+        [conversationId]: (current[conversationId] || 0) + 1,
+      }));
 
       return;
     }
@@ -433,27 +357,13 @@ function useChat(
        PRIVATE
     =============================================== */
 
-    if (
-      message.conversationType ===
-      "Private"
-    ) {
-      const senderId =
-        Number(message.senderId);
-
-      setUnreadCounts(
-        (current) => ({
-          ...current,
-
-          [senderId]:
-            (current[senderId] ||
-              0) + 1,
-        }),
-      );
+    if (conversationType === "Private") {
+      setUnreadCounts((current) => ({
+        ...current,
+        [senderId]: (current[senderId] || 0) + 1,
+      }));
     }
-  }, [
-    socketEvent,
-    currentUser.id,
-  ]);
+  }, [socketEvent, currentUser?.id]);
 
   /* =====================================================
      SELECT PRIVATE USER
@@ -464,9 +374,7 @@ function useChat(
 
     setSelectedGroup(null);
 
-    setDepartmentConversation(
-      null,
-    );
+    setDepartmentConversation(null);
   }
 
   /* =====================================================
@@ -475,12 +383,9 @@ function useChat(
 
   async function handleSelectDepartment() {
     try {
-      const conversation =
-        await getOrCreateDepartmentConversation();
+      const conversation = await getOrCreateDepartmentConversation();
 
-      setDepartmentConversation(
-        conversation,
-      );
+      setDepartmentConversation(conversation);
 
       setSelectedUser(null);
 
@@ -488,10 +393,7 @@ function useChat(
 
       return conversation;
     } catch (error) {
-      console.error(
-        "Load department conversation error:",
-        error,
-      );
+      console.error("Load department conversation error:", error);
 
       throw error;
     }
@@ -502,13 +404,31 @@ function useChat(
   ===================================================== */
 
   function handleSelectGroup(group) {
+    if (!group) {
+      return;
+    }
+
     setSelectedGroup(group);
 
     setSelectedUser(null);
 
-    setDepartmentConversation(
-      null,
-    );
+    setDepartmentConversation(null);
+
+    /* ===============================================
+       CLEAR GROUP UNREAD IMMEDIATELY
+    =============================================== */
+
+    const conversationId = Number(group.conversationId ?? group.id ?? 0);
+
+    if (conversationId) {
+      setGroupUnreadCounts((current) => {
+        const copy = { ...current };
+
+        delete copy[conversationId];
+
+        return copy;
+      });
+    }
   }
 
   /* =====================================================
@@ -516,11 +436,6 @@ function useChat(
   ===================================================== */
 
   async function handleGroupUpdated() {
-    /*
-     * Reload lại danh sách group
-     * để cập nhật memberCount.
-     */
-
     await loadGroups();
   }
 
@@ -528,75 +443,60 @@ function useChat(
      REMOVE GROUP
   ===================================================== */
 
-  function handleGroupRemoved(
-    conversationId,
-  ) {
-    const id = Number(
-      conversationId,
-    );
+  function handleGroupRemoved(conversationId) {
+    const id = Number(conversationId);
+
+    if (!id) {
+      return;
+    }
 
     /* ===============================================
-       XÓA GROUP KHỎI SIDEBAR
+       REMOVE FROM GROUP LIST
     =============================================== */
 
     setGroups((current) =>
       current.filter(
-        (group) =>
-          Number(
-            group.conversationId ??
-              group.id,
-          ) !== id,
+        (group) => Number(group.conversationId ?? group.id) !== id,
       ),
     );
 
     /* ===============================================
-       XÓA UNREAD
+       REMOVE GROUP UNREAD
     =============================================== */
 
-    setGroupUnreadCounts(
-      (current) => {
-        const copy = {
-          ...current,
-        };
+    setGroupUnreadCounts((current) => {
+      const copy = { ...current };
 
-        delete copy[id];
+      delete copy[id];
 
-        return copy;
-      },
-    );
+      return copy;
+    });
 
     /* ===============================================
-       BỎ GROUP ĐANG CHỌN
+       REMOVE SELECTED GROUP
     =============================================== */
 
-    setSelectedGroup(
-      (current) => {
-        if (!current) {
-          return null;
-        }
+    setSelectedGroup((current) => {
+      if (!current) {
+        return null;
+      }
 
-        const currentId =
-          Number(
-            current.conversationId ??
-              current.id,
-          );
+      const currentId = Number(current.conversationId ?? current.id ?? 0);
 
-        if (
-          currentId === id
-        ) {
-          return null;
-        }
+      if (currentId === id) {
+        return null;
+      }
 
-        return current;
-      },
-    );
+      return current;
+    });
 
     /* ===============================================
        RESET ACTIVE CONVERSATION
     =============================================== */
 
-    activeConversationRef.current =
-      null;
+    if (Number(activeConversationRef.current) === id) {
+      activeConversationRef.current = null;
+    }
   }
 
   /* =====================================================
@@ -606,44 +506,32 @@ function useChat(
   return {
     /* USERS */
     users,
-
     selectedUser,
 
     /* DEPARTMENT */
     departmentConversation,
-
     departmentUnreadCount,
 
     /* GROUP */
     groups,
-
     selectedGroup,
-
     groupUnreadCounts,
 
-    /* PRIVATE UNREAD */
+    /* PRIVATE */
     unreadCounts,
 
     /* ACTIONS */
     handleSelectUser,
-
     handleSelectDepartment,
-
     handleSelectGroup,
-
     handleGroupUpdated,
-
     handleGroupRemoved,
-
     handleConversationRead,
-
     handleConversationChange,
 
     /* RELOAD */
     loadGroups,
-
     loadUsers,
-
     loadUnreadCounts,
   };
 }

@@ -10,14 +10,60 @@ import {
   deleteAllReadNotifications,
 } from "../services/notificationService";
 
+function normalizeNotification(rawNotification) {
+  if (!rawNotification) {
+    return null;
+  }
+
+  return {
+    id: rawNotification.id ?? rawNotification.Id,
+
+    userId: rawNotification.userId ?? rawNotification.UserId,
+
+    type: rawNotification.type ?? rawNotification.Type,
+
+    title: rawNotification.title ?? rawNotification.Title,
+
+    content: rawNotification.content ?? rawNotification.Content,
+
+    conversationId:
+      rawNotification.conversationId ?? rawNotification.ConversationId ?? null,
+
+    messageId: rawNotification.messageId ?? rawNotification.MessageId ?? null,
+
+    conversationType:
+      rawNotification.conversationType ??
+      rawNotification.ConversationType ??
+      null,
+
+    senderId: rawNotification.senderId ?? rawNotification.SenderId ?? null,
+
+    isRead: rawNotification.isRead ?? rawNotification.IsRead ?? false,
+
+    readAt: rawNotification.readAt ?? rawNotification.ReadAt ?? null,
+
+    createdAt: rawNotification.createdAt ?? rawNotification.CreatedAt,
+  };
+}
+
 function useNotifications(socketEvent) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  /* =========================================================
+  /* =====================================================
+     SORT
+  ===================================================== */
+
+  function sortNotifications(list) {
+    return [...list].sort(
+      (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+    );
+  }
+
+  /* =====================================================
      LOAD NOTIFICATIONS
-  ========================================================= */
+  ===================================================== */
 
   async function loadNotifications() {
     try {
@@ -25,7 +71,11 @@ function useNotifications(socketEvent) {
 
       const data = await getNotifications();
 
-      setNotifications(data);
+      const normalized = Array.isArray(data)
+        ? data.map(normalizeNotification).filter(Boolean)
+        : [];
+
+      setNotifications(sortNotifications(normalized));
     } catch (error) {
       console.error("Load notifications error:", error);
     } finally {
@@ -33,32 +83,34 @@ function useNotifications(socketEvent) {
     }
   }
 
-  /* =========================================================
+  /* =====================================================
      LOAD UNREAD COUNT
-  ========================================================= */
+  ===================================================== */
 
   async function loadUnreadCount() {
     try {
       const data = await getUnreadNotificationCount();
 
-      setUnreadCount(data.unreadCount || 0);
+      const count = Number(data?.unreadCount ?? data?.UnreadCount ?? 0);
+
+      setUnreadCount(Number.isNaN(count) ? 0 : count);
     } catch (error) {
       console.error("Load notification unread count error:", error);
     }
   }
 
-  /* =========================================================
+  /* =====================================================
      INITIAL LOAD
-  ========================================================= */
+  ===================================================== */
 
   useEffect(() => {
     loadNotifications();
     loadUnreadCount();
   }, []);
 
-  /* =========================================================
-     RECEIVE NOTIFICATION FROM WEBSOCKET
-  ========================================================= */
+  /* =====================================================
+     RECEIVE NOTIFICATION
+  ===================================================== */
 
   useEffect(() => {
     if (!socketEvent) {
@@ -69,100 +121,89 @@ function useNotifications(socketEvent) {
       return;
     }
 
-    const rawNotification = socketEvent.notification;
+    const rawNotification =
+      socketEvent.notification ?? socketEvent.Notification;
 
-    if (!rawNotification) {
+    const notification = normalizeNotification(rawNotification);
+
+    if (!notification?.id) {
       return;
     }
-
-    /*
-     * Normalize notification data.
-     *
-     * API uses camelCase:
-     * id, userId, type, title...
-     *
-     * WebSocket currently uses PascalCase:
-     * Id, UserId, Type, Title...
-     */
-
-    const notification = {
-      id: rawNotification.id ?? rawNotification.Id,
-      userId: rawNotification.userId ?? rawNotification.UserId,
-      type: rawNotification.type ?? rawNotification.Type,
-      title: rawNotification.title ?? rawNotification.Title,
-      content: rawNotification.content ?? rawNotification.Content,
-      conversationId:
-        rawNotification.conversationId ?? rawNotification.ConversationId,
-      messageId: rawNotification.messageId ?? rawNotification.MessageId,
-      isRead: rawNotification.isRead ?? rawNotification.IsRead,
-      readAt: rawNotification.readAt ?? rawNotification.ReadAt,
-      createdAt: rawNotification.createdAt ?? rawNotification.CreatedAt,
-    };
-
-    /* =======================================================
-       ADD / UPDATE NOTIFICATION
-    ======================================================= */
 
     setNotifications((current) => {
       const exists = current.some(
         (item) => Number(item.id) === Number(notification.id),
       );
 
-      /*
-       * Notification already exists.
-       * Update it.
-       */
-
       if (exists) {
-        return current
-          .map((item) =>
+        return sortNotifications(
+          current.map((item) =>
             Number(item.id) === Number(notification.id) ? notification : item,
-          )
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          ),
+        );
       }
 
-      /*
-       * New notification.
-       * Add it to the top.
-       */
-
-      return [notification, ...current];
+      return sortNotifications([notification, ...current]);
     });
 
-    loadUnreadCount();
+    /*
+     * Notification realtime mới chưa đọc.
+     */
+    if (!notification.isRead) {
+      setUnreadCount((current) => current + 1);
+    }
   }, [socketEvent]);
 
-  /* =========================================================
-     MARK NOTIFICATION AS READ
-  ========================================================= */
+  /* =====================================================
+     MARK ONE AS READ
+  ===================================================== */
 
   async function handleMarkAsRead(notificationId) {
     try {
-      await markNotificationAsRead(notificationId);
+      const id = Number(notificationId);
+
+      if (!id) {
+        return;
+      }
+
+      const notification = notifications.find((item) => Number(item.id) === id);
+
+      /*
+       * Nếu đã đọc thì không gọi API lại.
+       */
+      if (notification?.isRead) {
+        return;
+      }
+
+      await markNotificationAsRead(id);
 
       setNotifications((current) =>
-        current.map((notification) =>
-          Number(notification.id) === Number(notificationId)
+        current.map((item) =>
+          Number(item.id) === id
             ? {
-                ...notification,
+                ...item,
                 isRead: true,
               }
-            : notification,
+            : item,
         ),
       );
 
-      await loadUnreadCount();
+      setUnreadCount((current) => Math.max(0, current - 1));
     } catch (error) {
       console.error("Mark notification as read error:", error);
     }
   }
 
-  /* =========================================================
+  /* =====================================================
      MARK ALL AS READ
-  ========================================================= */
+  ===================================================== */
 
   async function handleMarkAllAsRead() {
     try {
+      if (unreadCount <= 0) {
+        return;
+      }
+
       await markAllNotificationsAsRead();
 
       setNotifications((current) =>
@@ -178,9 +219,9 @@ function useNotifications(socketEvent) {
     }
   }
 
-  /* =========================================================
+  /* =====================================================
      OPEN NOTIFICATION
-  ========================================================= */
+  ===================================================== */
 
   async function handleNotificationClick(notification) {
     try {
@@ -191,10 +232,8 @@ function useNotifications(socketEvent) {
       }
 
       /*
-       * Mark as read if notification
-       * is currently unread.
+       * Mark read.
        */
-
       if (!notification.isRead) {
         await markNotificationAsRead(notification.id);
 
@@ -209,16 +248,32 @@ function useNotifications(socketEvent) {
           ),
         );
 
-        await loadUnreadCount();
+        setUnreadCount((current) => Math.max(0, current - 1));
       }
 
       /*
-       * Get notification target.
+       * Lấy target từ BE.
        */
-
       const target = await getNotificationTarget(notification.id);
 
-      return target;
+      if (!target) {
+        return null;
+      }
+
+      /*
+       * Normalize target.
+       */
+      return {
+        ...target,
+
+        conversationId: target.conversationId ?? target.ConversationId,
+
+        conversationType: target.conversationType ?? target.ConversationType,
+
+        senderId: target.senderId ?? target.SenderId,
+
+        userId: target.userId ?? target.UserId,
+      };
     } catch (error) {
       console.error("Open notification error:", error);
 
@@ -226,12 +281,18 @@ function useNotifications(socketEvent) {
     }
   }
 
-  /* =========================================================
-     MARK USER NOTIFICATIONS AS READ
-  ========================================================= */
+  /* =====================================================
+     MARK PRIVATE NOTIFICATIONS AS READ
+  ===================================================== */
 
   async function handleUserNotificationRead(userId) {
     try {
+      const targetUserId = Number(userId);
+
+      if (!targetUserId) {
+        return;
+      }
+
       const unreadNotifications = notifications.filter(
         (notification) => !notification.isRead,
       );
@@ -246,15 +307,16 @@ function useNotifications(socketEvent) {
         try {
           const target = await getNotificationTarget(notification.id);
 
-          if (target?.conversationType !== "Private") {
-            continue;
-          }
+          const conversationType =
+            target?.conversationType ?? target?.ConversationType;
 
-          if (Number(target.senderId) === Number(userId)) {
-            notificationIds.push(notification.id);
+          const senderId = Number(target?.senderId ?? target?.SenderId ?? 0);
+
+          if (conversationType === "Private" && senderId === targetUserId) {
+            notificationIds.push(Number(notification.id));
           }
         } catch (error) {
-          console.error("Get notification target error:", error);
+          console.error("Get private notification target error:", error);
         }
       }
 
@@ -263,14 +325,12 @@ function useNotifications(socketEvent) {
       }
 
       await Promise.all(
-        notificationIds.map((notificationId) =>
-          markNotificationAsRead(notificationId),
-        ),
+        notificationIds.map((id) => markNotificationAsRead(id)),
       );
 
       setNotifications((current) =>
         current.map((notification) =>
-          notificationIds.includes(notification.id)
+          notificationIds.includes(Number(notification.id))
             ? {
                 ...notification,
                 isRead: true,
@@ -279,40 +339,33 @@ function useNotifications(socketEvent) {
         ),
       );
 
-      await loadUnreadCount();
+      setUnreadCount((current) =>
+        Math.max(0, current - notificationIds.length),
+      );
     } catch (error) {
       console.error("Mark user notifications as read error:", error);
     }
   }
 
-  /* =========================================================
-     DELETE NOTIFICATION
-  ========================================================= */
-
-  async function handleDeleteNotification(notificationId) {
-    try {
-      await deleteNotification(notificationId);
-
-      setNotifications((current) =>
-        current.filter(
-          (notification) => Number(notification.id) !== Number(notificationId),
-        ),
-      );
-    } catch (error) {
-      console.error("Delete notification error:", error);
-    }
-  }
-
-  /* =========================================================
+  /* =====================================================
      MARK DEPARTMENT NOTIFICATIONS AS READ
-  ========================================================= */
+  ===================================================== */
 
   async function handleDepartmentNotificationRead() {
     try {
-      const departmentNotifications = notifications.filter(
-        (notification) =>
-          !notification.isRead && notification.type === "DepartmentMessage",
-      );
+      const departmentNotifications = notifications.filter((notification) => {
+        if (notification.isRead) {
+          return false;
+        }
+
+        const type = notification.type;
+
+        const conversationType = notification.conversationType;
+
+        return (
+          type === "DepartmentMessage" || conversationType === "Department"
+        );
+      });
 
       if (departmentNotifications.length === 0) {
         return;
@@ -324,9 +377,13 @@ function useNotifications(socketEvent) {
         ),
       );
 
+      const ids = departmentNotifications.map((notification) =>
+        Number(notification.id),
+      );
+
       setNotifications((current) =>
         current.map((notification) =>
-          notification.type === "DepartmentMessage"
+          ids.includes(Number(notification.id))
             ? {
                 ...notification,
                 isRead: true,
@@ -335,15 +392,47 @@ function useNotifications(socketEvent) {
         ),
       );
 
-      await loadUnreadCount();
+      setUnreadCount((current) => Math.max(0, current - ids.length));
     } catch (error) {
       console.error("Mark department notifications as read error:", error);
     }
   }
 
-  /* =========================================================
+  /* =====================================================
+     DELETE NOTIFICATION
+  ===================================================== */
+
+  async function handleDeleteNotification(notificationId) {
+    try {
+      const id = Number(notificationId);
+
+      if (!id) {
+        return;
+      }
+
+      const notification = notifications.find((item) => Number(item.id) === id);
+
+      await deleteNotification(id);
+
+      setNotifications((current) =>
+        current.filter((item) => Number(item.id) !== id),
+      );
+
+      /*
+       * Trường hợp backend cho phép xóa notification
+       * chưa đọc thì phải giảm badge.
+       */
+      if (notification && !notification.isRead) {
+        setUnreadCount((current) => Math.max(0, current - 1));
+      }
+    } catch (error) {
+      console.error("Delete notification error:", error);
+    }
+  }
+
+  /* =====================================================
      DELETE ALL READ NOTIFICATIONS
-  ========================================================= */
+  ===================================================== */
 
   async function handleDeleteAllReadNotifications() {
     try {
@@ -357,14 +446,15 @@ function useNotifications(socketEvent) {
     }
   }
 
-  /* =========================================================
+  /* =====================================================
      RETURN
-  ========================================================= */
+  ===================================================== */
 
   return {
     notifications,
     unreadCount,
     loading,
+
     handleMarkAsRead,
     handleMarkAllAsRead,
     handleNotificationClick,
@@ -372,6 +462,9 @@ function useNotifications(socketEvent) {
     handleUserNotificationRead,
     handleDepartmentNotificationRead,
     handleDeleteAllReadNotifications,
+
+    loadNotifications,
+    loadUnreadCount,
   };
 }
 

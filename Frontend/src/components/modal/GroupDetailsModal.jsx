@@ -58,12 +58,16 @@ function GroupDetailsModal({
       setLoading(true);
       setError("");
 
-      const data =
+     const data =
         await getGroupMembers(
           conversationId
         );
 
-      setMembers(data);
+      setMembers(
+        Array.isArray(data)
+          ? data
+          : data?.members || []
+      );
     } catch (error) {
       console.error(
         "Load group members error:",

@@ -26,7 +26,11 @@ export async function getPrivateConversation(userId) {
  * Lấy danh sách message của conversation
  */
 export async function getConversationMessages(conversationId) {
-  const response = await api.get(`/conversations/${conversationId}/messages`);
+  const response = await api.get(`/conversations/${conversationId}/messages`, {
+    params: {
+      _: Date.now(),
+    },
+  });
 
   return response.data;
 }

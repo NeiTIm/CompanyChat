@@ -3732,12 +3732,257 @@ button:disabled {
    DEPARTMENT CHAT HEADER
    ========================================================= */
 
-.department-chat-header {
-  display: flex;
+/* =========================================================
+   DEPARTMENT CHAT HEADER
+========================================================= */
 
+.department-chat-header {
+  min-height: 70px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+
+/* =========================================================
+   LEFT SIDE
+========================================================= */
+
+.department-chat-header .chat-header-user {
+  min-width: 0;
+
+  display: flex;
   align-items: center;
 
-  gap: 10px;
+  gap: 12px;
+}
+
+
+/* =========================================================
+   DEPARTMENT ICON
+========================================================= */
+
+.department-header-icon {
+  width: 44px;
+  height: 44px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 13px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #0f766e,
+      #0d9488
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 5px 14px rgba(13, 148, 136, 0.22);
+}
+
+
+/* =========================================================
+   INFO
+========================================================= */
+
+.department-chat-header .chat-header-info {
+  min-width: 0;
+}
+
+.department-chat-header .chat-header-name {
+  overflow: hidden;
+
+  color: #1e293b;
+
+  font-size: 13px;
+  font-weight: 750;
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.department-header-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  margin-top: 3px;
+
+  color: #94a3b8;
+
+  font-size: 10px;
+  font-weight: 550;
+}
+
+.department-status-dot {
+  width: 6px;
+  height: 6px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: #10b981;
+
+  box-shadow:
+    0 0 0 3px rgba(16, 185, 129, 0.10);
+}
+
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+
+.department-chat-header .chat-header-actions {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+}
+
+
+/* =========================================================
+   INTERNAL BADGE
+========================================================= */
+
+.department-header-label {
+  height: 28px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 10px;
+
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+
+  background: #f0fdfa;
+
+  color: #0f766e;
+
+  font-size: 9px;
+  font-weight: 750;
+
+  letter-spacing: 0.3px;
+}
+
+
+/* =========================================================
+   DELETE HISTORY
+========================================================= */
+
+.department-chat-header .header-delete-button {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+
+  background: #ffffff;
+
+  color: #64748b;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.department-chat-header .header-delete-button:hover {
+  border-color: #fecaca;
+
+  background: #fef2f2;
+
+  color: #dc2626;
+
+  transform: translateY(-1px);
+}
+
+.department-chat-header .header-delete-button:active {
+  transform: translateY(0);
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 640px) {
+
+  .department-chat-header {
+    padding: 9px 12px;
+  }
+
+  .department-header-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+  }
+
+  .department-header-label {
+    display: none;
+  }
+
+}
+
+@media (max-width: 430px) {
+
+  .department-chat-header {
+    gap: 8px;
+  }
+
+  .department-chat-header .chat-header-user {
+    gap: 9px;
+  }
+
+  .department-header-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .department-chat-header .chat-header-name {
+    font-size: 12px;
+  }
+
+  .department-header-status {
+    font-size: 9px;
+  }
+
+  .department-chat-header .header-delete-button {
+    width: 32px;
+    height: 32px;
+  }
+
 }
 
 .department-chat-header-icon {
@@ -5487,49 +5732,1238 @@ button:disabled {
    GROUP SIDEBAR
 ========================================================= */
 
+/* =========================================================
+   GROUP CHAT SECTION
+   Modern / Clean / Professional
+========================================================= */
+
 .group-chat-section {
-  padding: 8px 10px 10px;
+  position: relative;
+
+  width: 100%;
+
+  padding: 10px 8px 8px;
+
+  border-top: 1px solid #e5e7eb;
+
+  background: #ffffff;
 }
 
-.group-chat-header {
-  height: 36px;
+
+/* =========================================================
+   SECTION HEADER
+========================================================= */
+
+.group-chat-section .group-chat-header {
+  min-height: 38px;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  padding: 0 6px;
+  padding: 0 5px 7px;
+
+  border: 0;
+
+  background: transparent;
+
+  box-shadow: none;
 }
+
+
+/* =========================================================
+   TITLE
+========================================================= */
 
 .group-chat-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #374151;
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  color: #334155;
+
+  font-size: 12px;
+  font-weight: 750;
+
+  letter-spacing: 0.02em;
 }
 
+.group-chat-title::before {
+  content: "";
+
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: #6366f1;
+
+  box-shadow:
+    0 0 0 3px rgba(99, 102, 241, 0.10);
+}
+
+
+/* =========================================================
+   CREATE GROUP BUTTON
+========================================================= */
+
 .group-chat-create-button {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  border: 0;
-  border-radius: 7px;
+  padding: 0;
 
-  background: transparent;
-  color: #4b5563;
+  border: 1px solid #c7d2fe;
+  border-radius: 9px;
 
-  font-size: 21px;
+  background: #eef2ff;
+
+  color: #4f46e5;
+
+  font-size: 20px;
+  font-weight: 450;
   line-height: 1;
 
   cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .group-chat-create-button:hover {
-  background: #eef2f7;
+  border-color: #a5b4fc;
+
+  background: #e0e7ff;
+
+  color: #4338ca;
+
+  box-shadow:
+    0 4px 12px rgba(79, 70, 229, 0.12);
+
+  transform: translateY(-1px);
+}
+
+.group-chat-create-button:active {
+  transform: scale(0.92);
+}
+
+.group-chat-create-button:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 2px;
+}
+
+
+/* =========================================================
+   GROUP LIST
+========================================================= */
+
+.group-chat-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  max-height: 300px;
+
+  overflow-y: auto;
+
+  padding-right: 2px;
+}
+
+
+/* =========================================================
+   GROUP ITEM
+========================================================= */
+
+.group-chat-item {
+  position: relative;
+
+  width: 100%;
+  min-height: 62px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 8px 9px;
+
+  border: 1px solid transparent;
+  border-radius: 13px;
+
+  background: transparent;
+
+  color: inherit;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 0.17s ease,
+    border-color 0.17s ease,
+    box-shadow 0.17s ease,
+    transform 0.17s ease;
+}
+
+.group-chat-item:hover {
+  background: #f8fafc;
+
+  border-color: #e2e8f0;
+
+  transform: translateX(2px);
+}
+
+
+/* =========================================================
+   ACTIVE GROUP
+========================================================= */
+
+.group-chat-item.active {
+  border-color: #c7d2fe;
+
+  background:
+    linear-gradient(
+      90deg,
+      #eef2ff 0%,
+      #f5f7ff 100%
+    );
+
+  box-shadow:
+    0 4px 12px rgba(79, 70, 229, 0.07);
+}
+
+.group-chat-item.active::before {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+
+  width: 3px;
+
+  border-radius: 0 5px 5px 0;
+
+  background: #6366f1;
+}
+
+.group-chat-item.active:hover {
+  transform: none;
+}
+
+
+/* =========================================================
+   GROUP ICON
+========================================================= */
+
+.group-chat-icon {
+  width: 40px;
+  height: 40px;
+
+  flex: 0 0 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #eef2ff,
+      #e0e7ff
+    );
+
+  color: #4f46e5;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.group-chat-item:hover .group-chat-icon {
+  transform: scale(1.04);
+}
+
+.group-chat-item.active .group-chat-icon {
+  background:
+    linear-gradient(
+      145deg,
+      #6366f1,
+      #4f46e5
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 6px 14px rgba(79, 70, 229, 0.20);
+}
+
+.group-chat-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+
+/* =========================================================
+   GROUP INFO
+========================================================= */
+
+.group-chat-info {
+  min-width: 0;
+
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.group-chat-name {
+  min-width: 0;
+
+  overflow: hidden;
+
+  color: #1e293b;
+
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.25;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-chat-item.active .group-chat-name {
+  color: #3730a3;
+
+  font-weight: 700;
+}
+
+.group-chat-members {
+  color: #94a3b8;
+
+  font-size: 10.5px;
+  font-weight: 500;
+
+  line-height: 1.2;
+}
+
+.group-chat-item.active .group-chat-members {
+  color: #6366f1;
+}
+
+
+/* =========================================================
+   UNREAD BADGE
+========================================================= */
+
+.group-chat-unread {
+  min-width: 21px;
+  height: 21px;
+
+  flex: 0 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 4px;
+  padding: 0 6px;
+
+  border-radius: 999px;
+
+  background: #6366f1;
+
+  color: #ffffff;
+
+  font-size: 9.5px;
+  font-weight: 750;
+  line-height: 1;
+
+  box-shadow:
+    0 3px 8px rgba(99, 102, 241, 0.20);
+
+  animation: groupUnreadPop 0.2s ease-out;
+}
+
+@keyframes groupUnreadPop {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+
+/* =========================================================
+   EMPTY GROUP
+========================================================= */
+
+.group-chat-empty {
+  min-height: 115px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 18px 12px;
+
+  border: 1px dashed #dbe3ef;
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #f8fafc,
+      #fafbff
+    );
+
+  text-align: center;
+}
+
+.group-chat-empty::before {
+  content: "👥";
+
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 8px;
+
+  border-radius: 11px;
+
+  background: #eef2ff;
+
+  font-size: 17px;
+}
+
+.group-chat-empty-title {
+  color: #475569;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.group-chat-empty-description {
+  margin-top: 4px;
+
+  color: #94a3b8;
+
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+.group-chat-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.group-chat-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.group-chat-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background: #cbd5e1;
+}
+
+.group-chat-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 640px) {
+  .group-chat-section {
+    padding: 8px 6px;
+  }
+
+  .group-chat-list {
+    max-height: 260px;
+  }
+
+  .group-chat-item {
+    min-height: 58px;
+
+    gap: 9px;
+
+    padding: 7px 8px;
+  }
+
+  .group-chat-icon {
+    width: 37px;
+    height: 37px;
+
+    flex-basis: 37px;
+
+    border-radius: 11px;
+  }
+
+  .group-chat-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .group-chat-name {
+    font-size: 12px;
+  }
+
+  .group-chat-members {
+    font-size: 10px;
+  }
+
+  .group-chat-create-button {
+    width: 28px;
+    height: 28px;
+  }
+}
+/* =========================================================
+   GROUP SEARCH
+========================================================= */
+
+.group-chat-header-actions {
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+}
+
+
+/* =========================================================
+   GROUP COUNT
+========================================================= */
+
+.group-chat-count {
+  min-width: 19px;
+  height: 19px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 2px;
+  padding: 0 5px;
+
+  border-radius: 999px;
+
+  background: #f1f5f9;
+
+  color: #64748b;
+
+  font-size: 9px;
+  font-weight: 750;
+
+  line-height: 1;
+}
+
+
+/* =========================================================
+   SEARCH TOGGLE
+========================================================= */
+
+.group-search-toggle {
+  width: 30px;
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 1px solid transparent;
+  border-radius: 9px;
+
+  background: transparent;
+
+  color: #64748b;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.group-search-toggle:hover,
+.group-search-toggle.active {
+  border-color: #c7d2fe;
+
+  background: #eef2ff;
+
+  color: #4f46e5;
+}
+
+.group-search-toggle:hover {
+  transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   SEARCH BOX
+========================================================= */
+
+.group-search-box {
+  position: relative;
+
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+
+  margin: 2px 2px 8px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+
+  background: #f8fafc;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.group-search-box:focus-within,
+.group-search-box.has-value {
+  border-color: #a5b4fc;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 0 0 3px rgba(99, 102, 241, 0.08);
+}
+
+
+/* =========================================================
+   SEARCH ICON
+========================================================= */
+
+.group-search-icon {
+  width: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #94a3b8;
+
+  transition:
+    color 0.18s ease;
+}
+
+.group-search-box:focus-within
+.group-search-icon {
+  color: #6366f1;
+}
+
+
+/* =========================================================
+   SEARCH INPUT
+========================================================= */
+
+.group-search-input {
+  min-width: 0;
+
+  flex: 1;
+
+  height: 100%;
+
+  padding: 0 4px;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+
+  color: #1e293b;
+
+  font-family: inherit;
+
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.group-search-input::placeholder {
+  color: #94a3b8;
+}
+
+
+/* =========================================================
+   CLEAR SEARCH
+========================================================= */
+
+.group-search-clear {
+  width: 27px;
+  height: 27px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-right: 5px;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: #f1f5f9;
+
+  color: #64748b;
+
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-search-clear:hover {
+  background: #fee2e2;
+
+  color: #dc2626;
+
+  transform: scale(1.05);
+}
+
+
+/* =========================================================
+   SEARCH RESULT
+========================================================= */
+
+.group-search-result {
+  min-height: 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 5px 7px;
+
+  color: #94a3b8;
+
+  font-size: 9.5px;
+  font-weight: 550;
+}
+
+.group-search-result kbd {
+  padding: 2px 5px;
+
+  border: 1px solid #e2e8f0;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+
+  background: #f8fafc;
+
+  color: #94a3b8;
+
+  font-family: inherit;
+
+  font-size: 8px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   SEARCH EMPTY
+========================================================= */
+
+.group-search-empty {
+  min-height: 125px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 18px 12px;
+
+  border: 1px dashed #dbe3ef;
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #f8fafc,
+      #fafbff
+    );
+
+  text-align: center;
+
+  animation: groupSearchEmptyEnter 0.2s ease;
+}
+
+@keyframes groupSearchEmptyEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.group-search-empty-icon {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 9px;
+
+  border-radius: 13px;
+
+  background: #eef2ff;
+
+  color: #6366f1;
+}
+
+.group-search-empty-title {
+  color: #475569;
+
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.group-search-empty-description {
+  margin-top: 4px;
+
+  color: #94a3b8;
+
+  font-size: 9.5px;
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .group-chat-item,
+  .group-chat-icon,
+  .group-chat-create-button,
+  .group-chat-unread {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* =========================================================
+   GROUP CHAT HEADER
+   Modern / Clean / Professional
+========================================================= */
+
+.group-chat-header {
+  position: relative;
+
+  min-height: 70px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 10px 18px;
+
+  background: #ffffff;
+
+  border-bottom: 1px solid #e5e7eb;
+
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.04);
+
+  z-index: 5;
+}
+
+
+/* =========================================================
+   GROUP HEADER CLICKABLE AREA
+========================================================= */
+
+.group-header-clickable {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 5px 9px 5px 5px;
+
+  border-radius: 14px;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.group-header-clickable:hover {
+  background: #f8fafc;
+
+  transform: translateY(-1px);
+}
+
+.group-header-clickable:active {
+  transform: translateY(0);
+}
+
+.group-header-clickable:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 2px;
+}
+
+
+/* =========================================================
+   GROUP ICON
+========================================================= */
+
+.group-header-icon {
+  width: 44px;
+  height: 44px;
+
+  flex: 0 0 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #6366f1,
+      #4f46e5
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 7px 16px rgba(79, 70, 229, 0.22);
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.group-header-clickable:hover .group-header-icon {
+  transform: scale(1.04);
+
+  box-shadow:
+    0 9px 20px rgba(79, 70, 229, 0.28);
+}
+
+.group-header-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+
+/* =========================================================
+   HEADER INFO
+========================================================= */
+
+.group-chat-header .chat-header-info {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  justify-content: center;
+
+  gap: 3px;
+}
+
+.group-chat-header .chat-header-name {
+  max-width: 420px;
+
+  overflow: hidden;
+
   color: #111827;
+
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.25;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   GROUP STATUS
+========================================================= */
+
+.group-header-status {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  color: #64748b;
+
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.group-status-dot {
+  width: 7px;
+  height: 7px;
+
+  flex: 0 0 7px;
+
+  border-radius: 50%;
+
+  background: #22c55e;
+
+  box-shadow:
+    0 0 0 3px rgba(34, 197, 94, 0.10);
+}
+
+
+/* =========================================================
+   HEADER ACTIONS
+========================================================= */
+
+.group-chat-header .chat-header-actions {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  margin-left: 14px;
+}
+
+
+/* =========================================================
+   GROUP LABEL
+========================================================= */
+
+.group-header-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 29px;
+
+  padding: 0 10px;
+
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+
+  background: #eef2ff;
+
+  color: #4f46e5;
+
+  font-size: 10px;
+  font-weight: 750;
+
+  letter-spacing: 0.03em;
+
+  text-transform: uppercase;
+}
+
+
+/* =========================================================
+   DELETE HISTORY BUTTON
+========================================================= */
+
+.group-chat-header .header-delete-button {
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  color: #64748b;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.group-chat-header .header-delete-button:hover {
+  border-color: #fecaca;
+
+  background: #fef2f2;
+
+  color: #dc2626;
+
+  box-shadow:
+    0 4px 12px rgba(220, 38, 38, 0.08);
+
+  transform: translateY(-1px);
+}
+
+.group-chat-header .header-delete-button:active {
+  transform: scale(0.94);
+}
+
+.group-chat-header .header-delete-button:focus-visible {
+  outline: 2px solid #fca5a5;
+  outline-offset: 2px;
+}
+
+.group-chat-header .header-delete-button svg {
+  transition: transform 0.18s ease;
+}
+
+.group-chat-header .header-delete-button:hover svg {
+  transform: translateY(-1px);
+}
+
+.group-chat-header .header-delete-button:disabled {
+  opacity: 0.45;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 640px) {
+  .group-chat-header {
+    min-height: 64px;
+
+    padding: 8px 12px;
+  }
+
+  .group-header-clickable {
+    gap: 9px;
+
+    padding: 4px 6px 4px 3px;
+  }
+
+  .group-header-icon {
+    width: 39px;
+    height: 39px;
+
+    flex-basis: 39px;
+
+    border-radius: 12px;
+  }
+
+  .group-header-icon svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .group-chat-header .chat-header-name {
+    max-width: 250px;
+
+    font-size: 14px;
+  }
+
+  .group-header-status {
+    font-size: 10.5px;
+  }
+
+  .group-status-dot {
+    width: 6px;
+    height: 6px;
+
+    flex-basis: 6px;
+  }
+
+  .group-header-label {
+    min-height: 27px;
+
+    padding: 0 8px;
+
+    font-size: 9px;
+  }
+
+  .group-chat-header .header-delete-button {
+    width: 35px;
+    height: 35px;
+
+    border-radius: 10px;
+  }
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 430px) {
+  .group-chat-header {
+    padding: 7px 9px;
+  }
+
+  .group-chat-header .chat-header-name {
+    max-width: 165px;
+  }
+
+  .group-header-label {
+    display: none;
+  }
+
+  .group-chat-header .chat-header-actions {
+    gap: 5px;
+
+    margin-left: 6px;
+  }
 }
 
 
@@ -5552,4 +6986,1213 @@ button:disabled {
   margin-top: 3px;
 
   font-size: 12px;
+}
+
+/* =========================================================
+   GROUP DETAILS MODAL
+   Modern / Clean / Professional
+========================================================= */
+
+/* =========================================================
+   MODAL OVERLAY
+========================================================= */
+
+.group-details-modal {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(820px, calc(100vh - 40px));
+
+  display: flex;
+  flex-direction: column;
+
+  background: #ffffff;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+
+  box-shadow:
+    0 28px 80px rgba(15, 23, 42, 0.18),
+    0 8px 24px rgba(15, 23, 42, 0.08);
+
+  overflow: hidden;
+
+  animation: groupModalEnter 0.22s ease-out;
+}
+
+@keyframes groupModalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.group-details-header {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  min-height: 132px;
+
+  padding: 24px 26px;
+
+  background:
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(99, 102, 241, 0.12),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      #f8fafc 0%,
+      #eef2ff 100%
+    );
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+
+/* =========================================================
+   HEADER CONTENT
+========================================================= */
+
+.group-details-header > div:first-child {
+  min-width: 0;
+
+  display: grid;
+
+  grid-template-columns: 58px minmax(0, 1fr);
+
+  grid-template-rows: auto auto;
+
+  column-gap: 15px;
+
+  align-items: center;
+}
+
+.group-details-icon {
+  grid-row: 1 / 3;
+
+  width: 58px;
+  height: 58px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #6366f1,
+      #4f46e5
+    );
+
+  color: #ffffff;
+
+  font-size: 27px;
+
+  box-shadow:
+    0 10px 22px rgba(79, 70, 229, 0.25);
+
+  user-select: none;
+}
+
+.group-details-header h3 {
+  margin: 0;
+
+  min-width: 0;
+
+  overflow: hidden;
+
+  color: #111827;
+
+  font-size: 20px;
+  font-weight: 750;
+  line-height: 1.3;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-details-header p {
+  margin: 4px 0 0;
+
+  color: #64748b;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+
+/* =========================================================
+   CLOSE BUTTON
+========================================================= */
+
+.group-details-close {
+  flex: 0 0 auto;
+
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 16px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+
+  background: rgba(255, 255, 255, 0.8);
+
+  color: #64748b;
+
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 1;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.group-details-close:hover {
+  background: #ffffff;
+
+  border-color: #cbd5e1;
+
+  color: #111827;
+
+  transform: rotate(4deg);
+}
+
+.group-details-close:active {
+  transform: scale(0.94);
+}
+
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+.group-details-error {
+  margin: 14px 20px 0;
+  padding: 11px 14px;
+
+  display: flex;
+  align-items: center;
+
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+
+  font-size: 13px;
+  font-weight: 550;
+
+  animation: groupErrorEnter 0.2s ease;
+}
+
+@keyframes groupErrorEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* =========================================================
+   ADD MEMBER SECTION
+========================================================= */
+
+.group-add-section {
+  padding: 16px 20px 8px;
+}
+
+.group-add-member-button {
+  width: 100%;
+  min-height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  border: 1px dashed #c7d2fe;
+  border-radius: 14px;
+
+  background: #f5f7ff;
+
+  color: #4f46e5;
+
+  font-size: 14px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.group-add-member-button span:first-child {
+  width: 25px;
+  height: 25px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 8px;
+
+  background: #e0e7ff;
+
+  font-size: 19px;
+  font-weight: 500;
+
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.group-add-member-button:hover {
+  background: #eef2ff;
+
+  border-color: #a5b4fc;
+
+  box-shadow:
+    0 5px 16px rgba(79, 70, 229, 0.08);
+
+  transform: translateY(-1px);
+}
+
+.group-add-member-button:hover span:first-child {
+  background: #c7d2fe;
+
+  transform: rotate(90deg);
+}
+
+.group-add-member-button:active {
+  transform: translateY(0);
+}
+
+.group-add-member-button:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   USER LIST - ADD MEMBER
+========================================================= */
+
+.group-user-list {
+  max-height: 220px;
+
+  margin-top: 10px;
+  padding: 6px;
+
+  overflow-y: auto;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 15px;
+
+  background: #f8fafc;
+
+  animation: groupUserListEnter 0.18s ease;
+}
+
+@keyframes groupUserListEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* =========================================================
+   USER ITEM
+========================================================= */
+
+.group-user-item {
+  width: 100%;
+  min-height: 58px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 9px 10px;
+
+  border: 0;
+  border-radius: 11px;
+
+  background: transparent;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-user-item:hover {
+  background: #ffffff;
+
+  transform: translateX(2px);
+}
+
+.group-user-item:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   USER AVATAR
+========================================================= */
+
+.group-user-avatar {
+  width: 39px;
+  height: 39px;
+
+  flex: 0 0 39px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #e0e7ff,
+      #c7d2fe
+    );
+
+  color: #4338ca;
+
+  font-size: 14px;
+  font-weight: 750;
+}
+
+
+/* =========================================================
+   USER INFO
+========================================================= */
+
+.group-user-info {
+  min-width: 0;
+
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.group-user-info strong {
+  overflow: hidden;
+
+  color: #1e293b;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-user-info small {
+  overflow: hidden;
+
+  color: #94a3b8;
+
+  font-size: 11px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-user-add {
+  width: 30px;
+  height: 30px;
+
+  flex: 0 0 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 9px;
+
+  background: #eef2ff;
+
+  color: #4f46e5;
+
+  font-size: 19px;
+
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-user-item:hover .group-user-add {
+  background: #e0e7ff;
+
+  transform: scale(1.08);
+}
+
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
+.group-empty-text {
+  padding: 22px 14px;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   MEMBERS SECTION
+========================================================= */
+
+.group-members-section {
+  min-height: 0;
+
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 17px 20px 8px;
+}
+
+.group-section-title {
+  display: flex;
+  align-items: center;
+
+  margin-bottom: 10px;
+
+  color: #334155;
+
+  font-size: 13px;
+  font-weight: 750;
+
+  letter-spacing: 0.02em;
+}
+
+.group-section-title::after {
+  content: "";
+
+  height: 1px;
+
+  flex: 1;
+
+  margin-left: 10px;
+
+  background: #e2e8f0;
+}
+
+
+/* =========================================================
+   MEMBERS LIST
+========================================================= */
+
+.group-members-list {
+  min-height: 0;
+  max-height: 390px;
+
+  overflow-y: auto;
+
+  padding-right: 4px;
+}
+
+
+/* =========================================================
+   MEMBER ITEM
+========================================================= */
+
+.group-member-item {
+  position: relative;
+
+  min-height: 66px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 9px 10px;
+
+  margin-bottom: 5px;
+
+  border: 1px solid transparent;
+  border-radius: 14px;
+
+  background: #ffffff;
+
+  transition:
+    background 0.17s ease,
+    border-color 0.17s ease,
+    box-shadow 0.17s ease,
+    transform 0.17s ease;
+}
+
+.group-member-item:hover {
+  background: #f8fafc;
+
+  border-color: #e2e8f0;
+
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.04);
+
+  transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   MEMBER AVATAR
+========================================================= */
+
+.group-member-avatar {
+  position: relative;
+
+  width: 44px;
+  height: 44px;
+
+  flex: 0 0 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 2px solid #ffffff;
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #e2e8f0,
+      #cbd5e1
+    );
+
+  color: #334155;
+
+  font-size: 15px;
+  font-weight: 750;
+
+  box-shadow:
+    0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+
+/* =========================================================
+   ONLINE DOT
+========================================================= */
+
+.group-online-dot {
+  position: absolute;
+
+  right: -2px;
+  bottom: -2px;
+
+  width: 12px;
+  height: 12px;
+
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+
+  background: #22c55e;
+
+  box-shadow:
+    0 0 0 2px rgba(34, 197, 94, 0.12);
+}
+
+
+/* =========================================================
+   MEMBER INFO
+========================================================= */
+
+.group-member-info {
+  min-width: 0;
+
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.group-member-name {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  overflow: hidden;
+
+  color: #1e293b;
+
+  font-size: 13.5px;
+  font-weight: 650;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-member-role {
+  color: #94a3b8;
+
+  font-size: 11px;
+  font-weight: 500;
+}
+
+
+/* =========================================================
+   "BẠN" BADGE
+========================================================= */
+
+.group-you {
+  flex: 0 0 auto;
+
+  padding: 3px 7px;
+
+  border-radius: 6px;
+
+  background: #eef2ff;
+
+  color: #4f46e5;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  line-height: 1;
+}
+
+
+/* =========================================================
+   MEMBER ACTIONS
+========================================================= */
+
+.group-member-actions {
+  flex: 0 0 auto;
+
+  display: flex;
+  align-items: center;
+
+  gap: 5px;
+
+  margin-left: 8px;
+}
+
+
+/* =========================================================
+   ROLE BADGE
+========================================================= */
+
+.group-role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 52px;
+
+  padding: 5px 8px;
+
+  border-radius: 7px;
+
+  font-size: 10px;
+  font-weight: 750;
+
+  line-height: 1;
+}
+
+.group-role-badge.owner {
+  background: #fef3c7;
+
+  color: #a16207;
+}
+
+.group-role-badge.admin {
+  background: #ede9fe;
+
+  color: #6d28d9;
+}
+
+
+/* =========================================================
+   ACTION BUTTON
+========================================================= */
+
+.group-member-action {
+  min-height: 29px;
+
+  padding: 5px 9px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  color: #475569;
+
+  font-size: 10.5px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-member-action:hover {
+  border-color: #c7d2fe;
+
+  background: #eef2ff;
+
+  color: #4338ca;
+
+  transform: translateY(-1px);
+}
+
+.group-member-action:active {
+  transform: translateY(0);
+}
+
+.group-member-action.danger {
+  border-color: #fecaca;
+
+  background: #fffafa;
+
+  color: #dc2626;
+}
+
+.group-member-action.danger:hover {
+  border-color: #fca5a5;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+}
+
+.group-member-action:disabled {
+  opacity: 0.45;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
+.group-loading {
+  min-height: 150px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.group-loading::after {
+  content: "";
+
+  width: 14px;
+  height: 14px;
+
+  margin-left: 9px;
+
+  border: 2px solid #e2e8f0;
+  border-top-color: #6366f1;
+
+  border-radius: 50%;
+
+  animation: groupLoadingSpin 0.7s linear infinite;
+}
+
+@keyframes groupLoadingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.group-details-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 9px;
+
+  min-height: 70px;
+
+  padding: 13px 20px;
+
+  border-top: 1px solid #e5e7eb;
+
+  background: #ffffff;
+}
+
+
+/* =========================================================
+   LEAVE BUTTON
+========================================================= */
+
+.group-leave-button {
+  min-height: 38px;
+
+  padding: 0 14px;
+
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+
+  background: #fff7ed;
+
+  color: #c2410c;
+
+  font-size: 12px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-leave-button:hover {
+  border-color: #fdba74;
+
+  background: #ffedd5;
+
+  transform: translateY(-1px);
+}
+
+.group-leave-button:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   DELETE GROUP
+========================================================= */
+
+.group-delete-button {
+  min-height: 38px;
+
+  padding: 0 14px;
+
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+
+  background: #fef2f2;
+
+  color: #dc2626;
+
+  font-size: 12px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-delete-button:hover {
+  border-color: #fca5a5;
+
+  background: #fee2e2;
+
+  transform: translateY(-1px);
+}
+
+.group-delete-button:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   CLOSE BUTTON
+========================================================= */
+
+.group-close-button {
+  min-height: 38px;
+
+  padding: 0 17px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+
+  background: #f8fafc;
+
+  color: #334155;
+
+  font-size: 12px;
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.group-close-button:hover {
+  border-color: #cbd5e1;
+
+  background: #f1f5f9;
+
+  transform: translateY(-1px);
+}
+
+.group-close-button:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   CUSTOM SCROLLBAR
+========================================================= */
+
+.group-details-modal ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.group-details-modal ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.group-details-modal ::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background: #cbd5e1;
+}
+
+.group-details-modal ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 640px) {
+  .group-details-modal {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+
+    border-radius: 20px;
+  }
+
+  .group-details-header {
+    min-height: 112px;
+
+    padding: 19px;
+  }
+
+  .group-details-header > div:first-child {
+    grid-template-columns: 48px minmax(0, 1fr);
+
+    column-gap: 12px;
+  }
+
+  .group-details-icon {
+    width: 48px;
+    height: 48px;
+
+    border-radius: 15px;
+
+    font-size: 22px;
+  }
+
+  .group-details-header h3 {
+    font-size: 17px;
+  }
+
+  .group-details-close {
+    width: 35px;
+    height: 35px;
+  }
+
+  .group-add-section {
+    padding: 13px 14px 6px;
+  }
+
+  .group-members-section {
+    padding: 14px 14px 6px;
+  }
+
+  .group-members-list {
+    max-height: 330px;
+  }
+
+  .group-member-item {
+    min-height: 62px;
+
+    padding: 8px;
+  }
+
+  .group-member-avatar {
+    width: 40px;
+    height: 40px;
+
+    flex-basis: 40px;
+  }
+
+  .group-member-actions {
+    gap: 3px;
+  }
+
+  .group-member-action {
+    padding: 5px 7px;
+
+    font-size: 9.5px;
+  }
+
+  .group-role-badge {
+    min-width: auto;
+
+    padding: 5px 6px;
+
+    font-size: 9px;
+  }
+
+  .group-details-footer {
+    padding: 11px 14px;
+
+    gap: 7px;
+  }
+
+  .group-leave-button,
+  .group-delete-button,
+  .group-close-button {
+    min-height: 36px;
+
+    padding: 0 11px;
+
+    font-size: 11px;
+  }
+}
+
+
+/* =========================================================
+   VERY SMALL SCREEN
+========================================================= */
+
+@media (max-width: 430px) {
+  .group-details-modal {
+    width: calc(100vw - 12px);
+
+    border-radius: 18px;
+  }
+
+  .group-member-info {
+    max-width: 120px;
+  }
+
+  .group-member-actions {
+    margin-left: 3px;
+  }
+
+  .group-member-action {
+    padding: 4px 6px;
+
+    font-size: 9px;
+  }
+
+  .group-role-badge {
+    display: none;
+  }
+
+  .group-details-footer {
+    justify-content: stretch;
+  }
+
+  .group-details-footer button {
+    flex: 1;
+  }
 }
