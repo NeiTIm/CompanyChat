@@ -4,7 +4,7 @@ using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
 using CompanyChat.Api.DTOs.User;
 using CompanyChat.Api.Services;
-
+using CompanyChat.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -1323,5 +1323,213 @@ public class EmployeeController(
         }
 
         return id;
+    }
+
+    [HttpPatch("{userId:int}/primary-department")]
+    public async Task<IActionResult> SetPrimaryDepartment(
+    int userId,
+    [FromBody] UpdatePrimaryDepartmentDto dto)
+    {
+        var user = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == userId &&
+                !x.IsDeleted);
+
+        if (user == null)
+        {
+            return NotFound(new
+            {
+                message = "Employee not found."
+            });
+        }
+
+        if (!dto.DepartmentId.HasValue)
+        {
+            user.DepartmentId = null;
+
+            await db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Primary department removed.",
+                userId,
+                departmentId = (int?)null
+            });
+        }
+
+        var department = await db.Departments
+            .FirstOrDefaultAsync(x =>
+                x.Id == dto.DepartmentId.Value);
+
+        if (department == null)
+        {
+            return NotFound(new
+            {
+                message = "Department not found."
+            });
+        }
+
+        if (!department.IsActive)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Cannot assign an inactive department."
+            });
+        }
+
+        var oldAdditionalMembership =
+            await db.UserDepartments
+                .FirstOrDefaultAsync(x =>
+                    x.UserId == userId &&
+                    x.DepartmentId == department.Id);
+
+        if (oldAdditionalMembership != null)
+        {
+            db.UserDepartments.Remove(
+                oldAdditionalMembership);
+        }
+
+        user.DepartmentId = department.Id;
+
+        await db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Primary department updated.",
+            userId,
+            departmentId = department.Id
+        });
+    }
+
+    [HttpPost("{userId:int}/additional-departments")]
+    public async Task<IActionResult> AssignAdditionalDepartment(
+     int userId,
+     [FromBody] int departmentId)
+    {
+        var user = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == userId &&
+                !x.IsDeleted);
+
+        if (user == null)
+        {
+            return NotFound(new
+            {
+                message = "Employee not found."
+            });
+        }
+
+        var department = await db.Departments
+            .FirstOrDefaultAsync(x =>
+                x.Id == departmentId);
+
+        if (department == null)
+        {
+            return NotFound(new
+            {
+                message = "Department not found."
+            });
+        }
+
+        if (!department.IsActive)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Cannot assign an inactive department."
+            });
+        }
+
+        if (user.DepartmentId == departmentId)
+        {
+            return Conflict(new
+            {
+                message =
+                    "This department is already the primary department."
+            });
+        }
+
+        var exists = await db.UserDepartments
+            .AnyAsync(x =>
+                x.UserId == userId &&
+                x.DepartmentId == departmentId);
+
+        if (exists)
+        {
+            return Conflict(new
+            {
+                message =
+                    "Employee is already in this department."
+            });
+        }
+
+        db.UserDepartments.Add(new UserDepartment
+        {
+            UserId = userId,
+            DepartmentId = departmentId
+        });
+
+        await db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Additional department assigned.",
+            userId,
+            departmentId
+        });
+    }
+
+    [HttpDelete("{userId:int}/additional-departments/{departmentId:int}")]
+    public async Task<IActionResult> UnassignAdditionalDepartment(
+    int userId,
+    int departmentId)
+    {
+        var user = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == userId &&
+                !x.IsDeleted);
+
+        if (user == null)
+        {
+            return NotFound(new
+            {
+                message = "Employee not found."
+            });
+        }
+
+        if (user.DepartmentId == departmentId)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Cannot remove the primary department. Transfer the employee first."
+            });
+        }
+
+        var membership = await db.UserDepartments
+            .FirstOrDefaultAsync(x =>
+                x.UserId == userId &&
+                x.DepartmentId == departmentId);
+
+        if (membership == null)
+        {
+            return NotFound(new
+            {
+                message =
+                    "Employee is not a member of this department."
+            });
+        }
+
+        db.UserDepartments.Remove(membership);
+
+        await db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Additional department removed.",
+            userId,
+            departmentId
+        });
     }
 }
