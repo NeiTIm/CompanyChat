@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 
 import { getAdminDashboard } from "../../services/admin/adminDashboardService";
+
 import AdminUsersPage from "./employee/AdminUsersPage";
+import AdminDepartmentsPage from "./department/AdminDepartmentsPage";
+
 
 function AdminDashboardPage({
   currentUser,
@@ -16,9 +19,11 @@ function AdminDashboardPage({
   const [activeMenu, setActiveMenu] =
     useState("dashboard");
 
+
   useEffect(() => {
     loadDashboard();
   }, []);
+
 
   async function loadDashboard() {
     try {
@@ -42,6 +47,7 @@ function AdminDashboardPage({
       setLoading(false);
     }
   }
+
 
   return (
     <div className="admin-layout">
@@ -71,10 +77,14 @@ function AdminDashboardPage({
 
         </div>
 
+
         {/* MENU */}
         <nav className="admin-menu">
 
-          {/* DASHBOARD */}
+          {/* =================================================
+              DASHBOARD
+          ================================================= */}
+
           <button
             className={
               activeMenu === "dashboard"
@@ -89,7 +99,11 @@ function AdminDashboardPage({
             Dashboard
           </button>
 
-          {/* USERS */}
+
+          {/* =================================================
+              USERS
+          ================================================= */}
+
           <button
             className={
               activeMenu === "users"
@@ -104,7 +118,31 @@ function AdminDashboardPage({
             Users
           </button>
 
-          {/* CONVERSATIONS */}
+
+          {/* =================================================
+              DEPARTMENTS
+          ================================================= */}
+
+          <button
+            className={
+              activeMenu === "departments"
+                ? "admin-menu-item active"
+                : "admin-menu-item"
+            }
+            onClick={() =>
+              setActiveMenu("departments")
+            }
+          >
+            <span>🏢</span>
+            Departments
+          </button>
+
+
+          {/* =================================================
+              CONVERSATIONS
+              TẠM THỜI CHƯA LÀM
+          ================================================= */}
+
           <button
             className="admin-menu-item"
           >
@@ -112,7 +150,12 @@ function AdminDashboardPage({
             Conversations
           </button>
 
-          {/* MESSAGES */}
+
+          {/* =================================================
+              MESSAGES
+              TẠM THỜI CHƯA LÀM
+          ================================================= */}
+
           <button
             className="admin-menu-item"
           >
@@ -120,7 +163,12 @@ function AdminDashboardPage({
             Messages
           </button>
 
-          {/* CLEANUP */}
+
+          {/* =================================================
+              CLEANUP
+              TẠM THỜI CHƯA LÀM
+          ================================================= */}
+
           <button
             className="admin-menu-item"
           >
@@ -129,6 +177,7 @@ function AdminDashboardPage({
           </button>
 
         </nav>
+
 
         {/* SIDEBAR BOTTOM */}
         <div className="admin-sidebar-bottom">
@@ -141,6 +190,7 @@ function AdminDashboardPage({
             ← Quay lại Chat
           </button>
 
+
           {/* LOGOUT */}
           <button
             className="admin-logout-button"
@@ -152,6 +202,7 @@ function AdminDashboardPage({
         </div>
 
       </aside>
+
 
       {/* =====================================================
           MAIN
@@ -172,6 +223,8 @@ function AdminDashboardPage({
                 ? "Dashboard"
                 : activeMenu === "users"
                 ? "Users"
+                : activeMenu === "departments"
+                ? "Departments"
                 : "Dashboard"}
             </h1>
 
@@ -180,6 +233,7 @@ function AdminDashboardPage({
             </p>
 
           </div>
+
 
           {/* ADMIN PROFILE */}
           <div className="admin-profile">
@@ -195,6 +249,7 @@ function AdminDashboardPage({
                 .toUpperCase()}
 
             </div>
+
 
             <div>
 
@@ -214,11 +269,13 @@ function AdminDashboardPage({
 
         </header>
 
+
         {/* ===================================================
             CONTENT
         =================================================== */}
 
         <section className="admin-content">
+
 
           {/* =================================================
               DASHBOARD
@@ -241,6 +298,7 @@ function AdminDashboardPage({
 
                 </div>
               )}
+
 
               {/* =============================================
                   STAT CARDS
@@ -272,6 +330,7 @@ function AdminDashboardPage({
 
                 </div>
 
+
                 {/* ONLINE */}
                 <div className="admin-stat-card">
 
@@ -296,6 +355,7 @@ function AdminDashboardPage({
 
                 </div>
 
+
                 {/* CONVERSATIONS */}
                 <div className="admin-stat-card">
 
@@ -319,6 +379,7 @@ function AdminDashboardPage({
                   </div>
 
                 </div>
+
 
                 {/* MESSAGES */}
                 <div className="admin-stat-card">
@@ -346,6 +407,7 @@ function AdminDashboardPage({
 
               </div>
 
+
               {/* =============================================
                   SYSTEM OVERVIEW
               ============================================= */}
@@ -368,6 +430,7 @@ function AdminDashboardPage({
 
                   </div>
 
+
                   <button
                     className="admin-refresh-button"
                     onClick={loadDashboard}
@@ -377,6 +440,7 @@ function AdminDashboardPage({
                   </button>
 
                 </div>
+
 
                 {/* OVERVIEW */}
                 <div className="admin-overview">
@@ -397,6 +461,7 @@ function AdminDashboardPage({
 
                   </div>
 
+
                   {/* DELETED MESSAGES */}
                   <div className="admin-overview-item">
 
@@ -412,6 +477,7 @@ function AdminDashboardPage({
                     </strong>
 
                   </div>
+
 
                   {/* ONLINE RATE */}
                   <div className="admin-overview-item">
@@ -441,6 +507,7 @@ function AdminDashboardPage({
             </>
           )}
 
+
           {/* =================================================
               USERS
           ================================================= */}
@@ -450,6 +517,16 @@ function AdminDashboardPage({
               currentUser={currentUser}
             />
           )}
+
+
+          {/* =================================================
+              DEPARTMENTS
+          ================================================= */}
+
+          {activeMenu === "departments" && (
+            <AdminDepartmentsPage />
+          )}
+
 
           {/* =================================================
               CONVERSATIONS
@@ -462,6 +539,7 @@ function AdminDashboardPage({
             </div>
           )}
 
+
           {/* =================================================
               MESSAGES
               TẠM THỜI CHƯA LÀM
@@ -472,6 +550,7 @@ function AdminDashboardPage({
               Messages
             </div>
           )}
+
 
           {/* =================================================
               CLEANUP
@@ -491,5 +570,6 @@ function AdminDashboardPage({
     </div>
   );
 }
+
 
 export default AdminDashboardPage;
