@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { login } from "../services/authService";
 
-function LoginPage({ onLogin }) {
+function LoginPage({
+  onLogin,
+  initialError = "",
+}) {
   const [username, setUsername] =
     useState("tien");
 
@@ -10,10 +13,26 @@ function LoginPage({ onLogin }) {
     useState("123456");
 
   const [error, setError] =
-    useState("");
+    useState(initialError);
 
   const [loading, setLoading] =
     useState(false);
+
+
+  /* =====================================================
+     RECEIVE ERROR FROM APP
+  ===================================================== */
+
+  useEffect(() => {
+    if (initialError) {
+      setError(initialError);
+    }
+  }, [initialError]);
+
+
+  /* =====================================================
+     LOGIN
+  ===================================================== */
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -70,6 +89,7 @@ function LoginPage({ onLogin }) {
     }
   }
 
+
   return (
     <div className="login-page">
       <div className="login-card">
@@ -109,6 +129,7 @@ function LoginPage({ onLogin }) {
             />
           </div>
 
+
           <div className="login-field">
             <label>
               Mật khẩu
@@ -127,11 +148,13 @@ function LoginPage({ onLogin }) {
             />
           </div>
 
+
           {error && (
             <div className="login-error">
               {error}
             </div>
           )}
+
 
           <button
             type="submit"

@@ -57,7 +57,8 @@ function useWebSocket(currentUser, onUserStatus) {
 
     socket.onopen = () => {
       /*
-       * Chỉ xử lý nếu đây vẫn là socket hiện tại.
+       * Chỉ xử lý nếu đây vẫn là
+       * socket hiện tại.
        */
       if (websocketRef.current !== socket) {
         return;
@@ -66,11 +67,14 @@ function useWebSocket(currentUser, onUserStatus) {
       console.log("WebSocket connected");
 
       setWebsocket(socket);
+
       setWebsocketConnected(true);
 
       setSocketEvent({
         type: "connection_status",
+
         isConnected: true,
+
         __receivedAt: Date.now(),
       });
     };
@@ -92,24 +96,68 @@ function useWebSocket(currentUser, onUserStatus) {
 
         console.log("WebSocket message:", data);
 
-        /* =================================================
+        /* ===============================================
+           ACCOUNT DISABLED / DELETED
+
+           Server gửi event này trước
+           khi đóng WebSocket.
+
+           Ví dụ:
+
+           {
+             type: "account_disabled",
+             reason: "locked"
+           }
+
+           hoặc:
+
+           {
+             type: "account_disabled",
+             reason: "deleted"
+           }
+        =============================================== */
+
+        if (data.type === "account_disabled") {
+          /*
+           * Đây là event đặc biệt.
+
+           * Không xử lý như WebSocket
+           * disconnect bình thường.
+           */
+          setSocketEvent({
+            ...data,
+
+            __receivedAt: Date.now(),
+          });
+
+          /*
+           * Lưu event để App.jsx
+           * xử lý logout + thông báo.
+           */
+          return;
+        }
+
+        /* ===============================================
            USER ONLINE / OFFLINE
-        ================================================= */
+        =============================================== */
 
         if (data.type === "user_status") {
           onUserStatus?.({
             userId: Number(data.userId),
+
             isOnline: Boolean(data.isOnline),
+
             lastSeen: data.lastSeen ?? null,
           });
         }
 
-        /* =================================================
+        /* ===============================================
            GLOBAL SOCKET EVENT
-        ================================================= */
+        =============================================== */
 
         setSocketEvent({
           ...data,
+
           __receivedAt: Date.now(),
         });
       } catch (error) {
@@ -141,10 +189,10 @@ function useWebSocket(currentUser, onUserStatus) {
 
     socket.onclose = () => {
       /*
-       * Đây là phần QUAN TRỌNG NHẤT.
-       *
-       * Nếu socket này không còn là socket hiện tại
-       * thì không được set trạng thái disconnected.
+       * Đây là phần QUAN TRỌNG.
+
+       * Nếu socket này không còn là
+       * socket hiện tại thì không xử lý.
        */
       if (websocketRef.current !== socket) {
         return;
@@ -153,11 +201,14 @@ function useWebSocket(currentUser, onUserStatus) {
       console.log("WebSocket disconnected");
 
       setWebsocket(null);
+
       setWebsocketConnected(false);
 
       setSocketEvent({
         type: "connection_status",
+
         isConnected: false,
+
         __receivedAt: Date.now(),
       });
 
@@ -199,9 +250,13 @@ function useWebSocket(currentUser, onUserStatus) {
 
   return {
     websocket,
+
     websocketConnected,
+
     socketEvent,
+
     websocketRef,
+
     closeWebSocket,
   };
 }
