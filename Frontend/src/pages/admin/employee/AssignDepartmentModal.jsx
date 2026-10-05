@@ -157,22 +157,21 @@ export default function AssignDepartmentModal({
                   Không phân phòng ban
                 </option>
 
-                {departments.map(
-                  (department) => (
-                    <option
-                      key={
-                        department.id
-                      }
-                      value={
-                        department.id
-                      }
-                    >
-                      {
-                        department.name
-                      }
-                    </option>
-                  )
-                )}
+                {departments
+  .filter(
+    (department) =>
+      department.isActive
+  )
+  .map(
+    (department) => (
+      <option
+        key={department.id}
+        value={department.id}
+      >
+        {department.name}
+      </option>
+    )
+  )}
               </select>
             </div>
 

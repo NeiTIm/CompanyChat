@@ -21,6 +21,7 @@ import EmployeeDetailModal from "./EmployeeDetailModal";
 import ResetPasswordModal from "./ResetPasswordModal";
 import AssignDepartmentModal from "./AssignDepartmentModal";
 import ConfirmModal from "../../../components/modal/ConfirmModal";
+import Toast from "../../../components/common/Toast";
 
 
 /* =========================================================
@@ -349,6 +350,24 @@ export default function AdminUsersPage({
 
 
   /* =======================================================
+     TOAST
+  ======================================================= */
+
+  const [toast, setToast] =
+    useState(null);
+
+  function showToast(
+    type,
+    message
+  ) {
+    setToast({
+      type,
+      message,
+    });
+  }
+
+
+  /* =======================================================
      FILTERS
   ======================================================= */
 
@@ -414,15 +433,26 @@ export default function AdminUsersPage({
       const data =
         await getAdminDepartments();
 
-      setDepartments(
+      const items =
         Array.isArray(data)
           ? data
-          : []
-      );
+          : Array.isArray(data?.items)
+            ? data.items
+            : [];
+
+      setDepartments(items);
     } catch (error) {
       console.error(
         "Không thể tải phòng ban:",
         error
+      );
+
+      setDepartments([]);
+
+      showToast(
+        "error",
+        error?.response?.data?.message ||
+          "Không thể tải danh sách phòng ban."
       );
     } finally {
       setDepartmentLoading(false);
@@ -473,9 +503,15 @@ export default function AdminUsersPage({
         error
       );
 
-      setError(
+      const message =
         error?.response?.data?.message ||
-          "Không thể tải danh sách nhân viên."
+        "Không thể tải danh sách nhân viên.";
+
+      setError(message);
+
+      showToast(
+        "error",
+        message
       );
     } finally {
       setLoading(false);
@@ -709,7 +745,8 @@ export default function AdminUsersPage({
         error
       );
 
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           "Không thể tải thông tin nhân viên."
       );
@@ -741,7 +778,8 @@ export default function AdminUsersPage({
         error
       );
 
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           "Không thể tải thông tin nhân viên."
       );
@@ -777,7 +815,8 @@ export default function AdminUsersPage({
         error
       );
 
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           "Không thể tải thông tin nhân viên."
       );
@@ -813,7 +852,8 @@ export default function AdminUsersPage({
         error
       );
 
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           "Không thể tải thông tin nhân viên."
       );
@@ -838,7 +878,8 @@ export default function AdminUsersPage({
       currentUserId ===
         Number(user.id)
     ) {
-      alert(
+      showToast(
+        "error",
         "Bạn không thể tự khóa tài khoản của mình."
       );
 
@@ -915,13 +956,21 @@ export default function AdminUsersPage({
             setConfirmModal(
               null
             );
+
+            showToast(
+              "success",
+              nextActive
+                ? "Đã mở khóa nhân viên."
+                : "Đã khóa nhân viên."
+            );
           } catch (error) {
             console.error(
               "Không thể cập nhật trạng thái:",
               error
             );
 
-            alert(
+            showToast(
+              "error",
               error?.response
                 ?.data
                 ?.message ||
@@ -953,7 +1002,8 @@ export default function AdminUsersPage({
       currentUserId ===
         Number(user.id)
     ) {
-      alert(
+      showToast(
+        "error",
         "Bạn không thể tự thay đổi role của mình."
       );
 
@@ -1025,13 +1075,19 @@ export default function AdminUsersPage({
             setConfirmModal(
               null
             );
+
+            showToast(
+              "success",
+              `Đã đổi role của "${user.fullName || user.username}" thành ${newRole}.`
+            );
           } catch (error) {
             console.error(
               "Không thể cập nhật role:",
               error
             );
 
-            alert(
+            showToast(
+              "error",
               error?.response
                 ?.data
                 ?.message ||
@@ -1063,7 +1119,8 @@ export default function AdminUsersPage({
       currentUserId ===
         Number(user.id)
     ) {
-      alert(
+      showToast(
+        "error",
         "Bạn không thể xóa tài khoản của mình."
       );
 
@@ -1132,13 +1189,19 @@ export default function AdminUsersPage({
             setConfirmModal(
               null
             );
+
+            showToast(
+              "success",
+              `Đã xóa nhân viên "${user.fullName || user.username}".`
+            );
           } catch (error) {
             console.error(
               "Không thể xóa nhân viên:",
               error
             );
 
-            alert(
+            showToast(
+              "error",
               error?.response
                 ?.data
                 ?.message ||
@@ -1222,13 +1285,19 @@ export default function AdminUsersPage({
             setConfirmModal(
               null
             );
+
+            showToast(
+              "success",
+              `Đã khôi phục nhân viên "${user.fullName || user.username}".`
+            );
           } catch (error) {
             console.error(
               "Không thể khôi phục nhân viên:",
               error
             );
 
-            alert(
+            showToast(
+              "error",
               error?.response
                 ?.data
                 ?.message ||
@@ -1258,6 +1327,11 @@ export default function AdminUsersPage({
     await loadUsers(
       1,
       search
+    );
+
+    showToast(
+      "success",
+      "Đã tạo nhân viên thành công."
     );
   }
 
@@ -1295,10 +1369,21 @@ export default function AdminUsersPage({
                 : item
           )
       );
+
+      showToast(
+        "success",
+        "Đã cập nhật thông tin nhân viên."
+      );
     } catch (error) {
       console.error(
         "Không thể refresh nhân viên:",
         error
+      );
+
+      showToast(
+        "error",
+        error?.response?.data?.message ||
+          "Cập nhật thành công nhưng không thể làm mới dữ liệu."
       );
     }
   }
@@ -1313,7 +1398,8 @@ export default function AdminUsersPage({
       false
     );
 
-    alert(
+    showToast(
+      "success",
       "Đã reset mật khẩu thành công."
     );
   }
@@ -1366,6 +1452,13 @@ export default function AdminUsersPage({
                 null,
             }
           : current
+    );
+
+    showToast(
+      "success",
+      departmentName
+        ? `Đã phân phòng ban chính: ${departmentName}.`
+        : "Đã bỏ phòng ban chính."
     );
   }
 
@@ -2661,6 +2754,21 @@ export default function AdminUsersPage({
           }
           onClose={
             closeConfirmModal
+          }
+        />
+      )}
+
+
+      {/* =================================================
+          TOAST
+      ================================================= */}
+
+      {toast && (
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() =>
+            setToast(null)
           }
         />
       )}

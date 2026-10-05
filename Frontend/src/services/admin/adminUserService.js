@@ -88,13 +88,15 @@ export async function updateUserRole(id, role) {
 }
 
 // =========================================================
-// CHANGE DEPARTMENT
+// CHANGE PRIMARY DEPARTMENT
 // =========================================================
 
 export async function updateUserDepartment(id, departmentId) {
   const response = await api.patch(
-    `/admin/employees/${id}/department`,
-    departmentId,
+    `/admin/employees/${id}/primary-department`,
+    {
+      departmentId,
+    },
   );
 
   return response.data;
