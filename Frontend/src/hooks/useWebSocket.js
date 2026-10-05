@@ -6,7 +6,7 @@ import { API_URL } from "../api";
    USE WEBSOCKET
 ========================================================= */
 
-function useWebSocket(currentUser) {
+function useWebSocket(currentUser, onUserStatus) {
   const [websocket, setWebsocket] = useState(null);
 
   const [websocketConnected, setWebsocketConnected] = useState(false);
@@ -92,6 +92,22 @@ function useWebSocket(currentUser) {
 
         console.log("WebSocket message:", data);
 
+        /* =================================================
+           USER ONLINE / OFFLINE
+        ================================================= */
+
+        if (data.type === "user_status") {
+          onUserStatus?.({
+            userId: Number(data.userId),
+            isOnline: Boolean(data.isOnline),
+            lastSeen: data.lastSeen ?? null,
+          });
+        }
+
+        /* =================================================
+           GLOBAL SOCKET EVENT
+        ================================================= */
+
         setSocketEvent({
           ...data,
           __receivedAt: Date.now(),
@@ -162,14 +178,10 @@ function useWebSocket(currentUser) {
 
       /*
        * Đóng socket.
-       *
-       * onclose của socket này sẽ tự kiểm tra
-       * websocketRef nên không làm ảnh hưởng
-       * socket mới.
        */
       socket.close();
     };
-  }, [currentUser?.id]);
+  }, [currentUser?.id, onUserStatus]);
 
   /* =====================================================
      CLOSE WEBSOCKET

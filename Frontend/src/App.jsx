@@ -4,6 +4,8 @@ import LoginPage from "./pages/LoginPage";
 import ChatPage from "./pages/ChatPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 
+import useWebSocket from "./hooks/useWebSocket";
+
 // import "./style.css";
 import "./styles/index.css";
 
@@ -46,9 +48,35 @@ function App() {
     }
   });
 
-  // =========================
-  // LOGIN
-  // =========================
+  /* =========================================================
+     GLOBAL WEBSOCKET
+  ========================================================= */
+
+  const {
+    websocket,
+    websocketConnected,
+    socketEvent,
+    closeWebSocket,
+  } = useWebSocket(currentUser);
+
+  /* =========================================================
+     LOGOUT
+  ========================================================= */
+
+  function handleLogout() {
+    closeWebSocket();
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    setCurrentUser(null);
+    setCurrentPage("login");
+  }
+
+  /* =========================================================
+     LOGIN
+  ========================================================= */
+
   if (!currentUser) {
     return (
       <LoginPage
@@ -65,9 +93,10 @@ function App() {
     );
   }
 
-  // =========================
-  // ADMIN
-  // =========================
+  /* =========================================================
+     ADMIN
+  ========================================================= */
+
   if (
     currentUser.role === "Admin" &&
     currentPage === "admin"
@@ -75,40 +104,33 @@ function App() {
     return (
       <AdminDashboardPage
         currentUser={currentUser}
+        socketEvent={socketEvent}
+        websocketConnected={websocketConnected}
         onBackToChat={() => {
           setCurrentPage("chat");
         }}
-        onLogout={() => {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-
-          setCurrentUser(null);
-          setCurrentPage("login");
-        }}
+        onLogout={handleLogout}
       />
     );
   }
 
-  // =========================
-  // CHAT
-  // =========================
+  /* =========================================================
+     CHAT
+  ========================================================= */
+
   return (
-  <ChatPage
-    currentUser={currentUser}
-
-    onGoToAdmin={() => {
-      setCurrentPage("admin");
-    }}
-
-    onLogout={() => {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-
-      setCurrentUser(null);
-      setCurrentPage("login");
-    }}
-  />
-);
+    <ChatPage
+      currentUser={currentUser}
+      websocket={websocket}
+      websocketConnected={websocketConnected}
+      socketEvent={socketEvent}
+      closeWebSocket={closeWebSocket}
+      onGoToAdmin={() => {
+        setCurrentPage("admin");
+      }}
+      onLogout={handleLogout}
+    />
+  );
 }
 
 export default App;

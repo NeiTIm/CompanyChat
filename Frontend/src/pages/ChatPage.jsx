@@ -5,7 +5,7 @@ import ChatWindow from "../components/chat/ChatWindow";
 import NotificationBell from "../components/notification/NotificationBell";
 import CreateGroupModal from "../components/group/CreateGroupModal";
 
-import useWebSocket from "../hooks/useWebSocket";
+
 import useChat from "../hooks/useChat";
 import useNotifications from "../hooks/useNotifications";
 
@@ -82,12 +82,19 @@ function SettingsIcon() {
    CHAT PAGE
 ========================================================= */
 
-function ChatPage({ currentUser, onGoToAdmin, onLogout }) {
+function ChatPage({
+  currentUser,
+  websocket,
+  websocketConnected,
+  socketEvent,
+  closeWebSocket,
+  onGoToAdmin,
+  onLogout,
+}) {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupSearch, setGroupSearch] = useState("");
 
-  const { websocket, websocketConnected, socketEvent, closeWebSocket } =
-    useWebSocket(currentUser);
+ 
 
   const {
     users,

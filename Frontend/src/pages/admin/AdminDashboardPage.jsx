@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { getAdminDashboard } from "../../services/admin/adminDashboardService";
-import AdminUsersPage from "./AdminUsersPage";
+import AdminUsersPage from "./employee/AdminUsersPage";
 
 function AdminDashboardPage({
   currentUser,
