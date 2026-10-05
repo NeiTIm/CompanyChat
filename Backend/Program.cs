@@ -142,6 +142,22 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAsync(db);
 }
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider
+        .GetRequiredService<AppDbContext>();
+
+    var onlineUsers = await db.Users
+        .Where(x => x.IsOnline)
+        .ToListAsync();
+
+    foreach (var user in onlineUsers)
+    {
+        user.IsOnline = false;
+    }
+
+    await db.SaveChangesAsync();
+}
 app.UseSwagger();
 app.UseSwaggerUI();
 

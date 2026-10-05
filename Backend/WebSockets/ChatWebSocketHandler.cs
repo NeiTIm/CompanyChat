@@ -107,6 +107,18 @@ public class ChatWebSocketHandler
                 userId,
                 socket);
 
+        if (becameOnline)
+        {
+            var user = await db.Users
+                .FirstOrDefaultAsync(x => x.Id == userId);
+
+            if (user != null)
+            {
+                user.IsOnline = true;
+
+                await db.SaveChangesAsync();
+            }
+        }
 
         /* ==================================================
            SEND CURRENT ONLINE USERS
@@ -202,7 +214,19 @@ public class ChatWebSocketHandler
                 connections.Remove(
                     userId,
                     socket);
+            if (becameOffline)
+            {
+                var user = await db.Users
+                    .FirstOrDefaultAsync(x => x.Id == userId);
 
+                if (user != null)
+                {
+                    user.IsOnline = false;
+                    user.LastSeen = DateTime.UtcNow;
+
+                    await db.SaveChangesAsync();
+                }
+            }
 
             /* ==================================================
                USER OFFLINE

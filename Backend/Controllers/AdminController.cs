@@ -2,7 +2,6 @@ using System.Security.Claims;
 using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
 using CompanyChat.Api.DTOs.User;
-using CompanyChat.Api.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
