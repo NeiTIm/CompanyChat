@@ -1,9 +1,6 @@
-
-
-
 /* =========================================================
    NOTIFICATION
-========================================================= */
+   ========================================================= */
 
 .notification-container {
   position: relative;
@@ -14,11 +11,10 @@
 
 /* =========================================================
    BELL BUTTON
-========================================================= */
+   ========================================================= */
 
 .notification-bell-button {
   position: relative;
-
   width: 38px;
   height: 38px;
 
@@ -48,17 +44,15 @@
 
 /* =========================================================
    BADGE
-========================================================= */
+   ========================================================= */
 
 .notification-badge {
   position: absolute;
-
   top: -2px;
   right: -2px;
 
   min-width: 18px;
   height: 18px;
-
   padding: 0 5px;
 
   display: flex;
@@ -72,13 +66,13 @@
 
   font-size: 10px;
   font-weight: 700;
-
   line-height: 1;
 }
 
+
 /* =========================================================
    DROPDOWN
-========================================================= */
+   ========================================================= */
 
 .notification-dropdown {
   position: absolute;
@@ -104,7 +98,7 @@
 
 /* =========================================================
    HEADER ACTIONS
-========================================================= */
+   ========================================================= */
 
 .notification-header-actions {
   height: 52px;
@@ -114,7 +108,6 @@
   justify-content: flex-end;
 
   gap: 8px;
-
   padding: 0 14px;
 
   border-bottom: 1px solid #e2e8f0;
@@ -125,21 +118,19 @@
 
 /* =========================================================
    DELETE ALL
-========================================================= */
+   ========================================================= */
 
 .notification-delete-all-button {
   border: none;
+  border-radius: 6px;
 
   background: transparent;
-
   color: #ef4444;
-
-  font-size: 12px;
-  font-weight: 600;
 
   padding: 6px 8px;
 
-  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
 
   cursor: pointer;
 
@@ -156,21 +147,19 @@
 
 /* =========================================================
    MARK ALL AS READ
-========================================================= */
+   ========================================================= */
 
 .notification-mark-all-button {
   border: none;
+  border-radius: 6px;
 
   background: transparent;
-
   color: #2563eb;
-
-  font-size: 12px;
-  font-weight: 600;
 
   padding: 6px 8px;
 
-  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
 
   cursor: pointer;
 
@@ -187,18 +176,17 @@
 
 /* =========================================================
    LIST
-========================================================= */
+   ========================================================= */
 
 .notification-list {
   max-height: 428px;
-
   overflow-y: auto;
 }
 
 
 /* =========================================================
    SCROLLBAR
-========================================================= */
+   ========================================================= */
 
 .notification-list::-webkit-scrollbar {
   width: 5px;
@@ -220,7 +208,7 @@
 
 /* =========================================================
    ITEM
-========================================================= */
+   ========================================================= */
 
 .notification-item {
   width: 100%;
@@ -229,15 +217,14 @@
   align-items: flex-start;
 
   gap: 10px;
-
   padding: 13px 16px;
 
   border: none;
   border-bottom: 1px solid #f1f5f9;
 
-  text-align: left;
-
   background: #ffffff;
+
+  text-align: left;
 
   cursor: pointer;
 
@@ -264,12 +251,11 @@
 
 /* =========================================================
    DOT
-========================================================= */
+   ========================================================= */
 
 .notification-item-dot {
   width: 8px;
   min-width: 8px;
-
   padding-top: 5px;
 }
 
@@ -287,24 +273,38 @@
 
 /* =========================================================
    CONTENT
-========================================================= */
+   ========================================================= */
 
 .notification-item-content {
   min-width: 0;
-
   flex: 1;
 }
 
+
+/* =========================================================
+   TITLE
+   ========================================================= */
+
 .notification-item-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+
+  gap: 5px;
+
   margin-bottom: 3px;
 
   color: #0f172a;
 
   font-size: 13px;
   font-weight: 700;
-
   line-height: 1.4;
 }
+
+
+/* =========================================================
+   TEXT
+   ========================================================= */
 
 .notification-item-text {
   color: #475569;
@@ -314,6 +314,11 @@
 
   word-break: break-word;
 }
+
+
+/* =========================================================
+   TIME
+   ========================================================= */
 
 .notification-item-time {
   margin-top: 5px;
@@ -325,24 +330,54 @@
 
 
 /* =========================================================
+   DEPARTMENT NOTIFICATION LABEL
+   ========================================================= */
+
+.notification-department-label {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 3px;
+
+  max-width: 140px;
+
+  margin-left: 2px;
+  padding: 2px 7px;
+
+  border-radius: 999px;
+
+  background: var(--primary-light);
+  color: var(--primary);
+
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  vertical-align: middle;
+}
+
+
+/* =========================================================
    DELETE SINGLE NOTIFICATION
-========================================================= */
+   ========================================================= */
 
 .notification-delete-button {
   flex-shrink: 0;
 
   border: none;
+  border-radius: 5px;
 
   background: transparent;
-
   color: #94a3b8;
-
-  font-size: 11px;
-  font-weight: 600;
 
   padding: 4px 6px;
 
-  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
 
   cursor: pointer;
 
@@ -355,26 +390,28 @@
 }
 
 
-/* Hiện nút Xóa khi hover notification */
+/* =========================================================
+   SHOW DELETE BUTTON ON ITEM HOVER
+   ========================================================= */
 
-.notification-item:hover
-.notification-delete-button {
+.notification-item:hover .notification-delete-button {
   opacity: 1;
 }
 
 
-/* Hover nút Xóa */
+/* =========================================================
+   DELETE BUTTON HOVER
+   ========================================================= */
 
 .notification-delete-button:hover {
   background: #fef2f2;
-
   color: #dc2626;
 }
 
 
 /* =========================================================
    EMPTY
-========================================================= */
+   ========================================================= */
 
 .notification-empty {
   padding: 35px 20px;

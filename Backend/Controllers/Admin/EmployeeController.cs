@@ -109,6 +109,8 @@ public class EmployeeController(
 
         // =====================================================
         // Filter Department
+        //
+        // Department filter hiện tại là Primary Department.
         // =====================================================
 
         if (departmentId.HasValue)
@@ -580,12 +582,6 @@ public class EmployeeController(
         // Nếu khóa tài khoản
         //
         // Disconnect toàn bộ WebSocket của user.
-        //
-        // Hỗ trợ:
-        // - Chrome
-        // - Edge
-        // - Mobile
-        // - Nhiều tab
         // =====================================================
 
         if (!active)
@@ -715,7 +711,15 @@ public class EmployeeController(
     // =========================================================
     // PATCH: /api/admin/employees/{id}/department
     //
-    // Assign / Remove Department
+    // Assign / Remove PRIMARY Department
+    //
+    // DepartmentId trong User = Primary Department.
+    //
+    // Additional Departments được quản lý bằng:
+    //
+    // GET    /{id}/departments
+    // POST   /{id}/departments
+    // DELETE /{id}/departments/{departmentId}
     // =========================================================
     [HttpPatch("{id:int}/department")]
     public async Task<IActionResult> SetDepartment(
@@ -740,7 +744,9 @@ public class EmployeeController(
         }
 
         // =====================================================
-        // null = remove department
+        // null = remove Primary Department
+        //
+        // Additional Departments vẫn được giữ nguyên.
         // =====================================================
 
         if (departmentId is null)
@@ -752,7 +758,7 @@ public class EmployeeController(
             return Ok(new
             {
                 message =
-                    "Đã bỏ nhân viên khỏi phòng ban.",
+                    "Đã bỏ nhân viên khỏi phòng ban chính.",
 
                 userId = employee.Id,
 
@@ -780,7 +786,29 @@ public class EmployeeController(
         }
 
         // =====================================================
-        // Assign department
+        // Nếu Department mới đang nằm trong Additional
+        // thì phải remove khỏi Additional trước.
+        //
+        // Tránh:
+        //
+        // Primary: Marketing
+        // Additional: Marketing
+        // =====================================================
+
+        var existingAdditionalDepartment =
+            await db.UserDepartments
+                .FirstOrDefaultAsync(x =>
+                    x.UserId == employee.Id &&
+                    x.DepartmentId == department.Id);
+
+        if (existingAdditionalDepartment is not null)
+        {
+            db.UserDepartments.Remove(
+                existingAdditionalDepartment);
+        }
+
+        // =====================================================
+        // Assign Primary Department
         // =====================================================
 
         employee.DepartmentId = department.Id;
@@ -790,13 +818,269 @@ public class EmployeeController(
         return Ok(new
         {
             message =
-                "Cập nhật phòng ban thành công.",
+                "Cập nhật phòng ban chính thành công.",
 
             userId = employee.Id,
 
             departmentId = employee.DepartmentId,
 
             departmentName = department.Name
+        });
+    }
+
+
+    // =========================================================
+    // GET: /api/admin/employees/{id}/departments
+    //
+    // Get Additional Departments
+    //
+    // Primary Department KHÔNG nằm trong danh sách này.
+    // =========================================================
+    [HttpGet("{id:int}/departments")]
+    public async Task<IActionResult> GetEmployeeDepartments(
+        int id)
+    {
+        // =====================================================
+        // Find employee
+        // =====================================================
+
+        var employee = await db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x =>
+                x.Id == id &&
+                !x.IsDeleted);
+
+        if (employee is null)
+        {
+            return NotFound(new
+            {
+                message = "Không tìm thấy nhân viên."
+            });
+        }
+
+        // =====================================================
+        // Get Additional Departments
+        // =====================================================
+
+        var departments = await db.UserDepartments
+            .AsNoTracking()
+            .Where(x =>
+                x.UserId == id &&
+                x.DepartmentId != employee.DepartmentId)
+            .OrderBy(x => x.Department.Name)
+           .Select(x => new UserDepartmentDto(
+                x.DepartmentId,
+                x.Department.Name,
+                x.Department.Description,
+                x.Department.IsActive))
+            .ToListAsync();
+
+        return Ok(departments);
+    }
+
+
+    // =========================================================
+    // POST: /api/admin/employees/{id}/departments
+    //
+    // Add Additional Department
+    //
+    // Body:
+    //
+    // 2
+    //
+    // =========================================================
+    [HttpPost("{id:int}/departments")]
+    public async Task<IActionResult> AddEmployeeDepartment(
+    int id,
+    [FromBody] AssignDepartmentDto request)
+    {
+        // =====================================================
+        // Validate DepartmentId
+        // =====================================================
+
+        var departmentId = request.DepartmentId;
+
+        if (departmentId <= 0)
+        {
+            return BadRequest(new
+            {
+                message = "DepartmentId không hợp lệ."
+            });
+        }
+
+        // =====================================================
+        // Find employee
+        // =====================================================
+
+        var employee = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == id &&
+                !x.IsDeleted);
+
+        if (employee is null)
+        {
+            return NotFound(new
+            {
+                message = "Không tìm thấy nhân viên."
+            });
+        }
+
+        // =====================================================
+        // Không cho thêm Primary Department
+        // =====================================================
+
+        if (employee.DepartmentId == departmentId)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Department này đang là phòng ban chính của nhân viên."
+            });
+        }
+
+        // =====================================================
+        // Department phải tồn tại + active
+        // =====================================================
+
+        var department = await db.Departments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x =>
+                x.Id == departmentId &&
+                x.IsActive);
+
+        if (department is null)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Department không tồn tại hoặc đang bị vô hiệu hóa."
+            });
+        }
+
+        // =====================================================
+        // Check duplicate
+        // =====================================================
+
+        var alreadyExists = await db.UserDepartments
+            .AnyAsync(x =>
+                x.UserId == id &&
+                x.DepartmentId == departmentId);
+
+        if (alreadyExists)
+        {
+            return Conflict(new
+            {
+                message =
+                    "Nhân viên đã thuộc department này."
+            });
+        }
+
+        // =====================================================
+        // Add Additional Department
+        // =====================================================
+
+        var userDepartment = new Models.UserDepartment
+        {
+            UserId = id,
+            DepartmentId = departmentId
+        };
+
+        db.UserDepartments.Add(userDepartment);
+
+        await db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message =
+                "Đã thêm department phụ cho nhân viên.",
+
+            userId = id,
+
+            departmentId = department.Id,
+
+            departmentName = department.Name
+        });
+    }
+
+
+    // =========================================================
+    // DELETE:
+    // /api/admin/employees/{id}/departments/{departmentId}
+    //
+    // Remove Additional Department
+    //
+    // Không ảnh hưởng Primary Department.
+    // =========================================================
+    [HttpDelete("{id:int}/departments/{departmentId:int}")]
+    public async Task<IActionResult> RemoveEmployeeDepartment(
+        int id,
+        int departmentId)
+    {
+        // =====================================================
+        // Find employee
+        // =====================================================
+
+        var employee = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == id &&
+                !x.IsDeleted);
+
+        if (employee is null)
+        {
+            return NotFound(new
+            {
+                message = "Không tìm thấy nhân viên."
+            });
+        }
+
+        // =====================================================
+        // Không cho remove Primary Department
+        // bằng Additional Department endpoint.
+        // =====================================================
+
+        if (employee.DepartmentId == departmentId)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Không thể xóa Primary Department bằng chức năng này."
+            });
+        }
+
+        // =====================================================
+        // Find Additional Department
+        // =====================================================
+
+        var userDepartment = await db.UserDepartments
+            .FirstOrDefaultAsync(x =>
+                x.UserId == id &&
+                x.DepartmentId == departmentId);
+
+        if (userDepartment is null)
+        {
+            return NotFound(new
+            {
+                message =
+                    "Nhân viên không thuộc department này."
+            });
+        }
+
+        // =====================================================
+        // Remove
+        // =====================================================
+
+        db.UserDepartments.Remove(userDepartment);
+
+        await db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message =
+                "Đã xóa department phụ của nhân viên.",
+
+            userId = id,
+
+            departmentId
         });
     }
 
@@ -956,14 +1240,6 @@ public class EmployeeController(
 
         // =====================================================
         // Disconnect toàn bộ WebSocket
-        //
-        // User có thể đang đăng nhập bằng:
-        // - Chrome
-        // - Edge
-        // - Mobile
-        // - Nhiều tab
-        //
-        // Tất cả connection sẽ bị đóng.
         // =====================================================
 
         await connections.DisconnectUserAsync(
@@ -990,10 +1266,12 @@ public class EmployeeController(
         });
     }
 
-    /* =========================================================
-   RESTORE EMPLOYEE
-========================================================= */
 
+    // =========================================================
+    // PATCH: /api/admin/employees/{id}/restore
+    //
+    // Restore employee
+    // =========================================================
     [HttpPatch("{id:int}/restore")]
     public async Task<IActionResult> RestoreEmployee(int id)
     {

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace CompanyChat.Api.Models;
 
 public class Notification
@@ -8,7 +10,10 @@ public class Notification
     public int UserId { get; set; }
 
     // Loại notification
-    // Ví dụ: Message, DepartmentMessage, System, Admin
+    // Message
+    // DepartmentMessage
+    // System
+    // Admin
     public string Type { get; set; } = string.Empty;
 
     // Tiêu đề
@@ -17,10 +22,10 @@ public class Notification
     // Nội dung
     public string Content { get; set; } = string.Empty;
 
-    // Conversation liên quan, nếu có
+    // Conversation liên quan
     public int? ConversationId { get; set; }
 
-    // Message liên quan, nếu có
+    // Message liên quan
     public long? MessageId { get; set; }
 
     // Đã đọc chưa
@@ -31,6 +36,27 @@ public class Notification
 
     // Thời điểm tạo
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /*
+     * =========================================================
+     * DEPARTMENT NAME
+     * =========================================================
+     *
+     * Không lưu DB.
+     *
+     * Dùng cho:
+     * - realtime notification
+     * - frontend hiển thị tên phòng ban
+     *
+     * Giá trị được lấy từ:
+     *
+     * Notification
+     *     -> Conversation
+     *     -> Department
+     *     -> Department.Name
+     */
+    [NotMapped]
+    public string? DepartmentName { get; set; }
 
     // Navigation properties
     public User User { get; set; } = null!;

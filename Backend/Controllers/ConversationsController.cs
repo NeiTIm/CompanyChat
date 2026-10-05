@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+
 namespace CompanyChat.Api.Controllers;
 
 [ApiController]
@@ -260,27 +261,29 @@ public class ConversationsController(
          */
 
         // Lấy đúng ConversationMember của user hiện tại
-var currentMember =
-    await db.ConversationMembers
-        .FirstOrDefaultAsync(x =>
-            x.ConversationId ==
-                conversationId &&
-            x.UserId ==
-                CurrentUserId);
+        var currentMember =
+            await db.ConversationMembers
+                .FirstOrDefaultAsync(x =>
+                    x.ConversationId ==
+                        conversationId &&
+                    x.UserId ==
+                        CurrentUserId);
 
-if (currentMember is null)
-{
-    return Forbid();
-}
+        if (currentMember is null)
+        {
+            return Forbid();
+        }
 
-var historyDeletedAt =
-    currentMember.HistoryDeletedAt;
+        var historyDeletedAt =
+            currentMember.HistoryDeletedAt;
 
         Console.WriteLine(
-$"[GET MESSAGES] " +
-$"UserId={CurrentUserId}, " +
-$"ConversationId={conversationId}, " +
-$"HistoryDeletedAt={historyDeletedAt}");
+            $"[GET MESSAGES] " +
+            $"UserId={CurrentUserId}, " +
+            $"ConversationId={conversationId}, " +
+            $"HistoryDeletedAt={historyDeletedAt}");
+
+
         /*
          * =================================================
          * LẤY DANH SÁCH MEMBER HIỆN TẠI
@@ -756,8 +759,8 @@ $"HistoryDeletedAt={historyDeletedAt}");
 
     [HttpDelete("{conversationId:int}/history")]
     public async Task<IActionResult>
-    DeleteConversationHistory(
-        int conversationId)
+        DeleteConversationHistory(
+            int conversationId)
     {
         var canAccess =
             await conversationAccess
@@ -813,8 +816,10 @@ $"HistoryDeletedAt={historyDeletedAt}");
             new
             {
                 conversationId,
+
                 historyDeletedAt =
                     savedHistoryDeletedAt,
+
                 message =
                     "Conversation history deleted."
             });
@@ -825,6 +830,19 @@ $"HistoryDeletedAt={historyDeletedAt}");
      * ==================================================
      * GET OR CREATE DEPARTMENT CONVERSATION
      * ==================================================
+     *
+     * Có 2 route:
+     *
+     * 1. POST /api/conversations/department
+     *
+     *    Giữ tương thích với frontend hiện tại.
+     *    Sử dụng Primary Department.
+     *
+     * 2. POST /api/conversations/department/{departmentId}
+     *
+     *    Dùng cho Primary hoặc Additional Department.
+     *
+     * ==================================================
      */
 
     [HttpPost("department")]
@@ -833,7 +851,7 @@ $"HistoryDeletedAt={historyDeletedAt}");
     {
         /*
          * =================================================
-         * LẤY CURRENT USER
+         * LẤY PRIMARY DEPARTMENT
          * =================================================
          */
 
@@ -858,7 +876,7 @@ $"HistoryDeletedAt={historyDeletedAt}");
 
         /*
          * =================================================
-         * USER PHẢI THUỘC DEPARTMENT
+         * PRIMARY DEPARTMENT BẮT BUỘC PHẢI CÓ
          * =================================================
          */
 
@@ -868,12 +886,162 @@ $"HistoryDeletedAt={historyDeletedAt}");
                 new
                 {
                     message =
-                        "You are not assigned to a department."
+                        "You are not assigned to a primary department."
                 });
         }
 
-        var departmentId =
-            currentUser.DepartmentId.Value;
+
+        /*
+         * =================================================
+         * GỌI LOGIC DÙNG CHUNG
+         * =================================================
+         */
+
+        return await GetOrCreateDepartmentInternal(
+            currentUser,
+            currentUser.DepartmentId.Value);
+    }
+
+
+    /*
+     * ==================================================
+     * GET OR CREATE SPECIFIC DEPARTMENT CONVERSATION
+     * ==================================================
+     *
+     * Dùng cho:
+     *
+     * Primary Department
+     * +
+     * Additional Departments
+     *
+     * ==================================================
+     */
+
+    [HttpPost("department/{departmentId:int}")]
+    public async Task<ActionResult<DepartmentConversationDto>>
+        GetOrCreateDepartment(
+            int departmentId)
+    {
+        if (departmentId <= 0)
+        {
+            return BadRequest(
+                new
+                {
+                    message =
+                        "DepartmentId không hợp lệ."
+                });
+        }
+
+
+        /*
+         * =================================================
+         * LẤY CURRENT USER
+         * =================================================
+         */
+
+        var currentUser =
+            await db.Users
+                .Include(x => x.Department)
+                .Include(x => x.UserDepartments)
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == CurrentUserId &&
+                        x.IsActive);
+
+        if (currentUser is null)
+        {
+            return Unauthorized(
+                new
+                {
+                    message =
+                        "Current user not found."
+                });
+        }
+
+
+        /*
+         * =================================================
+         * KIỂM TRA USER CÓ THUỘC DEPARTMENT KHÔNG
+         * =================================================
+         *
+         * Primary:
+         *
+         *     currentUser.DepartmentId
+         *
+         * Additional:
+         *
+         *     currentUser.UserDepartments
+         *
+         * =================================================
+         */
+
+        var belongsToDepartment =
+            currentUser.DepartmentId ==
+                departmentId ||
+
+            currentUser.UserDepartments.Any(
+                x =>
+                    x.DepartmentId ==
+                    departmentId);
+
+        if (!belongsToDepartment)
+        {
+            return Forbid();
+        }
+
+
+        /*
+         * =================================================
+         * GỌI LOGIC DÙNG CHUNG
+         * =================================================
+         */
+
+        return await GetOrCreateDepartmentInternal(
+            currentUser,
+            departmentId);
+    }
+
+
+    /*
+     * ==================================================
+     * GET OR CREATE DEPARTMENT INTERNAL
+     * ==================================================
+     *
+     * Logic dùng chung cho:
+     *
+     * POST /department
+     *
+     * POST /department/{departmentId}
+     *
+     * ==================================================
+     */
+
+    private async Task<ActionResult<DepartmentConversationDto>>
+        GetOrCreateDepartmentInternal(
+            User currentUser,
+            int departmentId)
+    {
+        /*
+         * =================================================
+         * LẤY DEPARTMENT
+         * =================================================
+         */
+
+        var department =
+            await db.Departments
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.Id == departmentId);
+
+        if (department is null)
+        {
+            return NotFound(
+                new
+                {
+                    message =
+                        "Department not found."
+                });
+        }
 
 
         /*
@@ -882,17 +1050,13 @@ $"HistoryDeletedAt={historyDeletedAt}");
          * =================================================
          */
 
-        var department =
-            currentUser.Department;
-
-        if (department is null ||
-            !department.IsActive)
+        if (!department.IsActive)
         {
             return BadRequest(
                 new
                 {
                     message =
-                        "Your department is not active."
+                        "Department is not active."
                 });
         }
 
@@ -971,8 +1135,19 @@ $"HistoryDeletedAt={historyDeletedAt}");
 
         /*
          * =================================================
-         * ĐẢM BẢO CÁC USER ACTIVE TRONG DEPARTMENT
+         * ĐẢM BẢO CÁC USER ACTIVE THUỘC DEPARTMENT
          * LÀ MEMBER CỦA DEPARTMENT CHAT
+         * =================================================
+         *
+         * Một user có thể thuộc Department theo:
+         *
+         * 1. Primary Department
+         * 2. Additional Department
+         *
+         * Vì vậy không được chỉ dùng:
+         *
+         *     x.DepartmentId == departmentId
+         *
          * =================================================
          */
 
@@ -981,12 +1156,27 @@ $"HistoryDeletedAt={historyDeletedAt}");
                 .Where(
                     x =>
                         x.IsActive &&
-                        x.DepartmentId ==
-                            departmentId)
+
+                        (
+                            x.DepartmentId ==
+                                departmentId ||
+
+                            x.UserDepartments.Any(
+                                ud =>
+                                    ud.DepartmentId ==
+                                    departmentId)
+                        ))
                 .Select(
                     x =>
                         x.Id)
                 .ToListAsync();
+
+
+        /*
+         * =================================================
+         * LẤY MEMBER HIỆN TẠI
+         * =================================================
+         */
 
         var existingMemberIds =
             await db.ConversationMembers
@@ -998,6 +1188,13 @@ $"HistoryDeletedAt={historyDeletedAt}");
                     x =>
                         x.UserId)
                 .ToListAsync();
+
+
+        /*
+         * =================================================
+         * TÌM USER CẦN THÊM
+         * =================================================
+         */
 
         var newMemberIds =
             departmentUserIds
@@ -1998,7 +2195,8 @@ $"HistoryDeletedAt={historyDeletedAt}");
             {
                 conversationId,
                 userId = CurrentUserId,
-                message = "You left the group successfully."
+                message =
+                    "You left the group successfully."
             });
     }
 
@@ -2175,8 +2373,11 @@ $"HistoryDeletedAt={historyDeletedAt}");
             await db.ConversationMembers
                 .FirstOrDefaultAsync(
                     x =>
-                        x.ConversationId == conversationId &&
-                        x.UserId == CurrentUserId);
+                        x.ConversationId ==
+                            conversationId &&
+
+                        x.UserId ==
+                            CurrentUserId);
 
         if (currentMember is null)
         {
@@ -2205,7 +2406,8 @@ $"HistoryDeletedAt={historyDeletedAt}");
         var messageIds =
             await db.Messages
                 .Where(x =>
-                    x.ConversationId == conversationId)
+                    x.ConversationId ==
+                        conversationId)
                 .Select(x => x.Id)
                 .ToListAsync();
 
@@ -2221,9 +2423,12 @@ $"HistoryDeletedAt={historyDeletedAt}");
             var messageNotifications =
                 await db.Notifications
                     .Where(x =>
-                        x.ConversationId == conversationId ||
+                        x.ConversationId ==
+                            conversationId ||
+
                         (x.MessageId.HasValue &&
-                         messageIds.Contains(x.MessageId.Value)))
+                         messageIds.Contains(
+                             x.MessageId.Value)))
                     .ToListAsync();
 
             db.Notifications.RemoveRange(
@@ -2234,7 +2439,8 @@ $"HistoryDeletedAt={historyDeletedAt}");
             var conversationNotifications =
                 await db.Notifications
                     .Where(x =>
-                        x.ConversationId == conversationId)
+                        x.ConversationId ==
+                            conversationId)
                     .ToListAsync();
 
             db.Notifications.RemoveRange(
@@ -2251,7 +2457,8 @@ $"HistoryDeletedAt={historyDeletedAt}");
         var messageStates =
             await db.MessageUserStates
                 .Where(x =>
-                    messageIds.Contains(x.MessageId))
+                    messageIds.Contains(
+                        x.MessageId))
                 .ToListAsync();
 
         db.MessageUserStates.RemoveRange(
@@ -2267,7 +2474,8 @@ $"HistoryDeletedAt={historyDeletedAt}");
         var messages =
             await db.Messages
                 .Where(x =>
-                    x.ConversationId == conversationId)
+                    x.ConversationId ==
+                        conversationId)
                 .ToListAsync();
 
         db.Messages.RemoveRange(messages);
@@ -2282,7 +2490,8 @@ $"HistoryDeletedAt={historyDeletedAt}");
         var members =
             await db.ConversationMembers
                 .Where(x =>
-                    x.ConversationId == conversationId)
+                    x.ConversationId ==
+                        conversationId)
                 .ToListAsync();
 
         db.ConversationMembers.RemoveRange(
@@ -2295,7 +2504,8 @@ $"HistoryDeletedAt={historyDeletedAt}");
          * ==================================================
          */
 
-        db.Conversations.Remove(conversation);
+        db.Conversations.Remove(
+            conversation);
 
         await db.SaveChangesAsync();
 
@@ -2303,15 +2513,17 @@ $"HistoryDeletedAt={historyDeletedAt}");
             new
             {
                 conversationId,
-                message = "Group deleted successfully."
+                message =
+                    "Group deleted successfully."
             });
     }
 
+
     /*
- * ==================================================
- * DELETE MESSAGE FOR EVERYONE
- * ==================================================
- */
+     * ==================================================
+     * DELETE MESSAGE FOR EVERYONE
+     * ==================================================
+     */
 
     [HttpDelete("messages/{messageId:long}/everyone")]
     public async Task<IActionResult>
@@ -2382,6 +2594,7 @@ $"HistoryDeletedAt={historyDeletedAt}");
                 new
                 {
                     messageId,
+
                     conversationId =
                         message.ConversationId,
 
@@ -2400,7 +2613,6 @@ $"HistoryDeletedAt={historyDeletedAt}");
         message.IsDeleted = true;
         message.DeletedAt = DateTime.UtcNow;
         message.DeletedBy = CurrentUserId;
-
 
         await db.SaveChangesAsync();
 
@@ -2480,5 +2692,140 @@ $"HistoryDeletedAt={historyDeletedAt}");
                 message =
                     "Message deleted for everyone."
             });
+    }
+
+    /* =========================================================
+   GET MY DEPARTMENTS
+========================================================= */
+
+    [HttpGet("departments")]
+    public async Task<IActionResult> GetMyDepartments()
+    {
+        var currentUser = await db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x =>
+                x.Id == CurrentUserId &&
+                x.IsActive);
+
+        if (currentUser is null)
+        {
+            return Unauthorized(new
+            {
+                message = "User không tồn tại hoặc tài khoản không hoạt động."
+            });
+        }
+
+        /*
+         * =====================================================
+         * PRIMARY DEPARTMENT
+         * =====================================================
+         */
+
+        var primaryDepartment = await db.Departments
+            .AsNoTracking()
+            .Where(x =>
+                x.IsActive &&
+                currentUser.DepartmentId.HasValue &&
+                x.Id == currentUser.DepartmentId.Value)
+            .Select(x => new
+            {
+                id = x.Id,
+                name = x.Name,
+                description = x.Description,
+                isActive = x.IsActive,
+                isPrimary = true
+            })
+            .FirstOrDefaultAsync();
+
+        /*
+         * =====================================================
+         * ADDITIONAL DEPARTMENTS
+         * =====================================================
+         */
+
+        var additionalDepartments =
+            await db.UserDepartments
+                .AsNoTracking()
+                .Where(x =>
+                    x.UserId == CurrentUserId &&
+                    x.Department.IsActive &&
+                    x.DepartmentId != currentUser.DepartmentId)
+                .Select(x => new
+                {
+                    id = x.Department.Id,
+                    name = x.Department.Name,
+                    description = x.Department.Description,
+                    isActive = x.Department.IsActive,
+                    isPrimary = false
+                })
+                .ToListAsync();
+
+        /*
+         * =====================================================
+         * MERGE
+         * =====================================================
+         */
+
+        var departments = new List<dynamic>();
+
+        if (primaryDepartment is not null)
+        {
+            departments.Add(primaryDepartment);
+        }
+
+        departments.AddRange(additionalDepartments);
+
+        /*
+         * =====================================================
+         * LOAD DEPARTMENT CONVERSATIONS
+         * =====================================================
+         */
+
+        var departmentIds = departments
+            .Select(x => (int)x.id)
+            .ToList();
+
+        var departmentConversations =
+            await db.Conversations
+                .AsNoTracking()
+                .Where(x =>
+                    x.Type == "Department" &&
+                    x.DepartmentId.HasValue &&
+                    departmentIds.Contains(x.DepartmentId.Value))
+                .Select(x => new
+                {
+                    conversationId = x.Id,
+                    departmentId = x.DepartmentId!.Value
+                })
+                .ToListAsync();
+
+        /*
+         * =====================================================
+         * RESPONSE
+         * =====================================================
+         */
+
+        var result = departments
+            .Select(department =>
+            {
+                var conversation =
+                    departmentConversations.FirstOrDefault(x =>
+                        x.departmentId == (int)department.id);
+
+                return new
+                {
+                    id = (int)department.id,
+                    name = (string)department.name,
+                    description = (string)department.description,
+                    isActive = (bool)department.isActive,
+                    isPrimary = (bool)department.isPrimary,
+
+                    conversationId =
+                        conversation?.conversationId
+                };
+            })
+            .ToList();
+
+        return Ok(result);
     }
 }

@@ -580,3 +580,357 @@
     transition: none;
   }
 }
+/* =========================================================
+   ADDITIONAL DEPARTMENTS
+   ========================================================= */
+
+.admin-detail-departments {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid #e5e7eb;
+}
+
+
+/* =========================================================
+   SECTION HEADER
+   ========================================================= */
+
+.admin-detail-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.admin-detail-section-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.admin-detail-section-header p {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.admin-detail-count {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 999px;
+
+  background: #f1f5f9;
+  color: #475569;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   ERROR
+   ========================================================= */
+
+.admin-detail-department-error {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+
+  background: #fef2f2;
+  color: #b91c1c;
+
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   LOADING / EMPTY
+   ========================================================= */
+
+.admin-detail-department-loading,
+.admin-detail-department-empty {
+  padding: 18px 14px;
+
+  border: 1px dashed #d1d5db;
+  border-radius: 9px;
+
+  background: #f9fafb;
+
+  color: #6b7280;
+
+  font-size: 13px;
+  text-align: center;
+}
+
+.admin-detail-department-loading {
+  color: #64748b;
+}
+
+
+/* =========================================================
+   DEPARTMENT LIST
+   ========================================================= */
+
+.admin-detail-department-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+/* =========================================================
+   DEPARTMENT ITEM
+   ========================================================= */
+
+.admin-detail-department-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+
+  padding: 11px 12px;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+
+  background: #ffffff;
+
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.admin-detail-department-item:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+
+/* =========================================================
+   DEPARTMENT INFO
+   ========================================================= */
+
+.admin-detail-department-info {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.admin-detail-department-info strong {
+  overflow: hidden;
+
+  color: #1f2937;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-detail-department-info span {
+  overflow: hidden;
+
+  color: #6b7280;
+
+  font-size: 12px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   REMOVE BUTTON
+   ========================================================= */
+
+.admin-detail-department-remove {
+  flex-shrink: 0;
+
+  padding: 6px 10px;
+
+  border: 1px solid #fecaca;
+  border-radius: 7px;
+
+  background: #ffffff;
+  color: #dc2626;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.admin-detail-department-remove:hover:not(:disabled) {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.admin-detail-department-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   ADD DEPARTMENT
+   ========================================================= */
+
+.admin-detail-department-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin-top: 12px;
+}
+
+.admin-detail-department-add select {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+
+  padding: 0 11px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+
+  outline: none;
+
+  background: #ffffff;
+  color: #374151;
+
+  font-size: 13px;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.admin-detail-department-add select:hover:not(:disabled) {
+  border-color: #9ca3af;
+}
+
+.admin-detail-department-add select:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.16);
+}
+
+.admin-detail-department-add select:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   ADD BUTTON
+   ========================================================= */
+
+.admin-detail-department-add-button {
+  flex-shrink: 0;
+
+  height: 38px;
+  padding: 0 15px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+
+  background: #111827;
+  color: #ffffff;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.admin-detail-department-add-button:hover:not(:disabled) {
+  background: #1f2937;
+  border-color: #1f2937;
+}
+
+.admin-detail-department-add-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   HINT
+   ========================================================= */
+
+.admin-detail-department-hint {
+  margin-top: 8px;
+
+  color: #9ca3af;
+
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 600px) {
+  .admin-detail-departments {
+    margin-top: 20px;
+    padding-top: 18px;
+  }
+
+  .admin-detail-section-header {
+    gap: 10px;
+  }
+
+  .admin-detail-section-header h4 {
+    font-size: 14px;
+  }
+
+  .admin-detail-section-header p {
+    font-size: 12px;
+  }
+
+  .admin-detail-department-item {
+    align-items: flex-start;
+  }
+
+  .admin-detail-department-add {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-detail-department-add select,
+  .admin-detail-department-add-button {
+    width: 100%;
+  }
+}

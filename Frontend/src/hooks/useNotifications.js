@@ -10,6 +10,10 @@ import {
   deleteAllReadNotifications,
 } from "../services/notificationService";
 
+/* =========================================================
+   NORMALIZE NOTIFICATION
+========================================================= */
+
 function normalizeNotification(rawNotification) {
   if (!rawNotification) {
     return null;
@@ -38,22 +42,38 @@ function normalizeNotification(rawNotification) {
 
     senderId: rawNotification.senderId ?? rawNotification.SenderId ?? null,
 
+    /*
+     * =====================================================
+     * DEPARTMENT NAME
+     * =====================================================
+     *
+     * Đây là phần trước đó bị thiếu.
+     */
+    departmentName:
+      rawNotification.departmentName ?? rawNotification.DepartmentName ?? null,
+
     isRead: rawNotification.isRead ?? rawNotification.IsRead ?? false,
 
     readAt: rawNotification.readAt ?? rawNotification.ReadAt ?? null,
 
-    createdAt: rawNotification.createdAt ?? rawNotification.CreatedAt,
+    createdAt: rawNotification.createdAt ?? rawNotification.CreatedAt ?? null,
   };
 }
 
+/* =========================================================
+   HOOK
+========================================================= */
+
 function useNotifications(socketEvent) {
   const [notifications, setNotifications] = useState([]);
+
   const [unreadCount, setUnreadCount] = useState(0);
+
   const [loading, setLoading] = useState(false);
 
-  /* =====================================================
+  /* =======================================================
      SORT
-  ===================================================== */
+  ======================================================= */
 
   function sortNotifications(list) {
     return [...list].sort(
@@ -61,9 +81,9 @@ function useNotifications(socketEvent) {
     );
   }
 
-  /* =====================================================
+  /* =======================================================
      LOAD NOTIFICATIONS
-  ===================================================== */
+  ======================================================= */
 
   async function loadNotifications() {
     try {
@@ -83,9 +103,9 @@ function useNotifications(socketEvent) {
     }
   }
 
-  /* =====================================================
+  /* =======================================================
      LOAD UNREAD COUNT
-  ===================================================== */
+  ======================================================= */
 
   async function loadUnreadCount() {
     try {
@@ -99,18 +119,18 @@ function useNotifications(socketEvent) {
     }
   }
 
-  /* =====================================================
+  /* =======================================================
      INITIAL LOAD
-  ===================================================== */
+  ======================================================= */
 
   useEffect(() => {
     loadNotifications();
     loadUnreadCount();
   }, []);
 
-  /* =====================================================
-     RECEIVE NOTIFICATION
-  ===================================================== */
+  /* =======================================================
+     REALTIME NOTIFICATION
+  ======================================================= */
 
   useEffect(() => {
     if (!socketEvent) {
@@ -131,32 +151,60 @@ function useNotifications(socketEvent) {
     }
 
     setNotifications((current) => {
-      const exists = current.some(
+      const existingIndex = current.findIndex(
         (item) => Number(item.id) === Number(notification.id),
       );
 
-      if (exists) {
-        return sortNotifications(
-          current.map((item) =>
-            Number(item.id) === Number(notification.id) ? notification : item,
-          ),
-        );
+      /*
+       * ===================================================
+       * NOTIFICATION ĐÃ TỒN TẠI
+       * ===================================================
+       *
+       * BE đang UPDATE notification cũ
+       * thay vì tạo notification mới.
+       */
+      if (existingIndex >= 0) {
+        const existing = current[existingIndex];
+
+        const updated = [...current];
+
+        updated[existingIndex] = notification;
+
+        /*
+         * Không tăng unreadCount ở đây.
+         *
+         * Badge sẽ được đồng bộ riêng
+         * với DB.
+         */
+        return sortNotifications(updated);
       }
+
+      /*
+       * ===================================================
+       * NOTIFICATION MỚI
+       * ===================================================
+       */
 
       return sortNotifications([notification, ...current]);
     });
 
     /*
-     * Notification realtime mới chưa đọc.
+     * =====================================================
+     * BADGE
+     * =====================================================
+     *
+     * Chỉ notification ID mới mới được xem là
+     * notification mới.
+     *
+     * Sau đó lấy lại count từ BE để đảm bảo
+     * frontend = database.
      */
-    if (!notification.isRead) {
-      setUnreadCount((current) => current + 1);
-    }
+    loadUnreadCount();
   }, [socketEvent]);
 
-  /* =====================================================
+  /* =======================================================
      MARK ONE AS READ
-  ===================================================== */
+  ======================================================= */
 
   async function handleMarkAsRead(notificationId) {
     try {
@@ -168,10 +216,12 @@ function useNotifications(socketEvent) {
 
       const notification = notifications.find((item) => Number(item.id) === id);
 
-      /*
-       * Nếu đã đọc thì không gọi API lại.
-       */
-      if (notification?.isRead) {
+      if (!notification) {
+        return;
+      }
+
+      if (notification.isRead) {
+        await loadUnreadCount();
         return;
       }
 
@@ -188,22 +238,23 @@ function useNotifications(socketEvent) {
         ),
       );
 
-      setUnreadCount((current) => Math.max(0, current - 1));
+      /*
+       * Không tự -1.
+       *
+       * Lấy số thực tế từ DB.
+       */
+      await loadUnreadCount();
     } catch (error) {
       console.error("Mark notification as read error:", error);
     }
   }
 
-  /* =====================================================
+  /* =======================================================
      MARK ALL AS READ
-  ===================================================== */
+  ======================================================= */
 
   async function handleMarkAllAsRead() {
     try {
-      if (unreadCount <= 0) {
-        return;
-      }
-
       await markAllNotificationsAsRead();
 
       setNotifications((current) =>
@@ -213,15 +264,18 @@ function useNotifications(socketEvent) {
         })),
       );
 
-      setUnreadCount(0);
+      /*
+       * Backend phải là source of truth.
+       */
+      await loadUnreadCount();
     } catch (error) {
       console.error("Mark all notifications as read error:", error);
     }
   }
 
-  /* =====================================================
+  /* =======================================================
      OPEN NOTIFICATION
-  ===================================================== */
+  ======================================================= */
 
   async function handleNotificationClick(notification) {
     try {
@@ -232,8 +286,11 @@ function useNotifications(socketEvent) {
       }
 
       /*
-       * Mark read.
+       * ===================================================
+       * MARK READ
+       * ===================================================
        */
+
       if (!notification.isRead) {
         await markNotificationAsRead(notification.id);
 
@@ -247,22 +304,28 @@ function useNotifications(socketEvent) {
               : item,
           ),
         );
-
-        setUnreadCount((current) => Math.max(0, current - 1));
       }
 
       /*
-       * Lấy target từ BE.
+       * ===================================================
+       * ĐỒNG BỘ BADGE VỚI DATABASE
+       * ===================================================
        */
+
+      await loadUnreadCount();
+
+      /*
+       * ===================================================
+       * GET TARGET
+       * ===================================================
+       */
+
       const target = await getNotificationTarget(notification.id);
 
       if (!target) {
         return null;
       }
 
-      /*
-       * Normalize target.
-       */
       return {
         ...target,
 
@@ -281,9 +344,9 @@ function useNotifications(socketEvent) {
     }
   }
 
-  /* =====================================================
+  /* =======================================================
      MARK PRIVATE NOTIFICATIONS AS READ
-  ===================================================== */
+  ======================================================= */
 
   async function handleUserNotificationRead(userId) {
     try {
@@ -298,6 +361,7 @@ function useNotifications(socketEvent) {
       );
 
       if (unreadNotifications.length === 0) {
+        await loadUnreadCount();
         return;
       }
 
@@ -321,6 +385,7 @@ function useNotifications(socketEvent) {
       }
 
       if (notificationIds.length === 0) {
+        await loadUnreadCount();
         return;
       }
 
@@ -339,17 +404,18 @@ function useNotifications(socketEvent) {
         ),
       );
 
-      setUnreadCount((current) =>
-        Math.max(0, current - notificationIds.length),
-      );
+      /*
+       * Luôn lấy lại count từ BE.
+       */
+      await loadUnreadCount();
     } catch (error) {
       console.error("Mark user notifications as read error:", error);
     }
   }
 
-  /* =====================================================
+  /* =======================================================
      MARK DEPARTMENT NOTIFICATIONS AS READ
-  ===================================================== */
+  ======================================================= */
 
   async function handleDepartmentNotificationRead() {
     try {
@@ -368,6 +434,7 @@ function useNotifications(socketEvent) {
       });
 
       if (departmentNotifications.length === 0) {
+        await loadUnreadCount();
         return;
       }
 
@@ -392,15 +459,19 @@ function useNotifications(socketEvent) {
         ),
       );
 
-      setUnreadCount((current) => Math.max(0, current - ids.length));
+      /*
+       * Không tự trừ.
+       * Đồng bộ trực tiếp với DB.
+       */
+      await loadUnreadCount();
     } catch (error) {
       console.error("Mark department notifications as read error:", error);
     }
   }
 
-  /* =====================================================
+  /* =======================================================
      DELETE NOTIFICATION
-  ===================================================== */
+  ======================================================= */
 
   async function handleDeleteNotification(notificationId) {
     try {
@@ -410,8 +481,6 @@ function useNotifications(socketEvent) {
         return;
       }
 
-      const notification = notifications.find((item) => Number(item.id) === id);
-
       await deleteNotification(id);
 
       setNotifications((current) =>
@@ -419,20 +488,20 @@ function useNotifications(socketEvent) {
       );
 
       /*
-       * Trường hợp backend cho phép xóa notification
-       * chưa đọc thì phải giảm badge.
+       * Notification đã đọc mới được xóa
+       * nên count thường không thay đổi.
+       *
+       * Tuy nhiên sync lại cho chắc chắn.
        */
-      if (notification && !notification.isRead) {
-        setUnreadCount((current) => Math.max(0, current - 1));
-      }
+      await loadUnreadCount();
     } catch (error) {
       console.error("Delete notification error:", error);
     }
   }
 
-  /* =====================================================
+  /* =======================================================
      DELETE ALL READ NOTIFICATIONS
-  ===================================================== */
+  ======================================================= */
 
   async function handleDeleteAllReadNotifications() {
     try {
@@ -441,14 +510,16 @@ function useNotifications(socketEvent) {
       setNotifications((current) =>
         current.filter((notification) => !notification.isRead),
       );
+
+      await loadUnreadCount();
     } catch (error) {
       console.error("Delete all read notifications error:", error);
     }
   }
 
-  /* =====================================================
+  /* =======================================================
      RETURN
-  ===================================================== */
+  ======================================================= */
 
   return {
     notifications,
@@ -457,11 +528,14 @@ function useNotifications(socketEvent) {
 
     handleMarkAsRead,
     handleMarkAllAsRead,
+
     handleNotificationClick,
+
     handleDeleteNotification,
+    handleDeleteAllReadNotifications,
+
     handleUserNotificationRead,
     handleDepartmentNotificationRead,
-    handleDeleteAllReadNotifications,
 
     loadNotifications,
     loadUnreadCount,

@@ -7,6 +7,58 @@ namespace CompanyChat.Api.Services.Notification;
 public class NotificationService(AppDbContext db)
     : INotificationService
 {
+    /*
+     * =========================================================
+     * GET DEPARTMENT NAME
+     * =========================================================
+     */
+    private async Task<string?> GetDepartmentNameAsync(
+        int? conversationId)
+    {
+        if (!conversationId.HasValue)
+        {
+            return null;
+        }
+
+        return await db.Conversations
+            .AsNoTracking()
+            .Where(x =>
+                x.Id == conversationId.Value &&
+                x.Type == "Department" &&
+                x.DepartmentId.HasValue)
+            .Select(x =>
+                x.Department != null
+                    ? x.Department.Name
+                    : null)
+            .FirstOrDefaultAsync();
+    }
+
+    /*
+     * =========================================================
+     * APPLY DEPARTMENT NAME
+     * =========================================================
+     */
+    private async Task ApplyDepartmentNameAsync(
+        Models.Notification notification)
+    {
+        if (
+            notification.Type !=
+            "DepartmentMessage")
+        {
+            notification.DepartmentName = null;
+            return;
+        }
+
+        notification.DepartmentName =
+            await GetDepartmentNameAsync(
+                notification.ConversationId);
+    }
+
+    /*
+     * =========================================================
+     * CREATE
+     * =========================================================
+     */
     public async Task<Models.Notification> CreateAsync(
         int userId,
         string type,
@@ -16,17 +68,10 @@ public class NotificationService(AppDbContext db)
         long? messageId = null)
     {
         /*
-         * =================================================
-         * GOM NOTIFICATION CHƯA ĐỌC
-         * =================================================
-         *
-         * Nếu user đã có notification chưa đọc
-         * trong cùng conversation và cùng type
-         * thì cập nhật notification cũ.
-         *
-         * Không tạo notification mới.
+         * =====================================================
+         * TÌM NOTIFICATION CHƯA ĐỌC ĐANG GOM
+         * =====================================================
          */
-
         var existingNotification =
             conversationId.HasValue
                 ? await db.Notifications
@@ -39,44 +84,38 @@ public class NotificationService(AppDbContext db)
                             !x.IsRead)
                 : null;
 
+        /*
+         * =====================================================
+         * UPDATE NOTIFICATION CŨ
+         * =====================================================
+         */
         if (existingNotification is not null)
         {
             /*
-             * =================================================
-             * CẬP NHẬT MESSAGE ID
-             * =================================================
-             *
-             * Luôn trỏ tới tin nhắn mới nhất.
+             * Luôn trỏ đến message mới nhất.
              */
-
             existingNotification.MessageId =
                 messageId;
 
             /*
-             * =================================================
-             * ĐẾM SỐ TIN NHẮN CHƯA ĐỌC
-             * =================================================
-             *
-             * Notification hiện tại đại diện cho
-             * toàn bộ nhóm tin nhắn chưa đọc.
+             * Đếm message chưa đọc
+             * trong đúng conversation.
              */
-
             var unreadMessageCount =
-            await db.MessageUserStates
-                .CountAsync(
-                    x =>
-                        x.UserId == userId &&
-                        x.Message.ConversationId ==
-                            conversationId &&
-                        !x.IsRead &&
-                        !x.IsDeletedForMe);
+                await db.MessageUserStates
+                    .CountAsync(
+                        x =>
+                            x.UserId == userId &&
+                            x.Message.ConversationId ==
+                                conversationId &&
+                            !x.IsRead &&
+                            !x.IsDeletedForMe);
 
             /*
              * =================================================
              * PRIVATE
              * =================================================
              */
-
             if (type == "Message")
             {
                 var senderName =
@@ -93,7 +132,7 @@ public class NotificationService(AppDbContext db)
                         : null;
 
                 if (!string.IsNullOrWhiteSpace(
-                        senderName))
+                    senderName))
                 {
                     existingNotification.Title =
                         "Tin nhắn mới";
@@ -117,7 +156,6 @@ public class NotificationService(AppDbContext db)
              * DEPARTMENT
              * =================================================
              */
-
             else if (
                 type ==
                 "DepartmentMessage")
@@ -129,6 +167,12 @@ public class NotificationService(AppDbContext db)
                     $"Phòng ban có " +
                     $"{unreadMessageCount} tin nhắn mới";
             }
+
+            /*
+             * =================================================
+             * OTHER
+             * =================================================
+             */
             else
             {
                 existingNotification.Title =
@@ -139,12 +183,17 @@ public class NotificationService(AppDbContext db)
             }
 
             /*
-             * Notification được cập nhật thành
-             * notification mới nhất.
+             * Cập nhật thời gian.
              */
-
             existingNotification.CreatedAt =
                 DateTime.UtcNow;
+
+            /*
+             * Quan trọng:
+             * realtime notification phải có DepartmentName.
+             */
+            await ApplyDepartmentNameAsync(
+                existingNotification);
 
             await db.SaveChangesAsync();
 
@@ -152,13 +201,10 @@ public class NotificationService(AppDbContext db)
         }
 
         /*
-         * =================================================
-         * CHƯA CÓ NOTIFICATION CHƯA ĐỌC
-         * =================================================
-         *
-         * Tạo notification mới.
+         * =====================================================
+         * CREATE NOTIFICATION MỚI
+         * =====================================================
          */
-
         var notification =
             new Models.Notification
             {
@@ -188,16 +234,12 @@ public class NotificationService(AppDbContext db)
             };
 
         /*
-         * Với notification đầu tiên:
-         *
-         * Private:
-         * "Tiến đã gửi cho bạn 1 tin nhắn"
-         *
-         * Department:
-         * "Phòng ban có 1 tin nhắn mới"
+         * =====================================================
+         * PRIVATE
+         * =====================================================
          */
-
-        if (type == "Message" &&
+        if (
+            type == "Message" &&
             messageId.HasValue)
         {
             var senderName =
@@ -212,7 +254,7 @@ public class NotificationService(AppDbContext db)
                     .FirstOrDefaultAsync();
 
             if (!string.IsNullOrWhiteSpace(
-                    senderName))
+                senderName))
             {
                 notification.Title =
                     "Tin nhắn mới";
@@ -221,6 +263,12 @@ public class NotificationService(AppDbContext db)
                     $"{senderName} đã gửi cho bạn 1 tin nhắn";
             }
         }
+
+        /*
+         * =====================================================
+         * DEPARTMENT
+         * =====================================================
+         */
         else if (
             type ==
             "DepartmentMessage")
@@ -232,6 +280,19 @@ public class NotificationService(AppDbContext db)
                 "Phòng ban có 1 tin nhắn mới";
         }
 
+        /*
+         * =====================================================
+         * DEPARTMENT NAME
+         * =====================================================
+         */
+        await ApplyDepartmentNameAsync(
+            notification);
+
+        /*
+         * =====================================================
+         * SAVE
+         * =====================================================
+         */
         db.Notifications.Add(
             notification);
 
@@ -240,7 +301,12 @@ public class NotificationService(AppDbContext db)
         return notification;
     }
 
-    public async Task<List<Models.Notification>>
+    /*
+     * =========================================================
+     * GET USER NOTIFICATIONS
+     * =========================================================
+     */
+    public async Task<List<DTOs.Notification.NotificationDto>>
         GetUserNotificationsAsync(
             int userId)
     {
@@ -253,20 +319,49 @@ public class NotificationService(AppDbContext db)
             .OrderByDescending(
                 x =>
                     x.CreatedAt)
+            .Select(
+                x =>
+                    new DTOs.Notification.NotificationDto(
+                        x.Id,
+                        x.UserId,
+                        x.Type,
+                        x.Title,
+                        x.Content,
+                        x.ConversationId,
+                        x.MessageId,
+                        x.IsRead,
+                        x.ReadAt,
+                        x.CreatedAt,
+
+                        x.Type == "DepartmentMessage" &&
+                        x.Conversation != null &&
+                        x.Conversation.Department != null
+                            ? x.Conversation.Department.Name
+                            : null
+                    ))
             .ToListAsync();
     }
 
+    /*
+     * =========================================================
+     * UNREAD COUNT
+     * =========================================================
+     */
     public async Task<int> GetUnreadCountAsync(
         int userId)
     {
         return await db.Notifications
             .CountAsync(
                 x =>
-                    x.UserId ==
-                        userId &&
+                    x.UserId == userId &&
                     !x.IsRead);
     }
 
+    /*
+     * =========================================================
+     * MARK AS READ
+     * =========================================================
+     */
     public async Task<bool> MarkAsReadAsync(
         long notificationId,
         int userId)
@@ -299,6 +394,11 @@ public class NotificationService(AppDbContext db)
         return true;
     }
 
+    /*
+     * =========================================================
+     * MARK ALL AS READ
+     * =========================================================
+     */
     public async Task<int> MarkAllAsReadAsync(
         int userId)
     {
@@ -335,10 +435,15 @@ public class NotificationService(AppDbContext db)
         return notifications.Count;
     }
 
+    /*
+     * =========================================================
+     * GET NOTIFICATION TARGET
+     * =========================================================
+     */
     public async Task<object?>
-    GetNotificationTargetAsync(
-        long notificationId,
-        int userId)
+        GetNotificationTargetAsync(
+            long notificationId,
+            int userId)
     {
         var notification =
             await db.Notifications
@@ -347,8 +452,10 @@ public class NotificationService(AppDbContext db)
                 .Include(x => x.Conversation)
                 .FirstOrDefaultAsync(
                     x =>
-                        x.Id == notificationId &&
-                        x.UserId == userId);
+                        x.Id ==
+                            notificationId &&
+                        x.UserId ==
+                            userId);
 
         if (notification is null)
         {
@@ -366,11 +473,10 @@ public class NotificationService(AppDbContext db)
                 .Type;
 
         /*
-         * =================================================
+         * =====================================================
          * DEPARTMENT
-         * =================================================
+         * =====================================================
          */
-
         if (conversationType == "Department")
         {
             return new
@@ -386,11 +492,10 @@ public class NotificationService(AppDbContext db)
         }
 
         /*
-         * =================================================
+         * =====================================================
          * PRIVATE
-         * =================================================
+         * =====================================================
          */
-
         if (conversationType == "Private")
         {
             if (notification.Message is null)
@@ -413,11 +518,10 @@ public class NotificationService(AppDbContext db)
         }
 
         /*
-         * =================================================
+         * =====================================================
          * GROUP
-         * =================================================
+         * =====================================================
          */
-
         if (conversationType == "Group")
         {
             if (notification.Message is null)
@@ -441,44 +545,58 @@ public class NotificationService(AppDbContext db)
 
         return null;
     }
-    //Delete notification
+
+    /*
+     * =========================================================
+     * DELETE
+     * =========================================================
+     */
     public async Task<bool> DeleteAsync(
-    long notificationId,
-    int userId)
+        long notificationId,
+        int userId)
     {
         var notification =
             await db.Notifications
                 .FirstOrDefaultAsync(
                     x =>
-                        x.Id == notificationId &&
-                        x.UserId == userId);
+                        x.Id ==
+                            notificationId &&
+                        x.UserId ==
+                            userId);
 
         if (notification is null)
         {
             return false;
         }
 
-        // Chưa đọc thì không cho xóa
         if (!notification.IsRead)
         {
             return false;
         }
 
-        db.Notifications.Remove(notification);
+        db.Notifications.Remove(
+            notification);
 
         await db.SaveChangesAsync();
 
         return true;
     }
 
+    /*
+     * =========================================================
+     * DELETE ALL READ
+     * =========================================================
+     */
     public async Task<int> DeleteAllReadAsync(
-    int userId)
+        int userId)
     {
         var notifications =
             await db.Notifications
-                .Where(x =>
-                    x.UserId == userId &&
-                    x.IsRead)
+                .Where(
+                    x =>
+                        x.UserId ==
+                            userId &&
+                        x.IsRead)
                 .ToListAsync();
 
         if (notifications.Count == 0)
@@ -487,8 +605,7 @@ public class NotificationService(AppDbContext db)
         }
 
         db.Notifications.RemoveRange(
-            notifications
-        );
+            notifications);
 
         await db.SaveChangesAsync();
 

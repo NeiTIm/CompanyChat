@@ -97,22 +97,32 @@ function ChatPage({
  
 
   const {
-    users,
-    selectedUser,
-    departmentConversation,
-    groups,
-    selectedGroup,
-    groupUnreadCounts,
-    unreadCounts,
-    departmentUnreadCount,
-    handleSelectUser,
-    handleSelectDepartment,
-    handleSelectGroup,
-    handleGroupUpdated,
-    handleGroupRemoved,
-    handleConversationRead,
-    handleConversationChange,
-  } = useChat(currentUser, socketEvent, websocket, websocketConnected);
+  users,
+  selectedUser,
+
+  departments,
+  selectedDepartment,
+  departmentUnreadCounts,
+
+  groups,
+  selectedGroup,
+
+  groupUnreadCounts,
+  unreadCounts,
+
+  handleSelectUser,
+  handleSelectDepartment,
+  handleSelectGroup,
+  handleGroupUpdated,
+  handleGroupRemoved,
+  handleConversationRead,
+  handleConversationChange,
+} = useChat(
+  currentUser,
+  socketEvent,
+  websocket,
+  websocketConnected
+);
 
   const normalizedGroupSearch = groupSearch.trim().toLowerCase();
   const filteredGroups = normalizedGroupSearch
@@ -140,17 +150,7 @@ function ChatPage({
     onLogout();
   }
 
-  async function handleDepartmentChat() {
-    try {
-      await handleSelectDepartment();
-      await handleDepartmentNotificationRead();
-    } catch (error) {
-      console.error("Open department chat error:", error);
-      alert(
-        error?.response?.data?.message || "Không thể mở phòng chat phòng ban."
-      );
-    }
-  }
+ 
 
   async function handleSelectUserFromList(user) {
     handleSelectUser(user);
@@ -178,14 +178,33 @@ function ChatPage({
     const target = await handleNotificationClick(notification);
     if (!target) return;
 
-    if (target.conversationType === "Department") {
-      try {
-        await handleSelectDepartment();
-      } catch (error) {
-        console.error("Open department notification error:", error);
-      }
-      return;
-    }
+   if (target.conversationType === "Department") {
+  const department = departments.find(
+    (item) =>
+      Number(item.conversationId) ===
+      Number(target.conversationId)
+  );
+
+  if (!department) {
+    console.error(
+      "Notification department not found:",
+      target.conversationId
+    );
+
+    return;
+  }
+
+  try {
+    await handleSelectDepartment(department);
+  } catch (error) {
+    console.error(
+      "Open department notification error:",
+      error
+    );
+  }
+
+  return;
+}
 
     if (target.conversationType === "Group") {
       const group = groups.find(
@@ -274,41 +293,118 @@ function ChatPage({
       <div className="app-body">
         {/* LEFT SIDEBAR */}
         <div className="chat-sidebar">
-          {/* DEPARTMENT CHAT */}
-          <button
-            type="button"
-            className={`department-chat-button ${
-              departmentConversation ? "active" : ""
-            }`}
-            onClick={handleDepartmentChat}
-          >
-            <div className="department-chat-icon">
-              <BuildingIcon />
-            </div>
+         {/* =========================================================
+    DEPARTMENT CHAT
+========================================================= */}
 
-            <div className="department-chat-content">
-              <div className="department-chat-top">
-                <div className="department-chat-title">Phòng ban</div>
-                <span className="department-chat-arrow">→</span>
-              </div>
+{departments.length > 0 && (
+  <div className="department-chat-list">
 
-              <div className="department-chat-description">
-                Trò chuyện nội bộ theo phòng ban
-              </div>
+    {departments.map((department) => {
 
-              <div className="department-chat-meta">
-                <span className="department-chat-status-dot" />
-                Kênh nội bộ
-                {departmentUnreadCount > 0 && (
-                  <span className="department-chat-unread">
-                    {departmentUnreadCount > 99
-                      ? "99+"
-                      : departmentUnreadCount}
+      const isSelected =
+        selectedDepartment?.departmentId === department.id ||
+        selectedDepartment?.id === department.id;
+
+      const unreadCount =
+        departmentUnreadCounts[
+          department.conversationId
+        ] || 0;
+
+      return (
+        <button
+          key={department.id}
+          type="button"
+          className={`department-chat-button ${
+            isSelected ? "active" : ""
+          }`}
+          onClick={() =>
+            handleSelectDepartment(department)
+          }
+        >
+
+          {/* =================================================
+              ICON
+          ================================================= */}
+
+          <div className="department-chat-icon">
+            <BuildingIcon />
+          </div>
+
+
+          {/* =================================================
+              CONTENT
+          ================================================= */}
+
+          <div className="department-chat-content">
+
+            <div className="department-chat-top">
+
+              <div className="department-chat-title">
+
+                {department.name}
+
+                {department.isPrimary && (
+                  <span className="department-primary-badge">
+                 Chính
                   </span>
                 )}
+
               </div>
+
+              <span className="department-chat-arrow">
+                →
+              </span>
+
             </div>
-          </button>
+
+
+            {/* =================================================
+                DESCRIPTION
+            ================================================= */}
+
+            <div className="department-chat-description">
+
+              {department.description ||
+                "Trò chuyện nội bộ theo phòng ban"}
+
+            </div>
+
+
+            {/* =================================================
+                META
+            ================================================= */}
+
+            <div className="department-chat-meta">
+
+              <span className="department-chat-status-dot" />
+
+              {department.isPrimary
+                ? "Phòng ban chính"
+                : "Phòng ban tham gia"}
+
+
+              {/* =================================================
+                  UNREAD
+              ================================================= */}
+
+              {unreadCount > 0 && (
+                <span className="group-chat-unread department-chat-unread">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+
+            </div>
+
+          </div>
+
+        </button>
+      );
+
+    })}
+
+  </div>
+)}
 
           {/* GROUP CHAT */}
           <div className="group-chat-section">
@@ -513,13 +609,18 @@ function ChatPage({
             selectedUser={selectedUser}
             onSelectUser={handleSelectUserFromList}
             unreadCounts={unreadCounts}
+
+            departments={departments}
+            selectedDepartment={selectedDepartment}
+            onSelectDepartment={handleSelectDepartment}
+            departmentUnreadCounts={departmentUnreadCounts}
           />
         </div>
 
         {/* CHAT WINDOW */}
         <ChatWindow
           selectedUser={selectedUser}
-          departmentConversation={departmentConversation}
+          departmentConversation={selectedDepartment}
           selectedGroup={selectedGroup}
           currentUser={currentUser}
           websocket={websocket}

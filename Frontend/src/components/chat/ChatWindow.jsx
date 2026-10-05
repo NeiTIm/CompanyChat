@@ -267,81 +267,106 @@ function ChatWindow({
   }
 
   /* =====================================================
-     LOAD DEPARTMENT CONVERSATION
-  ===================================================== */
+   LOAD DEPARTMENT CONVERSATION
+===================================================== */
 
-  async function loadDepartmentConversation(
-    department,
-  ) {
-    if (!department?.id) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      /*
-       * Department Conversation đã được
-       * tạo/lấy từ useChat.
-       */
-
-      const currentConversation = {
-        id: department.id,
-
-        type:
-          department.type ||
-          "Department",
-
-        departmentId:
-          department.departmentId,
-
-        departmentName:
-          department.departmentName,
-
-        createdAt:
-          department.createdAt,
-      };
-
-      setConversation(
-        currentConversation,
-      );
-
-      conversationRef.current =
-        currentConversation;
-
-      onConversationChange?.(
-        currentConversation.id,
-      );
-
-      /* =================================================
-         LOAD MESSAGES
-      ================================================= */
-
-      const messages =
-        await getConversationMessages(
-          currentConversation.id,
-        );
-
-      setMessages(messages);
-
-      /* =================================================
-         MARK READ
-      ================================================= */
-
-      await markConversationRead(
-        currentConversation.id,
-      );
-    } catch (error) {
-      console.error(
-        "Load department conversation error:",
-        error,
-      );
-
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
+async function loadDepartmentConversation(
+  department,
+) {
+  if (!department) {
+    return;
   }
+
+  const conversationId = Number(
+    department.conversationId ??
+      department.id,
+  );
+
+  if (!conversationId) {
+    console.error(
+      "Invalid department conversation:",
+      department,
+    );
+
+    setConversation(null);
+    setMessages([]);
+
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    /* =================================================
+       BUILD DEPARTMENT CONVERSATION
+    ================================================= */
+
+    const currentConversation = {
+      id: conversationId,
+
+      type:
+        department.type ||
+        "Department",
+
+      departmentId:
+        department.departmentId ??
+        department.id,
+
+      departmentName:
+        department.departmentName ||
+        department.name ||
+        "Phòng ban",
+
+      createdAt:
+        department.createdAt,
+    };
+
+    setConversation(
+      currentConversation,
+    );
+
+    conversationRef.current =
+      currentConversation;
+
+    /* =================================================
+       NOTIFY PARENT
+    ================================================= */
+
+    onConversationChange?.(
+      conversationId,
+    );
+
+    /* =================================================
+       LOAD MESSAGES
+    ================================================= */
+
+    const messages =
+      await getConversationMessages(
+        conversationId,
+      );
+
+    setMessages(messages);
+
+    /* =================================================
+       MARK READ
+    ================================================= */
+
+    await markConversationRead(
+      conversationId,
+    );
+  } catch (error) {
+    console.error(
+      "Load department conversation error:",
+      error,
+    );
+
+    setConversation(null);
+    conversationRef.current = null;
+    setMessages([]);
+  } finally {
+    setLoading(false);
+  }
+}
 
   /* =====================================================
      LOAD GROUP CONVERSATION
@@ -1798,78 +1823,112 @@ function ChatWindow({
           {/* =================================================
               DEPARTMENT HEADER
           ================================================= */}
-            <div className="chat-header department-chat-header">
-                    {/* =================================================
-                        DEPARTMENT INFO
-                    ================================================= */}
-                    <div className="chat-header-user">
-                      <div className="department-header-icon">
-                        <svg
-                          viewBox="0 0 24 24"
-                          width="22"
-                          height="22"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                        >
-                          <path d="M4 21V5.5C4 4.67 4.67 4 5.5 4h8c.83 0 1.5.67 1.5 1.5V21" />
-                          <path d="M15 9h3.5c.83 0 1.5.67 1.5 1.5V21" />
-                          <path d="M8 8h3" />
-                          <path d="M8 12h3" />
-                          <path d="M8 16h3" />
-                          <path d="M18 13h.01" />
-                          <path d="M18 17h.01" />
-                          <path d="M2.5 21h19" />
-                        </svg>
-                      </div>
 
-                      <div className="chat-header-info">
-                        <div className="chat-header-name">
-                          {departmentConversation.departmentName || "Phòng ban"}
-                        </div>
-                        <div className="department-header-status">
-                          <span className="department-status-dot" />
-                          Phòng chat nội bộ
-                        </div>
-                      </div>
-                    </div>
+<div className="chat-header department-chat-header">
 
-                    {/* =================================================
-                        ACTIONS
-                    ================================================= */}
-                    <div className="chat-header-actions">
-                      <div className="department-header-label">Internal</div>
+  {/* =================================================
+      DEPARTMENT INFO
+  ================================================= */}
 
-                      <button
-                        type="button"
-                        className="header-delete-button"
-                        onClick={deleteConversationHistory}
-                        title="Xóa lịch sử trò chuyện"
-                        aria-label="Xóa lịch sử trò chuyện"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          width="18"
-                          height="18"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                        >
-                          <path d="M4 7h16" />
-                          <path d="M9 7V4h6v3" />
-                          <path d="M6.5 7 7 20h10l.5-13" />
-                          <path d="M10 11v5" />
-                          <path d="M14 11v5" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+  <div className="chat-header-user">
+
+    <div className="department-header-icon">
+      <svg
+        viewBox="0 0 24 24"
+        width="22"
+        height="22"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M4 21V5.5C4 4.67 4.67 4 5.5 4h8c.83 0 1.5.67 1.5 1.5V21" />
+
+        <path d="M15 9h3.5c.83 0 1.5.67 1.5 1.5V21" />
+
+        <path d="M8 8h3" />
+
+        <path d="M8 12h3" />
+
+        <path d="M8 16h3" />
+
+        <path d="M18 13h.01" />
+
+        <path d="M18 17h.01" />
+
+        <path d="M2.5 21h19" />
+      </svg>
+    </div>
+
+    <div className="chat-header-info">
+
+      <div className="chat-header-name">
+        {
+          departmentConversation.departmentName ||
+          departmentConversation.name ||
+          "Phòng ban"
+        }
+      </div>
+
+      <div className="department-header-status">
+
+        <span className="department-status-dot" />
+
+        Phòng chat nội bộ
+
+      </div>
+
+    </div>
+
+  </div>
+
+  {/* =================================================
+      ACTIONS
+  ================================================= */}
+
+  <div className="chat-header-actions">
+
+    <div className="department-header-label">
+      Department
+    </div>
+
+    <button
+      type="button"
+      className="header-delete-button"
+      onClick={
+        deleteConversationHistory
+      }
+      title="Xóa lịch sử trò chuyện"
+      aria-label="Xóa lịch sử trò chuyện"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="18"
+        height="18"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M4 7h16" />
+
+        <path d="M9 7V4h6v3" />
+
+        <path d="M6.5 7 7 20h10l.5-13" />
+
+        <path d="M10 11v5" />
+
+        <path d="M14 11v5" />
+      </svg>
+    </button>
+
+  </div>
+
+</div>
           
 
           {/* =================================================
@@ -1922,8 +1981,11 @@ function ChatWindow({
                 </div>
 
                 <h3>
-                  {departmentConversation.departmentName ||
-                    "Phòng ban"}
+                  {
+                    departmentConversation.departmentName ||
+                    departmentConversation.name ||
+                    "Phòng ban"
+                  }
                 </h3>
 
                 <p>
@@ -1978,12 +2040,14 @@ function ChatWindow({
               id: null,
 
               fullName:
-                departmentConversation.departmentName ||
-                "Phòng ban",
+              departmentConversation.departmentName ||
+              departmentConversation.name ||
+              "Phòng ban",
 
-              username:
-                departmentConversation.departmentName ||
-                "Phòng ban",
+            username:
+              departmentConversation.departmentName ||
+              departmentConversation.name ||
+              "Phòng ban",
 
               isOnline: true,
             }}

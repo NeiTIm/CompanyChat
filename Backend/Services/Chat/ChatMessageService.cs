@@ -1,19 +1,35 @@
 using System.Security.Claims;
+
 using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
 using CompanyChat.Api.Models;
 using CompanyChat.Api.Services;
 using CompanyChat.Api.Services.Notification;
 using CompanyChat.Api.WebSockets;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace CompanyChat.Api.Services.Chat;
+
+
+/*
+ * =========================================================
+ * REPLY MESSAGE PAYLOAD
+ * =========================================================
+ */
 
 public record ReplyMessagePayload(
     long Id,
     int SenderId,
     string SenderName,
     string Content);
+
+
+/*
+ * =========================================================
+ * CHAT MESSAGE PAYLOAD
+ * =========================================================
+ */
 
 public record ChatMessagePayload(
     long Id,
@@ -27,6 +43,17 @@ public record ChatMessagePayload(
     DateTime SentAt,
     string DeliveryStatus);
 
+
+/*
+ * =========================================================
+ * NOTIFICATION PAYLOAD
+ *
+ * DepartmentName được thêm vào để realtime
+ * Department notification có thể hiển thị
+ * đúng tên phòng ban mà không cần reload.
+ * =========================================================
+ */
+
 public record NotificationPayload(
     long Id,
     int UserId,
@@ -36,13 +63,28 @@ public record NotificationPayload(
     int? ConversationId,
     long? MessageId,
     bool IsRead,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? DepartmentName);
+
+
+/*
+ * =========================================================
+ * CHAT MESSAGE RESULT
+ * =========================================================
+ */
 
 public record ChatMessageResult(
     long MessageId,
     IReadOnlyList<int> ReceiverIds,
     ChatMessagePayload Message,
     IReadOnlyList<NotificationPayload> Notifications);
+
+
+/*
+ * =========================================================
+ * CHAT MESSAGE SERVICE
+ * =========================================================
+ */
 
 public class ChatMessageService(
     AppDbContext db,
@@ -471,6 +513,22 @@ public class ChatMessageService(
                     message.Id);
 
 
+            /*
+             * ==================================================
+             * ADD NOTIFICATION PAYLOAD
+             *
+             * QUAN TRỌNG:
+             *
+             * notificationService.CreateAsync()
+             * đã lấy DepartmentName.
+             *
+             * Trước đây DepartmentName bị bỏ mất
+             * khi chuyển sang NotificationPayload.
+             *
+             * Bây giờ truyền nó vào realtime payload.
+             * ==================================================
+             */
+
             notifications.Add(
                 new NotificationPayload(
                     notification.Id,
@@ -481,7 +539,8 @@ public class ChatMessageService(
                     notification.ConversationId,
                     notification.MessageId,
                     notification.IsRead,
-                    notification.CreatedAt));
+                    notification.CreatedAt,
+                    notification.DepartmentName));
         }
 
 

@@ -14,6 +14,7 @@ public class ConversationAccessService
         this.db = db;
     }
 
+
     /*
      * ==================================================
      * GET CURRENT USER ID
@@ -51,6 +52,7 @@ public class ConversationAccessService
         }
 
         return await db.Users
+            .Include(x => x.UserDepartments)
             .FirstOrDefaultAsync(
                 x => x.Id == userId.Value);
     }
@@ -185,6 +187,60 @@ public class ConversationAccessService
 
     /*
      * ==================================================
+     * CHECK DEPARTMENT MEMBERSHIP
+     * ==================================================
+     *
+     * User có thể thuộc Department theo 2 cách:
+     *
+     * 1. Primary Department
+     * 2. Additional Department
+     *
+     * Ví dụ:
+     *
+     * Primary:
+     *     IT
+     *
+     * Additional:
+     *     Marketing
+     *     R&D
+     *
+     * User có quyền truy cập cả 3 Department Chat.
+     *
+     * ==================================================
+     */
+
+    private static bool BelongsToDepartment(
+        User user,
+        int departmentId)
+    {
+        /*
+         * ==================================================
+         * PRIMARY DEPARTMENT
+         * ==================================================
+         */
+
+        if (user.DepartmentId == departmentId)
+        {
+            return true;
+        }
+
+
+        /*
+         * ==================================================
+         * ADDITIONAL DEPARTMENTS
+         * ==================================================
+         */
+
+        return user.UserDepartments
+            .Any(
+                x =>
+                    x.DepartmentId ==
+                    departmentId);
+    }
+
+
+    /*
+     * ==================================================
      * CHECK CONVERSATION ACCESS
      * ==================================================
      */
@@ -193,10 +249,23 @@ public class ConversationAccessService
         ClaimsPrincipal user,
         int conversationId)
     {
+        /*
+         * ==================================================
+         * AUTHENTICATION
+         * ==================================================
+         */
+
         if (user.Identity?.IsAuthenticated != true)
         {
             return false;
         }
+
+
+        /*
+         * ==================================================
+         * GET CURRENT USER
+         * ==================================================
+         */
 
         var currentUser =
             await GetCurrentUserAsync(user);
@@ -205,6 +274,30 @@ public class ConversationAccessService
         {
             return false;
         }
+
+
+        /*
+         * ==================================================
+         * USER PHẢI ACTIVE
+         * ==================================================
+         *
+         * User bị disable / inactive
+         * không được truy cập conversation.
+         *
+         * ==================================================
+         */
+
+        if (!currentUser.IsActive)
+        {
+            return false;
+        }
+
+
+        /*
+         * ==================================================
+         * GET CONVERSATION
+         * ==================================================
+         */
 
         var conversation =
             await GetConversationAsync(
@@ -215,8 +308,16 @@ public class ConversationAccessService
             return false;
         }
 
+
         /*
-         * User phải là member
+         * ==================================================
+         * USER PHẢI LÀ MEMBER
+         * ==================================================
+         *
+         * Private / Group / Department đều phải
+         * vượt qua bước này.
+         *
+         * ==================================================
          */
 
         var isMember =
@@ -234,6 +335,12 @@ public class ConversationAccessService
          * ==================================================
          * PRIVATE CHAT
          * ==================================================
+         *
+         * Private conversation:
+         *
+         * Chỉ cần là ConversationMember.
+         *
+         * ==================================================
          */
 
         if (conversation.Type == "Private")
@@ -250,30 +357,74 @@ public class ConversationAccessService
 
         if (conversation.Type == "Department")
         {
+            /*
+             * Department Conversation bắt buộc
+             * phải có DepartmentId.
+             */
+
             if (!conversation.DepartmentId.HasValue)
             {
                 return false;
             }
 
-            if (!currentUser.DepartmentId.HasValue)
+
+            var departmentId =
+                conversation.DepartmentId.Value;
+
+
+            /*
+             * ==================================================
+             * KIỂM TRA DEPARTMENT CÓ ACTIVE KHÔNG
+             * ==================================================
+             */
+
+            var departmentIsActive =
+                await db.Departments
+                    .AsNoTracking()
+                    .AnyAsync(
+                        x =>
+                            x.Id == departmentId &&
+                            x.IsActive);
+
+            if (!departmentIsActive)
             {
                 return false;
             }
 
-            return
-                conversation.DepartmentId.Value ==
-                currentUser.DepartmentId.Value;
+
+            /*
+             * ==================================================
+             * KIỂM TRA PRIMARY + ADDITIONAL
+             * ==================================================
+             *
+             * Primary:
+             *
+             *     currentUser.DepartmentId
+             *
+             * Additional:
+             *
+             *     currentUser.UserDepartments
+             *
+             * Chỉ cần thuộc một trong hai
+             * là được phép truy cập.
+             * ==================================================
+             */
+
+            return BelongsToDepartment(
+                currentUser,
+                departmentId);
         }
 
 
         /*
          * ==================================================
          * GROUP CHAT
+         * ==================================================
          *
-         * Chưa làm Group Chat.
+         * Group access dựa trên ConversationMember.
          *
-         * Để sẵn access theo member cho tương lai.
-         * Không ảnh hưởng Private / Department.
+         * Không phụ thuộc DepartmentId.
+         *
          * ==================================================
          */
 
@@ -282,6 +433,12 @@ public class ConversationAccessService
             return true;
         }
 
+
+        /*
+         * ==================================================
+         * UNSUPPORTED CONVERSATION TYPE
+         * ==================================================
+         */
 
         return false;
     }

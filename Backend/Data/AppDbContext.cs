@@ -22,7 +22,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         get;
         set;
     }
+
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<UserDepartment> UserDepartments { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // =====================================================
@@ -162,5 +165,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 x.UserId,
                 x.CreatedAt
             });
+
+        modelBuilder.Entity<UserDepartment>()
+            .HasKey(x => new
+            {
+                x.UserId,
+                x.DepartmentId
+            });
+
+        modelBuilder.Entity<UserDepartment>()
+            .HasOne(x => x.User)
+            .WithMany(x => x.UserDepartments)
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserDepartment>()
+            .HasOne(x => x.Department)
+            .WithMany(x => x.UserDepartments)
+            .HasForeignKey(x => x.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -57,14 +57,50 @@ export async function deleteConversationHistory(conversationId) {
   return response.data;
 }
 
+/* =========================================================
+   DEPARTMENT CHAT
+========================================================= */
+
+/**
+ * Lấy danh sách Department mà user hiện tại thuộc về.
+ *
+ * Bao gồm:
+ * - Primary Department
+ * - Additional Departments
+ *
+ * Backend:
+ * GET /api/conversations/departments
+ */
+export async function getMyDepartments() {
+  const response = await api.get("/conversations/departments");
+
+  return response.data;
+}
+
 /**
  * Tạo hoặc lấy Department Conversation
  *
- * - Backend tự xác định Department
- *   dựa trên user đang đăng nhập.
+ * Dùng cho Primary Department.
+ *
+ * Giữ lại API cũ để không ảnh hưởng
+ * các phần frontend hiện tại.
  */
 export async function getOrCreateDepartmentConversation() {
   const response = await api.post("/conversations/department");
+
+  return response.data;
+}
+
+/**
+ * Tạo hoặc lấy Department Conversation
+ * theo Department cụ thể.
+ *
+ * Hỗ trợ:
+ * - Primary Department
+ * - Additional Department
+ */
+export async function getOrCreateDepartmentConversationById(departmentId) {
+  const response = await api.post(`/conversations/department/${departmentId}`);
 
   return response.data;
 }

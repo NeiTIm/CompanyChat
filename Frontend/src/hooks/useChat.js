@@ -4,7 +4,8 @@ import { getUsers } from "../services/userService";
 
 import {
   getUnreadCounts,
-  getOrCreateDepartmentConversation,
+  getMyDepartments,
+  getOrCreateDepartmentConversationById,
   getMyGroups,
 } from "../services/conversationService";
 
@@ -17,16 +18,19 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
   const [selectedUser, setSelectedUser] = useState(null);
 
   /* =====================================================
-     DEPARTMENT
+     DEPARTMENTS
   ===================================================== */
 
-  const [departmentConversation, setDepartmentConversation] = useState(null);
+  const [departments, setDepartments] = useState([]);
+
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
 
   /* =====================================================
      GROUP
   ===================================================== */
 
   const [groups, setGroups] = useState([]);
+
   const [selectedGroup, setSelectedGroup] = useState(null);
 
   /* =====================================================
@@ -34,7 +38,9 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
   ===================================================== */
 
   const [unreadCounts, setUnreadCounts] = useState({});
-  const [departmentUnreadCount, setDepartmentUnreadCount] = useState(0);
+
+  const [departmentUnreadCounts, setDepartmentUnreadCounts] = useState({});
+
   const [groupUnreadCounts, setGroupUnreadCounts] = useState({});
 
   /* =====================================================
@@ -49,6 +55,7 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
 
   useEffect(() => {
     loadUsers();
+    loadDepartments();
     loadGroups();
     loadUnreadCounts();
   }, []);
@@ -64,6 +71,54 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
       setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Load users error:", error);
+    }
+  }
+
+  /* =====================================================
+     LOAD DEPARTMENTS
+  ===================================================== */
+
+  async function loadDepartments() {
+    try {
+      const data = await getMyDepartments();
+
+      if (!Array.isArray(data)) {
+        setDepartments([]);
+
+        return;
+      }
+
+      /*
+       * Normalize Department.
+       *
+       * Backend có thể trả camelCase
+       * hoặc PascalCase.
+       */
+
+      const normalized = data.map((department) => ({
+        id: department.id ?? department.Id,
+
+        name: department.name ?? department.Name,
+
+        description: department.description ?? department.Description ?? "",
+
+        isActive: department.isActive ?? department.IsActive ?? true,
+
+        isPrimary: Boolean(department.isPrimary ?? department.IsPrimary),
+
+        conversationId:
+          department.conversationId ?? department.ConversationId ?? null,
+
+        type: department.type ?? department.Type ?? "Department",
+
+        createdAt: department.createdAt ?? department.CreatedAt ?? null,
+      }));
+
+      setDepartments(normalized);
+    } catch (error) {
+      console.error("Load departments error:", error);
+
+      setDepartments([]);
     }
   }
 
@@ -95,8 +150,7 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
 
       const privateCounts = {};
       const groupCounts = {};
-
-      let departmentCount = 0;
+      const departmentCounts = {};
 
       data.forEach((item) => {
         const conversationType = item.conversationType ?? item.ConversationType;
@@ -118,7 +172,10 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
         =============================================== */
 
         if (conversationType === "Department") {
-          departmentCount += unreadCount;
+          if (conversationId > 0) {
+            departmentCounts[conversationId] = unreadCount;
+          }
+
           return;
         }
 
@@ -146,7 +203,9 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
       });
 
       setUnreadCounts(privateCounts);
-      setDepartmentUnreadCount(departmentCount);
+
+      setDepartmentUnreadCounts(departmentCounts);
+
       setGroupUnreadCounts(groupCounts);
     } catch (error) {
       console.error("Load unread counts error:", error);
@@ -201,6 +260,7 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
 
     if (!id) {
       activeConversationRef.current = null;
+
       return;
     }
 
@@ -213,6 +273,7 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
     websocket.send(
       JSON.stringify({
         type: "conversation_change",
+
         conversationId: id,
       }),
     );
@@ -227,8 +288,24 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
        DEPARTMENT
     =============================================== */
 
-    if (departmentConversation && !selectedUser && !selectedGroup) {
-      setDepartmentUnreadCount(0);
+    if (selectedDepartment && !selectedUser && !selectedGroup) {
+      const conversationId = Number(
+        selectedDepartment.conversationId ?? selectedDepartment.id ?? 0,
+      );
+
+      if (!conversationId) {
+        return;
+      }
+
+      setDepartmentUnreadCounts((current) => {
+        const copy = {
+          ...current,
+        };
+
+        delete copy[conversationId];
+
+        return copy;
+      });
 
       return;
     }
@@ -247,7 +324,9 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
       }
 
       setGroupUnreadCounts((current) => {
-        const copy = { ...current };
+        const copy = {
+          ...current,
+        };
 
         delete copy[conversationId];
 
@@ -269,7 +348,9 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
       }
 
       setUnreadCounts((current) => {
-        const copy = { ...current };
+        const copy = {
+          ...current,
+        };
 
         delete copy[userId];
 
@@ -335,7 +416,11 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
     =============================================== */
 
     if (conversationType === "Department") {
-      setDepartmentUnreadCount((current) => current + 1);
+      setDepartmentUnreadCounts((current) => ({
+        ...current,
+
+        [conversationId]: (current[conversationId] || 0) + 1,
+      }));
 
       return;
     }
@@ -347,6 +432,7 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
     if (conversationType === "Group") {
       setGroupUnreadCounts((current) => ({
         ...current,
+
         [conversationId]: (current[conversationId] || 0) + 1,
       }));
 
@@ -360,6 +446,7 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
     if (conversationType === "Private") {
       setUnreadCounts((current) => ({
         ...current,
+
         [senderId]: (current[senderId] || 0) + 1,
       }));
     }
@@ -372,26 +459,168 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
   function handleSelectUser(user) {
     setSelectedUser(user);
 
-    setSelectedGroup(null);
+    setSelectedDepartment(null);
 
-    setDepartmentConversation(null);
+    setSelectedGroup(null);
   }
 
   /* =====================================================
      SELECT DEPARTMENT
   ===================================================== */
 
-  async function handleSelectDepartment() {
-    try {
-      const conversation = await getOrCreateDepartmentConversation();
+  async function handleSelectDepartment(department) {
+    if (!department) {
+      return;
+    }
 
-      setDepartmentConversation(conversation);
+    const departmentId = Number(department.id);
+
+    if (!departmentId) {
+      console.error("Invalid department:", department);
+
+      return;
+    }
+
+    try {
+      /*
+       * =================================================
+       * ALWAYS GET / CREATE DEPARTMENT CONVERSATION
+       * =================================================
+       *
+       * Không dùng conversationId có sẵn
+       * để bỏ qua API.
+       *
+       * Backend sẽ đảm bảo:
+       *
+       * 1. Department tồn tại
+       * 2. Department đang active
+       * 3. User có quyền truy cập
+       * 4. Conversation tồn tại
+       * 5. CurrentUser là ConversationMember
+       * 6. Các user thuộc Department được đồng bộ
+       */
+
+      const conversation =
+        await getOrCreateDepartmentConversationById(departmentId);
+
+      /*
+       * =================================================
+       * GET CONVERSATION ID
+       * =================================================
+       */
+
+      const conversationId = Number(
+        conversation?.conversationId ??
+          conversation?.ConversationId ??
+          conversation?.id ??
+          conversation?.Id ??
+          0,
+      );
+
+      if (!conversationId) {
+        console.error("Invalid department conversation:", conversation);
+
+        return;
+      }
+
+      /*
+       * =================================================
+       * NORMALIZE SELECTED DEPARTMENT
+       * =================================================
+       */
+
+      const selected = {
+        ...department,
+
+        id: conversationId,
+
+        conversationId,
+
+        type: conversation?.type ?? conversation?.Type ?? "Department",
+
+        departmentId: Number(
+          conversation?.departmentId ??
+            conversation?.DepartmentId ??
+            departmentId,
+        ),
+
+        departmentName:
+          conversation?.departmentName ??
+          conversation?.DepartmentName ??
+          department.name ??
+          department.Name ??
+          "Phòng ban",
+
+        createdAt:
+          conversation?.createdAt ??
+          conversation?.CreatedAt ??
+          department.createdAt ??
+          null,
+
+        isPrimary: Boolean(department.isPrimary ?? department.IsPrimary),
+      };
+
+      /*
+       * =================================================
+       * UPDATE DEPARTMENT LIST
+       * =================================================
+       */
+
+      setDepartments((current) =>
+        current.map((item) =>
+          Number(item.id) === departmentId
+            ? {
+                ...item,
+
+                conversationId,
+
+                type: selected.type,
+
+                departmentId: selected.departmentId,
+
+                departmentName: selected.departmentName,
+
+                createdAt: selected.createdAt,
+              }
+            : item,
+        ),
+      );
+
+      /*
+       * =================================================
+       * SELECT DEPARTMENT
+       * =================================================
+       */
+
+      setSelectedDepartment(selected);
+
+      /*
+       * =================================================
+       * CLEAR OTHER CHAT TYPES
+       * =================================================
+       */
 
       setSelectedUser(null);
 
       setSelectedGroup(null);
 
-      return conversation;
+      /*
+       * =================================================
+       * CLEAR UNREAD
+       * =================================================
+       */
+
+      setDepartmentUnreadCounts((current) => {
+        const copy = {
+          ...current,
+        };
+
+        delete copy[conversationId];
+
+        return copy;
+      });
+
+      return selected;
     } catch (error) {
       console.error("Load department conversation error:", error);
 
@@ -412,7 +641,7 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
 
     setSelectedUser(null);
 
-    setDepartmentConversation(null);
+    setSelectedDepartment(null);
 
     /* ===============================================
        CLEAR GROUP UNREAD IMMEDIATELY
@@ -422,7 +651,9 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
 
     if (conversationId) {
       setGroupUnreadCounts((current) => {
-        const copy = { ...current };
+        const copy = {
+          ...current,
+        };
 
         delete copy[conversationId];
 
@@ -465,7 +696,9 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
     =============================================== */
 
     setGroupUnreadCounts((current) => {
-      const copy = { ...current };
+      const copy = {
+        ...current,
+      };
 
       delete copy[id];
 
@@ -505,31 +738,52 @@ function useChat(currentUser, socketEvent, websocket, websocketConnected) {
 
   return {
     /* USERS */
+
     users,
     selectedUser,
 
-    /* DEPARTMENT */
-    departmentConversation,
-    departmentUnreadCount,
+    /* DEPARTMENTS */
+
+    departments,
+    selectedDepartment,
+
+    departmentUnreadCounts,
+
+    /*
+     * Backward compatibility:
+     *
+     * ChatPage cũ vẫn có thể dùng
+     * departmentConversation.
+     */
+
+    departmentConversation: selectedDepartment,
 
     /* GROUP */
+
     groups,
     selectedGroup,
+
     groupUnreadCounts,
 
     /* PRIVATE */
+
     unreadCounts,
 
     /* ACTIONS */
+
     handleSelectUser,
     handleSelectDepartment,
     handleSelectGroup,
+
     handleGroupUpdated,
     handleGroupRemoved,
+
     handleConversationRead,
     handleConversationChange,
 
     /* RELOAD */
+
+    loadDepartments,
     loadGroups,
     loadUsers,
     loadUnreadCounts,

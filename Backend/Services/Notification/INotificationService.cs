@@ -12,8 +12,9 @@ public interface INotificationService
         int? conversationId = null,
         long? messageId = null);
 
-    Task<List<Models.Notification>> GetUserNotificationsAsync(
-        int userId);
+    Task<List<DTOs.Notification.NotificationDto>>
+     GetUserNotificationsAsync(
+         int userId);
 
     Task<int> GetUnreadCountAsync(
         int userId);
