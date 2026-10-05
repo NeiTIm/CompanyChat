@@ -24,7 +24,9 @@ public class User
     // =========================
 
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
 
+    public DateTime? DeletedAt { get; set; }
     public bool IsOnline { get; set; }
 
     public DateTime? LastSeen { get; set; }

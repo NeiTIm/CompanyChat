@@ -1,7 +1,9 @@
 using System.Security.Claims;
+
 using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
 using CompanyChat.Api.DTOs.User;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +26,8 @@ public class EmployeeController(AppDbContext db) : ControllerBase
     // - Filter Role
     // - Filter Active
     // - Server-side pagination
+    //
+    // Deleted employees are excluded.
     // =========================================================
     [HttpGet]
     public async Task<IActionResult> GetEmployees(
@@ -37,6 +41,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // Validate pagination
         // =====================================================
+
         if (page < 1)
         {
             page = 1;
@@ -54,14 +59,21 @@ public class EmployeeController(AppDbContext db) : ControllerBase
 
         // =====================================================
         // Base query
+        //
+        // IMPORTANT:
+        // Deleted employees are not shown in the normal
+        // employee management list.
         // =====================================================
+
         var query = db.Users
             .AsNoTracking()
+            .Where(x => !x.IsDeleted)
             .AsQueryable();
 
         // =====================================================
         // Search
         // =====================================================
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             search = search.Trim();
@@ -75,37 +87,48 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // Filter Department
         // =====================================================
+
         if (departmentId.HasValue)
         {
-            query = query.Where(x => x.DepartmentId == departmentId.Value);
+            query = query.Where(x =>
+                x.DepartmentId == departmentId.Value);
         }
 
         // =====================================================
         // Filter Role
         // =====================================================
+
         if (!string.IsNullOrWhiteSpace(role))
         {
             role = role.Trim();
-            query = query.Where(x => x.Role == role);
+
+            query = query.Where(x =>
+                x.Role == role);
         }
 
         // =====================================================
         // Filter Active
         // =====================================================
+
         if (isActive.HasValue)
         {
-            query = query.Where(x => x.IsActive == isActive.Value);
+            query = query.Where(x =>
+                x.IsActive == isActive.Value);
         }
 
         // =====================================================
         // Total
         // =====================================================
+
         var total = await query.CountAsync();
-        var totalPages = (int)Math.Ceiling(total / (double)pageSize);
+
+        var totalPages = (int)Math.Ceiling(
+            total / (double)pageSize);
 
         // =====================================================
         // Pagination
         // =====================================================
+
         var employees = await query
             .OrderBy(x => x.Id)
             .Skip((page - 1) * pageSize)
@@ -120,12 +143,15 @@ public class EmployeeController(AppDbContext db) : ControllerBase
                 x.LastSeen,
                 x.IsActive,
                 x.DepartmentId,
-                x.Department != null ? x.Department.Name : null))
+                x.Department != null
+                    ? x.Department.Name
+                    : null))
             .ToListAsync();
 
         // =====================================================
         // Response
         // =====================================================
+
         return Ok(new
         {
             items = employees,
@@ -140,13 +166,18 @@ public class EmployeeController(AppDbContext db) : ControllerBase
     // GET: /api/admin/employees/{id}
     //
     // Employee detail
+    //
+    // Deleted employees cannot be accessed through the normal
+    // employee management endpoint.
     // =========================================================
     [HttpGet("{id:int}")]
     public async Task<ActionResult<UserDto>> GetEmployee(int id)
     {
         var employee = await db.Users
             .AsNoTracking()
-            .Where(x => x.Id == id)
+            .Where(x =>
+                x.Id == id &&
+                !x.IsDeleted)
             .Select(x => new UserDto(
                 x.Id,
                 x.Username,
@@ -157,7 +188,9 @@ public class EmployeeController(AppDbContext db) : ControllerBase
                 x.LastSeen,
                 x.IsActive,
                 x.DepartmentId,
-                x.Department != null ? x.Department.Name : null))
+                x.Department != null
+                    ? x.Department.Name
+                    : null))
             .FirstOrDefaultAsync();
 
         if (employee is null)
@@ -183,6 +216,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // Validate basic input
         // =====================================================
+
         if (string.IsNullOrWhiteSpace(request.Username))
         {
             return BadRequest(new
@@ -218,9 +252,13 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // Normalize
         // =====================================================
+
         var username = request.Username.Trim();
+
         var fullName = request.FullName.Trim();
+
         var email = request.Email.Trim();
+
         var role = string.IsNullOrWhiteSpace(request.Role)
             ? "Employee"
             : request.Role.Trim();
@@ -228,6 +266,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // Validate role
         // =====================================================
+
         if (role != "Admin" && role != "Employee")
         {
             return BadRequest(new
@@ -238,9 +277,14 @@ public class EmployeeController(AppDbContext db) : ControllerBase
 
         // =====================================================
         // Check username
+        //
+        // Keep username globally unique, including deleted
+        // accounts, to avoid identity/history conflicts.
         // =====================================================
+
         var usernameExists = await db.Users
-            .AnyAsync(x => x.Username == username);
+            .AnyAsync(x =>
+                x.Username == username);
 
         if (usernameExists)
         {
@@ -252,9 +296,14 @@ public class EmployeeController(AppDbContext db) : ControllerBase
 
         // =====================================================
         // Check email
+        //
+        // Keep email globally unique, including deleted
+        // accounts.
         // =====================================================
+
         var emailExists = await db.Users
-            .AnyAsync(x => x.Email == email);
+            .AnyAsync(x =>
+                x.Email == email);
 
         if (emailExists)
         {
@@ -267,6 +316,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // Validate Department
         // =====================================================
+
         if (request.DepartmentId.HasValue)
         {
             var departmentExists = await db.Departments
@@ -278,7 +328,8 @@ public class EmployeeController(AppDbContext db) : ControllerBase
             {
                 return BadRequest(new
                 {
-                    message = "Department không tồn tại hoặc đang bị vô hiệu hóa."
+                    message =
+                        "Department không tồn tại hoặc đang bị vô hiệu hóa."
                 });
             }
         }
@@ -286,25 +337,42 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // Create user
         // =====================================================
+
         var user = new Models.User
         {
             Username = username,
+
             FullName = fullName,
+
             Email = email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+
+            PasswordHash =
+                BCrypt.Net.BCrypt.HashPassword(
+                    request.Password),
+
             Role = role,
+
             DepartmentId = request.DepartmentId,
+
             IsActive = true,
+
+            IsDeleted = false,
+
+            DeletedAt = null,
+
             IsOnline = false,
+
             CreatedAt = DateTime.UtcNow
         };
 
         db.Users.Add(user);
+
         await db.SaveChangesAsync();
 
         // =====================================================
         // Load Department
         // =====================================================
+
         var departmentName = await db.Departments
             .Where(x => x.Id == user.DepartmentId)
             .Select(x => x.Name)
@@ -313,6 +381,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // Response DTO
         // =====================================================
+
         var response = new UserDto(
             user.Id,
             user.Username,
@@ -327,7 +396,10 @@ public class EmployeeController(AppDbContext db) : ControllerBase
 
         return CreatedAtAction(
             nameof(GetEmployee),
-            new { id = user.Id },
+            new
+            {
+                id = user.Id
+            },
             response);
     }
 
@@ -341,12 +413,17 @@ public class EmployeeController(AppDbContext db) : ControllerBase
     // - Role
     // - Department
     // - Active
+    // - Deleted
     // =========================================================
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateEmployee(
         int id,
         [FromBody] UpdateEmployeeDto request)
     {
+        // =====================================================
+        // Validate
+        // =====================================================
+
         if (string.IsNullOrWhiteSpace(request.FullName))
         {
             return BadRequest(new
@@ -363,7 +440,14 @@ public class EmployeeController(AppDbContext db) : ControllerBase
             });
         }
 
-        var employee = await db.Users.FindAsync(id);
+        // =====================================================
+        // Find non-deleted employee
+        // =====================================================
+
+        var employee = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == id &&
+                !x.IsDeleted);
 
         if (employee is null)
         {
@@ -378,8 +462,11 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // Email duplicate
         // =====================================================
+
         var emailExists = await db.Users
-            .AnyAsync(x => x.Id != id && x.Email == email);
+            .AnyAsync(x =>
+                x.Id != id &&
+                x.Email == email);
 
         if (emailExists)
         {
@@ -389,14 +476,21 @@ public class EmployeeController(AppDbContext db) : ControllerBase
             });
         }
 
+        // =====================================================
+        // Update
+        // =====================================================
+
         employee.FullName = request.FullName.Trim();
+
         employee.Email = email;
 
         await db.SaveChangesAsync();
 
         return Ok(new
         {
-            message = "Cập nhật thông tin nhân viên thành công.",
+            message =
+                "Cập nhật thông tin nhân viên thành công.",
+
             userId = employee.Id
         });
     }
@@ -405,12 +499,22 @@ public class EmployeeController(AppDbContext db) : ControllerBase
     // PATCH: /api/admin/employees/{id}/active
     //
     // Enable / Disable
+    //
+    // Active:
+    // true  = đang hoạt động
+    // false = bị khóa
+    //
+    // IsDeleted không bị thay đổi ở endpoint này.
     // =========================================================
     [HttpPatch("{id:int}/active")]
     public async Task<IActionResult> SetActive(
         int id,
-        [FromBody] bool active)
+        [FromBody] UpdateEmployeeActiveDto request)
     {
+        // =====================================================
+        // Current user
+        // =====================================================
+
         var currentUserId = GetCurrentUserId();
 
         if (currentUserId is null)
@@ -419,17 +523,32 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         }
 
         // =====================================================
+        // Active state
+        // =====================================================
+
+        var active = request.Active;
+
+        // =====================================================
         // Không cho Admin tự disable chính mình
         // =====================================================
+
         if (id == currentUserId.Value && !active)
         {
             return BadRequest(new
             {
-                message = "Bạn không thể vô hiệu hóa chính tài khoản của mình."
+                message =
+                    "Bạn không thể vô hiệu hóa chính tài khoản của mình."
             });
         }
 
-        var employee = await db.Users.FindAsync(id);
+        // =====================================================
+        // Find non-deleted employee
+        // =====================================================
+
+        var employee = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == id &&
+                !x.IsDeleted);
 
         if (employee is null)
         {
@@ -439,16 +558,29 @@ public class EmployeeController(AppDbContext db) : ControllerBase
             });
         }
 
+        // =====================================================
+        // Update active state
+        // =====================================================
+
         employee.IsActive = active;
+
         await db.SaveChangesAsync();
+
+        // =====================================================
+        // Response
+        // =====================================================
 
         return Ok(new
         {
             message = active
-                ? "Đã kích hoạt nhân viên."
-                : "Đã vô hiệu hóa nhân viên.",
+                ? "Đã mở khóa nhân viên."
+                : "Đã khóa nhân viên.",
+
             userId = employee.Id,
-            isActive = employee.IsActive
+
+            isActive = employee.IsActive,
+
+            isDeleted = employee.IsDeleted
         });
     }
 
@@ -462,6 +594,10 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         int id,
         [FromBody] UpdateUserRoleDto request)
     {
+        // =====================================================
+        // Validate role
+        // =====================================================
+
         if (string.IsNullOrWhiteSpace(request.Role))
         {
             return BadRequest(new
@@ -470,6 +606,10 @@ public class EmployeeController(AppDbContext db) : ControllerBase
             });
         }
 
+        // =====================================================
+        // Current user
+        // =====================================================
+
         var currentUserId = GetCurrentUserId();
 
         if (currentUserId is null)
@@ -477,31 +617,42 @@ public class EmployeeController(AppDbContext db) : ControllerBase
             return Unauthorized();
         }
 
-        // =====================================================
-        // Role hiện tại
-        // =====================================================
         var role = request.Role.Trim();
+
+        // =====================================================
+        // Validate allowed role
+        // =====================================================
 
         if (role != "Admin" && role != "Employee")
         {
             return BadRequest(new
             {
-                message = "Role chỉ được là Admin hoặc Employee."
+                message =
+                    "Role chỉ được là Admin hoặc Employee."
             });
         }
 
         // =====================================================
         // Không cho Admin tự thay đổi role
         // =====================================================
+
         if (id == currentUserId.Value)
         {
             return BadRequest(new
             {
-                message = "Bạn không thể thay đổi role của chính mình."
+                message =
+                    "Bạn không thể thay đổi role của chính mình."
             });
         }
 
-        var employee = await db.Users.FindAsync(id);
+        // =====================================================
+        // Find non-deleted employee
+        // =====================================================
+
+        var employee = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == id &&
+                !x.IsDeleted);
 
         if (employee is null)
         {
@@ -511,13 +662,20 @@ public class EmployeeController(AppDbContext db) : ControllerBase
             });
         }
 
+        // =====================================================
+        // Update role
+        // =====================================================
+
         employee.Role = role;
+
         await db.SaveChangesAsync();
 
         return Ok(new
         {
             message = "Cập nhật role thành công.",
+
             userId = employee.Id,
+
             role = employee.Role
         });
     }
@@ -538,7 +696,14 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         int id,
         [FromBody] int? departmentId)
     {
-        var employee = await db.Users.FindAsync(id);
+        // =====================================================
+        // Find non-deleted employee
+        // =====================================================
+
+        var employee = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == id &&
+                !x.IsDeleted);
 
         if (employee is null)
         {
@@ -551,15 +716,20 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // null = remove department
         // =====================================================
+
         if (departmentId is null)
         {
             employee.DepartmentId = null;
+
             await db.SaveChangesAsync();
 
             return Ok(new
             {
-                message = "Đã bỏ nhân viên khỏi phòng ban.",
+                message =
+                    "Đã bỏ nhân viên khỏi phòng ban.",
+
                 userId = employee.Id,
+
                 departmentId = (int?)null
             });
         }
@@ -567,6 +737,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // Department phải tồn tại + active
         // =====================================================
+
         var department = await db.Departments
             .AsNoTracking()
             .FirstOrDefaultAsync(x =>
@@ -577,18 +748,28 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         {
             return BadRequest(new
             {
-                message = "Department không tồn tại hoặc đang bị vô hiệu hóa."
+                message =
+                    "Department không tồn tại hoặc đang bị vô hiệu hóa."
             });
         }
 
+        // =====================================================
+        // Assign department
+        // =====================================================
+
         employee.DepartmentId = department.Id;
+
         await db.SaveChangesAsync();
 
         return Ok(new
         {
-            message = "Cập nhật phòng ban thành công.",
+            message =
+                "Cập nhật phòng ban thành công.",
+
             userId = employee.Id,
+
             departmentId = employee.DepartmentId,
+
             departmentName = department.Name
         });
     }
@@ -603,44 +784,65 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         int id,
         [FromBody] ResetEmployeePasswordDto request)
     {
+        // =====================================================
+        // Validate password
+        // =====================================================
+
         if (string.IsNullOrWhiteSpace(request.NewPassword))
         {
             return BadRequest(new
             {
-                message = "Mật khẩu mới không được để trống."
+                message =
+                    "Mật khẩu mới không được để trống."
             });
         }
 
         // =====================================================
         // Password policy cơ bản
         // =====================================================
+
         if (request.NewPassword.Length < 6)
         {
             return BadRequest(new
             {
-                message = "Mật khẩu phải có ít nhất 6 ký tự."
+                message =
+                    "Mật khẩu phải có ít nhất 6 ký tự."
             });
         }
 
-        var employee = await db.Users.FindAsync(id);
+        // =====================================================
+        // Find non-deleted employee
+        // =====================================================
+
+        var employee = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == id &&
+                !x.IsDeleted);
 
         if (employee is null)
         {
             return NotFound(new
             {
-                message = "Không tìm thấy nhân viên."
+                message =
+                    "Không tìm thấy nhân viên."
             });
         }
 
         // =====================================================
         // BCrypt
         // =====================================================
-        employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
+        employee.PasswordHash =
+            BCrypt.Net.BCrypt.HashPassword(
+                request.NewPassword);
+
         await db.SaveChangesAsync();
 
         return Ok(new
         {
-            message = "Đặt lại mật khẩu thành công.",
+            message =
+                "Đặt lại mật khẩu thành công.",
+
             userId = employee.Id
         });
     }
@@ -648,11 +850,37 @@ public class EmployeeController(AppDbContext db) : ControllerBase
     // =========================================================
     // DELETE: /api/admin/employees/{id}
     //
-    // Soft delete / disable
+    // Soft Delete
+    //
+    // IMPORTANT:
+    //
+    // Delete != Lock
+    //
+    // Lock:
+    //     IsActive = false
+    //
+    // Delete:
+    //     IsDeleted = true
+    //     IsActive = false
+    //     DeletedAt = current UTC time
+    //
+    // Deleted employee:
+    // - disappears from employee list
+    // - cannot be edited
+    // - cannot change role
+    // - cannot change department
+    // - cannot reset password
+    // - cannot be accessed through detail endpoint
+    //
+    // Database record is NOT physically deleted.
     // =========================================================
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteEmployee(int id)
     {
+        // =====================================================
+        // Current user
+        // =====================================================
+
         var currentUserId = GetCurrentUserId();
 
         if (currentUserId is null)
@@ -663,34 +891,84 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // =====================================================
         // Không cho Admin tự xóa chính mình
         // =====================================================
+
         if (id == currentUserId.Value)
         {
             return BadRequest(new
             {
-                message = "Admin không thể tự xóa tài khoản của chính mình."
+                message =
+                    "Admin không thể tự xóa tài khoản của chính mình."
             });
         }
 
-        var employee = await db.Users.FindAsync(id);
+        // =====================================================
+        // Find employee
+        //
+        // Không cần filter IsDeleted ở đây để có thể trả
+        // NotFound nếu tài khoản đã được xóa trước đó.
+        // =====================================================
+
+        var employee = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == id);
 
         if (employee is null)
         {
             return NotFound(new
             {
-                message = "Không tìm thấy nhân viên."
+                message =
+                    "Không tìm thấy nhân viên."
+            });
+        }
+
+        // =====================================================
+        // Already deleted
+        // =====================================================
+
+        if (employee.IsDeleted)
+        {
+            return NotFound(new
+            {
+                message =
+                    "Nhân viên này đã được xóa trước đó."
             });
         }
 
         // =====================================================
         // Soft delete
         // =====================================================
+
+        employee.IsDeleted = true;
+
+        employee.DeletedAt = DateTime.UtcNow;
+
+        // Deleted account must also be inactive.
         employee.IsActive = false;
+
+        // Deleted account must not remain online.
+        employee.IsOnline = false;
+
+        // =====================================================
+        // Save
+        // =====================================================
+
         await db.SaveChangesAsync();
+
+        // =====================================================
+        // Response
+        // =====================================================
 
         return Ok(new
         {
-            message = "Đã vô hiệu hóa nhân viên.",
+            message =
+                "Đã xóa nhân viên.",
+
             userId = employee.Id,
+
+            isDeleted = employee.IsDeleted,
+
+            deletedAt = employee.DeletedAt,
+
             isActive = employee.IsActive
         });
     }
@@ -701,7 +979,9 @@ public class EmployeeController(AppDbContext db) : ControllerBase
     // =========================================================
     private int? GetCurrentUserId()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId =
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier);
 
         if (!int.TryParse(userId, out var id))
         {

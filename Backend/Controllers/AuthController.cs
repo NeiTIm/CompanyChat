@@ -14,15 +14,26 @@ public class AuthController(
     AppDbContext db,
     JwtService jwt) : ControllerBase
 {
+    // =========================================================
+    // LOGIN
+    // =========================================================
+
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login(
         LoginRequest request)
     {
-        var user = await db.Users.FirstOrDefaultAsync(
-            x => x.Username == request.Username);
+        var username = request.Username.Trim();
+
+        var user = await db.Users
+            .Include(x => x.Department)
+            .FirstOrDefaultAsync(
+                x => x.Username == username);
+
+        // -----------------------------------------------------
+        // USER KHÔNG TỒN TẠI / PASSWORD SAI
+        // -----------------------------------------------------
 
         if (user is null ||
-            !user.IsActive ||
             !BCrypt.Net.BCrypt.Verify(
                 request.Password,
                 user.PasswordHash))
@@ -33,17 +44,58 @@ public class AuthController(
             });
         }
 
+        // -----------------------------------------------------
+        // USER ĐÃ BỊ SOFT DELETE
+        // -----------------------------------------------------
+
+        if (user.IsDeleted)
+        {
+            return Unauthorized(new
+            {
+                message = "This account has been deleted."
+            });
+        }
+
+        // -----------------------------------------------------
+        // USER BỊ KHÓA
+        // -----------------------------------------------------
+
+        if (!user.IsActive)
+        {
+            return Unauthorized(new
+            {
+                message = "This account has been locked."
+            });
+        }
+
+        // -----------------------------------------------------
+        // LOGIN SUCCESS
+        // -----------------------------------------------------
+
         return Ok(new LoginResponse(
             jwt.CreateToken(user),
             ToDto(user)));
     }
 
+
+    // =========================================================
+    // REGISTER
+    // =========================================================
+
     [HttpPost("register")]
     public async Task<ActionResult<UserDto>> Register(
         RegisterRequest request)
     {
+        var username = request.Username.Trim();
+        var fullName = request.FullName.Trim();
+        var email = request.Email.Trim();
+
+        // -----------------------------------------------------
+        // USERNAME
+        // -----------------------------------------------------
+
         if (await db.Users.AnyAsync(
-            x => x.Username == request.Username))
+            x => x.Username == username))
         {
             return Conflict(new
             {
@@ -51,8 +103,12 @@ public class AuthController(
             });
         }
 
+        // -----------------------------------------------------
+        // EMAIL
+        // -----------------------------------------------------
+
         if (await db.Users.AnyAsync(
-            x => x.Email == request.Email))
+            x => x.Email == email))
         {
             return Conflict(new
             {
@@ -60,21 +116,51 @@ public class AuthController(
             });
         }
 
+        // -----------------------------------------------------
+        // CREATE USER
+        // -----------------------------------------------------
+
         var user = new User
         {
-            Username = request.Username.Trim(),
-            FullName = request.FullName.Trim(),
-            Email = request.Email.Trim(),
+            Username = username,
+            FullName = fullName,
+            Email = email,
+
             PasswordHash =
-                BCrypt.Net.BCrypt.HashPassword(request.Password),
-            Role = "Employee"
+                BCrypt.Net.BCrypt.HashPassword(
+                    request.Password),
+
+            Role = "Employee",
+
+            // Account status
+            IsActive = true,
+            IsDeleted = false,
+            DeletedAt = null,
+
+            // Online status
+            IsOnline = false,
+            LastSeen = null,
+
+            CreatedAt = DateTime.UtcNow
         };
 
         db.Users.Add(user);
+
         await db.SaveChangesAsync();
+
+        // Load Department navigation nếu sau này
+        // Register có DepartmentId.
+        await db.Entry(user)
+            .Reference(x => x.Department)
+            .LoadAsync();
 
         return Ok(ToDto(user));
     }
+
+
+    // =========================================================
+    // USER DTO
+    // =========================================================
 
     private static UserDto ToDto(User user)
     {
