@@ -854,73 +854,61 @@ useEffect(() => {
   ======================================================= */
 
   function handleDeleteUser(user) {
-    const currentUserId =
-      Number(currentUser?.id);
+  const currentUserId = Number(currentUser?.id);
 
-    if (
-      currentUserId &&
-      currentUserId === Number(user.id)
-    ) {
-      alert(
-        "Bạn không thể xóa tài khoản của mình."
-      );
-
-      return;
-    }
-
-    setConfirmModal({
-      title: "Xác nhận xóa nhân viên",
-
-      message:
-        `Bạn có chắc muốn xóa nhân viên ` +
-        `"${user.fullName || user.username}"? ` +
-        `Tài khoản sẽ được vô hiệu hóa.`,
-
-      confirmText: "Xóa nhân viên",
-
-      cancelText: "Hủy",
-
-      danger: true,
-
-      onConfirm: async () => {
-        try {
-          setActionLoading(true);
-
-          await deleteAdminUser(user.id);
-
-          setUsers((current) =>
-            current.filter(
-              (item) => item.id !== user.id
-            )
-          );
-
-          setSelectedUser((current) =>
-            current?.id === user.id
-              ? null
-              : current
-          );
-
-          setTotal((current) =>
-            Math.max(current - 1, 0)
-          );
-
-          setConfirmModal(null);
-        } catch (error) {
-          console.error(
-            "Không thể xóa nhân viên:",
-            error
-          );
-
-          alert(
-            error?.response?.data?.message ||
-              "Không thể xóa nhân viên."
-          );
-        } finally {
-          setActionLoading(false);
-        }
-      },
-    });
+  // Không cho admin tự xóa tài khoản của chính mình
+  if (currentUserId && currentUserId === Number(user.id)) {
+    alert("Bạn không thể xóa tài khoản của mình.");
+    return;
   }
+
+  setConfirmModal({
+    title: "Xác nhận xóa nhân viên",
+
+    message:
+      `Bạn có chắc muốn xóa nhân viên ` +
+      `"${user.fullName || user.username}"? ` +
+      `Tài khoản sẽ được đánh dấu là đã xóa và ` +
+      `không còn xuất hiện trong danh sách nhân viên.`,
+
+    confirmText: "Xóa nhân viên",
+    cancelText: "Hủy",
+    danger: true,
+
+    onConfirm: async () => {
+      try {
+        setActionLoading(true);
+
+        await deleteAdminUser(user.id);
+
+        // Xóa khỏi danh sách hiện tại
+        setUsers((current) =>
+          current.filter((item) => item.id !== user.id)
+        );
+
+        // Nếu đang xem detail của user này thì đóng detail
+        setSelectedUser((current) =>
+          current?.id === user.id ? null : current
+        );
+
+        // Cập nhật tổng số nhân viên
+        setTotal((current) => Math.max(current - 1, 0));
+
+        // Đóng confirm modal
+        setConfirmModal(null);
+      } catch (error) {
+        console.error("Không thể xóa nhân viên:", error);
+
+        alert(
+          error?.response?.data?.message ||
+          "Không thể xóa nhân viên."
+        );
+      } finally {
+        setActionLoading(false);
+      }
+    },
+  });
+}
 
   /* =======================================================
      CREATE SUCCESS

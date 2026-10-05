@@ -15,15 +15,9 @@ export async function getAdminUsers({
   const response = await api.get("/admin/employees", {
     params: {
       search: search || undefined,
-      departmentId:
-        departmentId !== ""
-          ? departmentId
-          : undefined,
+      departmentId: departmentId !== "" ? departmentId : undefined,
       role: role || undefined,
-      isActive:
-        isActive !== ""
-          ? isActive
-          : undefined,
+      isActive: isActive !== "" ? isActive : undefined,
       page,
       pageSize,
     },
@@ -37,9 +31,7 @@ export async function getAdminUsers({
 // =========================================================
 
 export async function getAdminUser(id) {
-  const response = await api.get(
-    `/admin/employees/${id}`
-  );
+  const response = await api.get(`/admin/employees/${id}`);
 
   return response.data;
 }
@@ -49,10 +41,7 @@ export async function getAdminUser(id) {
 // =========================================================
 
 export async function createEmployee(data) {
-  const response = await api.post(
-    "/admin/employees",
-    data
-  );
+  const response = await api.post("/admin/employees", data);
 
   return response.data;
 }
@@ -62,10 +51,7 @@ export async function createEmployee(data) {
 // =========================================================
 
 export async function updateEmployee(id, data) {
-  const response = await api.put(
-    `/admin/employees/${id}`,
-    data
-  );
+  const response = await api.put(`/admin/employees/${id}`, data);
 
   return response.data;
 }
@@ -74,14 +60,10 @@ export async function updateEmployee(id, data) {
 // ACTIVE / INACTIVE
 // =========================================================
 
-export async function updateUserActive(
-  id,
-  active
-) {
-  const response = await api.patch(
-    `/admin/employees/${id}/active`,
-    active
-  );
+export async function updateUserActive(id, active) {
+  const response = await api.patch(`/admin/employees/${id}/active`, {
+    active,
+  });
 
   return response.data;
 }
@@ -90,16 +72,10 @@ export async function updateUserActive(
 // CHANGE ROLE
 // =========================================================
 
-export async function updateUserRole(
-  id,
-  role
-) {
-  const response = await api.patch(
-    `/admin/employees/${id}/role`,
-    {
-      role,
-    }
-  );
+export async function updateUserRole(id, role) {
+  const response = await api.patch(`/admin/employees/${id}/role`, {
+    role,
+  });
 
   return response.data;
 }
@@ -108,13 +84,10 @@ export async function updateUserRole(
 // CHANGE DEPARTMENT
 // =========================================================
 
-export async function updateUserDepartment(
-  id,
-  departmentId
-) {
+export async function updateUserDepartment(id, departmentId) {
   const response = await api.patch(
     `/admin/employees/${id}/department`,
-    departmentId
+    departmentId,
   );
 
   return response.data;
@@ -124,16 +97,10 @@ export async function updateUserDepartment(
 // RESET PASSWORD
 // =========================================================
 
-export async function resetEmployeePassword(
-  id,
-  newPassword
-) {
-  const response = await api.patch(
-    `/admin/employees/${id}/reset-password`,
-    {
-      newPassword,
-    }
-  );
+export async function resetEmployeePassword(id, newPassword) {
+  const response = await api.patch(`/admin/employees/${id}/reset-password`, {
+    newPassword,
+  });
 
   return response.data;
 }
@@ -143,9 +110,7 @@ export async function resetEmployeePassword(
 // =========================================================
 
 export async function deleteAdminUser(id) {
-  const response = await api.delete(
-    `/admin/employees/${id}`
-  );
+  const response = await api.delete(`/admin/employees/${id}`);
 
   return response.data;
 }
