@@ -3,6 +3,7 @@ using System.Security.Claims;
 using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
 using CompanyChat.Api.DTOs.User;
+using CompanyChat.Api.Services;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +14,9 @@ namespace CompanyChat.Api.Controllers.Admin;
 [ApiController]
 [Route("api/admin/employees")]
 [Authorize(Policy = Policies.ManageUsers)]
-public class EmployeeController(AppDbContext db) : ControllerBase
+public class EmployeeController(
+    AppDbContext db,
+    ConnectionManager connections) : ControllerBase
 {
     // =========================================================
     // GET: /api/admin/employees
@@ -25,9 +28,14 @@ public class EmployeeController(AppDbContext db) : ControllerBase
     // - Filter Department
     // - Filter Role
     // - Filter Active
+    // - Filter Deleted
     // - Server-side pagination
     //
-    // Deleted employees are excluded.
+    // Default:
+    // - Deleted employees are excluded.
+    //
+    // isDeleted=true:
+    // - Only deleted employees are returned.
     // =========================================================
     [HttpGet]
     public async Task<IActionResult> GetEmployees(
@@ -35,6 +43,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         [FromQuery] int? departmentId,
         [FromQuery] string? role,
         [FromQuery] bool? isActive,
+        [FromQuery] bool? isDeleted,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
@@ -59,16 +68,30 @@ public class EmployeeController(AppDbContext db) : ControllerBase
 
         // =====================================================
         // Base query
-        //
-        // IMPORTANT:
-        // Deleted employees are not shown in the normal
-        // employee management list.
         // =====================================================
 
         var query = db.Users
             .AsNoTracking()
-            .Where(x => !x.IsDeleted)
             .AsQueryable();
+
+        // =====================================================
+        // Filter Deleted
+        //
+        // Default:
+        // isDeleted = false
+        //
+        // Nếu isDeleted=true:
+        // chỉ lấy nhân viên đã soft delete.
+        // =====================================================
+
+        if (isDeleted == true)
+        {
+            query = query.Where(x => x.IsDeleted);
+        }
+        else
+        {
+            query = query.Where(x => !x.IsDeleted);
+        }
 
         // =====================================================
         // Search
@@ -162,13 +185,11 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         });
     }
 
+
     // =========================================================
     // GET: /api/admin/employees/{id}
     //
     // Employee detail
-    //
-    // Deleted employees cannot be accessed through the normal
-    // employee management endpoint.
     // =========================================================
     [HttpGet("{id:int}")]
     public async Task<ActionResult<UserDto>> GetEmployee(int id)
@@ -176,8 +197,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         var employee = await db.Users
             .AsNoTracking()
             .Where(x =>
-                x.Id == id &&
-                !x.IsDeleted)
+                x.Id == id)
             .Select(x => new UserDto(
                 x.Id,
                 x.Username,
@@ -203,6 +223,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
 
         return Ok(employee);
     }
+
 
     // =========================================================
     // POST: /api/admin/employees
@@ -271,15 +292,13 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         {
             return BadRequest(new
             {
-                message = "Role chỉ được là Admin hoặc Employee."
+                message =
+                    "Role chỉ được là Admin hoặc Employee."
             });
         }
 
         // =====================================================
         // Check username
-        //
-        // Keep username globally unique, including deleted
-        // accounts, to avoid identity/history conflicts.
         // =====================================================
 
         var usernameExists = await db.Users
@@ -296,9 +315,6 @@ public class EmployeeController(AppDbContext db) : ControllerBase
 
         // =====================================================
         // Check email
-        //
-        // Keep email globally unique, including deleted
-        // accounts.
         // =====================================================
 
         var emailExists = await db.Users
@@ -403,17 +419,11 @@ public class EmployeeController(AppDbContext db) : ControllerBase
             response);
     }
 
+
     // =========================================================
     // PUT: /api/admin/employees/{id}
     //
     // Update basic employee information
-    //
-    // Does NOT update:
-    // - Password
-    // - Role
-    // - Department
-    // - Active
-    // - Deleted
     // =========================================================
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateEmployee(
@@ -480,7 +490,8 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         // Update
         // =====================================================
 
-        employee.FullName = request.FullName.Trim();
+        employee.FullName =
+            request.FullName.Trim();
 
         employee.Email = email;
 
@@ -495,6 +506,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         });
     }
 
+
     // =========================================================
     // PATCH: /api/admin/employees/{id}/active
     //
@@ -503,8 +515,6 @@ public class EmployeeController(AppDbContext db) : ControllerBase
     // Active:
     // true  = đang hoạt động
     // false = bị khóa
-    //
-    // IsDeleted không bị thay đổi ở endpoint này.
     // =========================================================
     [HttpPatch("{id:int}/active")]
     public async Task<IActionResult> SetActive(
@@ -567,6 +577,26 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         await db.SaveChangesAsync();
 
         // =====================================================
+        // Nếu khóa tài khoản
+        //
+        // Disconnect toàn bộ WebSocket của user.
+        //
+        // Hỗ trợ:
+        // - Chrome
+        // - Edge
+        // - Mobile
+        // - Nhiều tab
+        // =====================================================
+
+        if (!active)
+        {
+            await connections.DisconnectUserAsync(
+                employee.Id,
+                "Tài khoản của bạn đã bị khóa.",
+                "locked");
+        }
+
+        // =====================================================
         // Response
         // =====================================================
 
@@ -583,6 +613,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
             isDeleted = employee.IsDeleted
         });
     }
+
 
     // =========================================================
     // PATCH: /api/admin/employees/{id}/role
@@ -680,16 +711,11 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         });
     }
 
+
     // =========================================================
     // PATCH: /api/admin/employees/{id}/department
     //
     // Assign / Remove Department
-    //
-    // Body:
-    // 2
-    //
-    // hoặc:
-    // null
     // =========================================================
     [HttpPatch("{id:int}/department")]
     public async Task<IActionResult> SetDepartment(
@@ -774,6 +800,7 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         });
     }
 
+
     // =========================================================
     // PATCH: /api/admin/employees/{id}/reset-password
     //
@@ -847,32 +874,11 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         });
     }
 
+
     // =========================================================
     // DELETE: /api/admin/employees/{id}
     //
     // Soft Delete
-    //
-    // IMPORTANT:
-    //
-    // Delete != Lock
-    //
-    // Lock:
-    //     IsActive = false
-    //
-    // Delete:
-    //     IsDeleted = true
-    //     IsActive = false
-    //     DeletedAt = current UTC time
-    //
-    // Deleted employee:
-    // - disappears from employee list
-    // - cannot be edited
-    // - cannot change role
-    // - cannot change department
-    // - cannot reset password
-    // - cannot be accessed through detail endpoint
-    //
-    // Database record is NOT physically deleted.
     // =========================================================
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteEmployee(int id)
@@ -903,9 +909,6 @@ public class EmployeeController(AppDbContext db) : ControllerBase
 
         // =====================================================
         // Find employee
-        //
-        // Không cần filter IsDeleted ở đây để có thể trả
-        // NotFound nếu tài khoản đã được xóa trước đó.
         // =====================================================
 
         var employee = await db.Users
@@ -940,19 +943,33 @@ public class EmployeeController(AppDbContext db) : ControllerBase
 
         employee.IsDeleted = true;
 
-        employee.DeletedAt = DateTime.UtcNow;
+        employee.DeletedAt =
+            DateTime.UtcNow;
 
-        // Deleted account must also be inactive.
         employee.IsActive = false;
-
-        // Deleted account must not remain online.
-        employee.IsOnline = false;
 
         // =====================================================
         // Save
         // =====================================================
 
         await db.SaveChangesAsync();
+
+        // =====================================================
+        // Disconnect toàn bộ WebSocket
+        //
+        // User có thể đang đăng nhập bằng:
+        // - Chrome
+        // - Edge
+        // - Mobile
+        // - Nhiều tab
+        //
+        // Tất cả connection sẽ bị đóng.
+        // =====================================================
+
+        await connections.DisconnectUserAsync(
+            employee.Id,
+            "Tài khoản của bạn đã bị xóa.",
+            "deleted");
 
         // =====================================================
         // Response
@@ -973,6 +990,43 @@ public class EmployeeController(AppDbContext db) : ControllerBase
         });
     }
 
+    /* =========================================================
+   RESTORE EMPLOYEE
+========================================================= */
+
+    [HttpPatch("{id:int}/restore")]
+    public async Task<IActionResult> RestoreEmployee(int id)
+    {
+        var employee = await db.Users
+            .FirstOrDefaultAsync(x =>
+                x.Id == id &&
+                x.IsDeleted);
+
+        if (employee is null)
+        {
+            return NotFound(new
+            {
+                message = "Không tìm thấy nhân viên đã bị xóa."
+            });
+        }
+
+        employee.IsDeleted = false;
+        employee.IsActive = true;
+        employee.DeletedAt = null;
+
+        await db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Đã khôi phục nhân viên.",
+            userId = employee.Id,
+            isActive = employee.IsActive,
+            isDeleted = employee.IsDeleted,
+            deletedAt = employee.DeletedAt
+        });
+    }
+
+
     // =========================================================
     // Helper:
     // Get current authenticated user ID
@@ -983,7 +1037,9 @@ public class EmployeeController(AppDbContext db) : ControllerBase
             User.FindFirstValue(
                 ClaimTypes.NameIdentifier);
 
-        if (!int.TryParse(userId, out var id))
+        if (!int.TryParse(
+                userId,
+                out var id))
         {
             return null;
         }

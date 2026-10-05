@@ -52,7 +52,7 @@ public class AuthController(
         {
             return Unauthorized(new
             {
-                message = "This account has been deleted."
+                message = "Tài khoản đã bị xóa."
             });
         }
 
@@ -64,7 +64,7 @@ public class AuthController(
         {
             return Unauthorized(new
             {
-                message = "This account has been locked."
+                message = "Tài khoản đã bị khóa."
             });
         }
 

@@ -110,7 +110,8 @@ public class ChatWebSocketHandler
         if (becameOnline)
         {
             var user = await db.Users
-                .FirstOrDefaultAsync(x => x.Id == userId);
+                .FirstOrDefaultAsync(x =>
+                    x.Id == userId);
 
             if (user != null)
             {
@@ -119,6 +120,7 @@ public class ChatWebSocketHandler
                 await db.SaveChangesAsync();
             }
         }
+
 
         /* ==================================================
            SEND CURRENT ONLINE USERS
@@ -156,7 +158,7 @@ public class ChatWebSocketHandler
 
         /* ==================================================
            USER ONLINE
-           
+
            Chỉ broadcast khi user thực sự
            chuyển Offline -> Online.
         ================================================== */
@@ -208,31 +210,46 @@ public class ChatWebSocketHandler
         {
             /* ==================================================
                REMOVE CONNECTION
+
+               Chỉ chuyển Offline khi đây là connection
+               cuối cùng của user.
             ================================================== */
 
             var becameOffline =
                 connections.Remove(
                     userId,
                     socket);
+
+            DateTime? lastSeen = null;
+
             if (becameOffline)
             {
+                lastSeen =
+                    DateTime.UtcNow;
+
                 var user = await db.Users
-                    .FirstOrDefaultAsync(x => x.Id == userId);
+                    .FirstOrDefaultAsync(x =>
+                        x.Id == userId);
 
                 if (user != null)
                 {
                     user.IsOnline = false;
-                    user.LastSeen = DateTime.UtcNow;
+
+                    user.LastSeen =
+                        lastSeen.Value;
 
                     await db.SaveChangesAsync();
                 }
             }
 
+
             /* ==================================================
                USER OFFLINE
-               
+
                Chỉ broadcast khi connection cuối cùng
                của user đóng.
+
+               lastSeen dùng đúng thời điểm đã lưu DB.
             ================================================== */
 
             if (becameOffline)
@@ -247,8 +264,7 @@ public class ChatWebSocketHandler
 
                             isOnline = false,
 
-                            lastSeen =
-                                DateTime.UtcNow
+                            lastSeen
                         });
 
                 await connections.BroadcastAsync(
@@ -284,9 +300,9 @@ public class ChatWebSocketHandler
 
     /* ==================================================
        RECEIVE LOOP
-       
+
        Đọc đầy đủ WebSocket message.
-       
+
        Không giả định:
        1 ReceiveAsync = 1 JSON hoàn chỉnh.
     ================================================== */
@@ -477,7 +493,7 @@ public class ChatWebSocketHandler
 
     /* ==================================================
        HANDLE MESSAGE
-       
+
        ChatMessageService xử lý:
        - Private
        - Department
@@ -538,10 +554,10 @@ public class ChatWebSocketHandler
 
         /* ==================================================
            SEND MESSAGE TO RECEIVERS
-           
+
            Group:
            message được gửi tới từng member.
-           
+
            Nếu gửi thành công:
            MessageUserState.IsDelivered = true.
         ================================================== */
@@ -569,7 +585,7 @@ public class ChatWebSocketHandler
 
         /* ==================================================
            SEND NOTIFICATIONS
-           
+
            Notification đã được quyết định
            ở ChatMessageService.
         ================================================== */
@@ -597,15 +613,15 @@ public class ChatWebSocketHandler
 
         /* ==================================================
            SENDER DELIVERY STATUS
-           
+
            Không dùng:
-           
+
            Any(IsOnline)
-           
+
            Vì Group có nhiều receiver.
-           
+
            Dựa vào MessageUserState thực tế:
-           
+
            - tất cả read       -> read
            - có receiver
              delivered        -> delivered
@@ -649,7 +665,7 @@ public class ChatWebSocketHandler
 
         /* ==================================================
            SEND MESSAGE BACK TO SENDER
-           
+
            Dùng để replace optimistic message
            ở React.
         ================================================== */
@@ -662,12 +678,12 @@ public class ChatWebSocketHandler
 
     /* ==================================================
        GET DELIVERY STATUS
-       
+
        Dùng được cho:
        - Private
        - Department
        - Group
-       
+
        Group:
        - Không có receiver -> sent
        - Tất cả read -> read
@@ -733,15 +749,15 @@ public class ChatWebSocketHandler
 
     /* ==================================================
        HANDLE READ
-       
+
        Khi user mở Group:
        React gửi:
-       
+
        {
            type: "read",
            conversationId: 23
        }
-       
+
        Backend chỉ mark read những message:
        - thuộc conversation
        - thuộc user hiện tại
@@ -775,11 +791,11 @@ public class ChatWebSocketHandler
 
         /* ==================================================
            LẤY HISTORY DELETED AT
-           
+
            Nếu user từng xóa lịch sử:
-           
+
            HistoryDeletedAt = 10:00
-           
+
            thì message trước 10:00
            không được mark read.
         ================================================== */
@@ -876,9 +892,9 @@ public class ChatWebSocketHandler
 
         /* ==================================================
            BÁO CHO SENDER
-           
+
            Message đã được read.
-           
+
            Với Group:
            có thể có nhiều sender khác nhau.
         ================================================== */
@@ -930,9 +946,9 @@ public class ChatWebSocketHandler
 
     /* ==================================================
        HANDLE TYPING
-       
+
        ChatWebSocketHandler chỉ route.
-       
+
        Logic riêng:
        - PrivateChatHandler
        - DepartmentChatHandler

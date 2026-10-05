@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
 
 namespace CompanyChat.Api.Services;
 
@@ -20,6 +21,7 @@ public class ConnectionManager
         int,
         ConcurrentDictionary<WebSocket, byte>
     > _connections = new();
+
 
     /*
      * UserId -> ConversationId đang mở
@@ -43,6 +45,7 @@ public class ConnectionManager
                     WebSocket,
                     byte>());
 
+
         /*
          * Nếu trước đó không có socket
          * thì user đang Offline.
@@ -52,9 +55,11 @@ public class ConnectionManager
         var wasOffline =
             sockets.IsEmpty;
 
+
         sockets.TryAdd(
             socket,
             0);
+
 
         return wasOffline;
     }
@@ -74,6 +79,7 @@ public class ConnectionManager
         {
             return false;
         }
+
 
         /*
          * Chỉ remove đúng socket này.
@@ -133,6 +139,7 @@ public class ConnectionManager
         _activeConversations.TryRemove(
             userId,
             out _);
+
 
         return true;
     }
@@ -201,6 +208,7 @@ public class ConnectionManager
             return conversationId;
         }
 
+
         return null;
     }
 
@@ -233,8 +241,10 @@ public class ConnectionManager
             return false;
         }
 
+
         var bytes =
             Encoding.UTF8.GetBytes(json);
+
 
         try
         {
@@ -243,6 +253,7 @@ public class ConnectionManager
                 WebSocketMessageType.Text,
                 true,
                 cancellationToken);
+
 
             return true;
         }
@@ -269,7 +280,9 @@ public class ConnectionManager
             return false;
         }
 
+
         var delivered = false;
+
 
         /*
          * Copy socket list.
@@ -279,6 +292,7 @@ public class ConnectionManager
          */
         var socketList =
             sockets.Keys.ToList();
+
 
         foreach (var socket in socketList)
         {
@@ -292,11 +306,13 @@ public class ConnectionManager
                 continue;
             }
 
+
             var success =
                 await SendToSocketAsync(
                     socket,
                     json,
                     cancellationToken);
+
 
             if (success)
             {
@@ -329,6 +345,7 @@ public class ConnectionManager
                         userId,
                         sockets));
 
+
             if (removed)
             {
                 _activeConversations.TryRemove(
@@ -337,7 +354,159 @@ public class ConnectionManager
             }
         }
 
+
         return delivered;
+    }
+
+
+    /* =====================================================
+       DISCONNECT USER
+
+       Dùng khi Admin:
+       - Khóa tài khoản
+       - Xóa tài khoản
+
+       Sẽ:
+       1. Gửi account_disabled cho toàn bộ socket.
+       2. Đóng toàn bộ WebSocket.
+
+       QUAN TRỌNG:
+       Không remove user khỏi _connections ngay tại đây.
+
+       ChatWebSocketHandler.finally sẽ gọi Remove()
+       sau khi socket đóng.
+
+       Nhờ vậy logic:
+       - IsOnline
+       - LastSeen
+       - user_status
+       vẫn được xử lý đúng.
+       
+       Hỗ trợ:
+       - Chrome
+       - Edge
+       - Mobile
+       - Nhiều tab
+       ===================================================== */
+
+    public async Task<bool> DisconnectUserAsync(
+        int userId,
+        string reason =
+            "Your account is no longer active.",
+        string reasonCode = "locked")
+    {
+        if (!_connections.TryGetValue(
+                userId,
+                out var sockets))
+        {
+            /*
+             * Không có WebSocket đang hoạt động.
+             */
+            _activeConversations.TryRemove(
+                userId,
+                out _);
+
+            return false;
+        }
+
+
+        /*
+         * =================================================
+           TẠO EVENT GỬI CHO FRONTEND
+         * =================================================
+         *
+         * locked:
+         * {
+         *   "type": "account_disabled",
+         *   "reason": "locked",
+         *   "message": "..."
+         * }
+         *
+         * deleted:
+         * {
+         *   "type": "account_disabled",
+         *   "reason": "deleted",
+         *   "message": "..."
+         * }
+         */
+        var accountDisabledJson =
+            JsonSerializer.Serialize(
+                new
+                {
+                    type = "account_disabled",
+                    reason = reasonCode,
+                    message = reason
+                });
+
+
+        /*
+         * Copy danh sách socket.
+         *
+         * Không foreach trực tiếp trên dictionary
+         * vì socket có thể bị remove đồng thời.
+         */
+        var socketList =
+            sockets.Keys.ToList();
+
+
+        /*
+         * =================================================
+           GỬI THÔNG BÁO TRƯỚC KHI ĐÓNG SOCKET
+         * =================================================
+         */
+        foreach (var socket in socketList)
+        {
+            if (socket.State !=
+                WebSocketState.Open)
+            {
+                continue;
+            }
+
+
+            await SendToSocketAsync(
+                socket,
+                accountDisabledJson);
+        }
+
+
+        /*
+         * =================================================
+           ĐÓNG TOÀN BỘ WEBSOCKET
+         * =================================================
+         */
+        foreach (var socket in socketList)
+        {
+            try
+            {
+                /*
+                 * Chỉ đóng socket đang
+                 * còn có thể đóng.
+                 */
+                if (socket.State ==
+                        WebSocketState.Open ||
+                    socket.State ==
+                        WebSocketState.CloseReceived)
+                {
+                    await socket.CloseAsync(
+                        WebSocketCloseStatus.PolicyViolation,
+                        reason,
+                        CancellationToken.None);
+                }
+            }
+            catch
+            {
+                /*
+                 * Socket có thể đã
+                 * disconnect trước đó.
+                 *
+                 * Không để một socket lỗi
+                 * làm ảnh hưởng các socket khác.
+                 */
+            }
+        }
+
+
+        return true;
     }
 
 
@@ -351,6 +520,7 @@ public class ConnectionManager
     {
         var userIds =
             _connections.Keys.ToList();
+
 
         foreach (var userId in userIds)
         {
