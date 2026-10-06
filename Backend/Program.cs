@@ -13,6 +13,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
+// Console.WriteLine(
+//     "PASSWORD HASH: " +
+//     BCrypt.Net.BCrypt.HashPassword("123456")
+// );
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -378,7 +383,7 @@ using (var scope =
 
     await db.Database.MigrateAsync();
 
-    await DbSeeder.SeedAsync(db);
+    // await DbSeeder.SeedAsync(db);
 }
 
 

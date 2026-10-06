@@ -26,6 +26,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<UserDepartment> UserDepartments { get; set; }
 
+    public DbSet<Role> Roles => Set<Role>();
+
+    public DbSet<Permission> Permissions => Set<Permission>();
+
+    public DbSet<RolePermission> RolePermissions
+        => Set<RolePermission>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // =====================================================
@@ -184,5 +191,46 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             .WithMany(x => x.UserDepartments)
             .HasForeignKey(x => x.DepartmentId)
             .OnDelete(DeleteBehavior.Restrict);
+        // =====================================================
+        // ROLE
+        // =====================================================
+
+        modelBuilder.Entity<Role>()
+            .HasIndex(x => x.Name)
+            .IsUnique();
+
+
+        // =====================================================
+        // PERMISSION
+        // =====================================================
+
+        modelBuilder.Entity<Permission>()
+            .HasIndex(x => x.Code)
+            .IsUnique();
+
+
+        // =====================================================
+        // ROLE PERMISSION
+        // =====================================================
+
+        modelBuilder.Entity<RolePermission>()
+            .HasKey(x => new
+            {
+                x.RoleId,
+                x.PermissionId
+            });
+
+        modelBuilder.Entity<RolePermission>()
+            .HasOne(x => x.Role)
+            .WithMany(x => x.RolePermissions)
+            .HasForeignKey(x => x.RoleId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<RolePermission>()
+            .HasOne(x => x.Permission)
+            .WithMany(x => x.RolePermissions)
+            .HasForeignKey(x => x.PermissionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
     }
 }

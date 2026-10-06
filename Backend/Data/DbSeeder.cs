@@ -17,16 +17,16 @@ public static class DbSeeder
                 Username = "admin",
                 FullName = "System Admin",
                 Email = "admin@company.local",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Liqinan123@"),
                 Role = "Admin"
             },
             new User
             {
                 Username = "tien",
-                FullName = "Nguyễn Trung Tiến",
+                FullName = "Vy Trung Tiến",
                 Email = "tien@company.local",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
-                Role = "Employee"
+                Role = "Admin"
             },
             new User
             {
@@ -38,9 +38,9 @@ public static class DbSeeder
             },
             new User
             {
-                Username = "linh",
-                FullName = "Lê Ngọc Linh",
-                Email = "linh@company.local",
+                Username = "ngan",
+                FullName = "Lê Thị Thu Ngân",
+                Email = "ngan@company.local",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
                 Role = "Employee"
             }
