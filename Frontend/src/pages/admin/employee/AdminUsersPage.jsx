@@ -13,309 +13,17 @@ import {
   restoreAdminUser,
 } from "../../../services/admin/adminUserService";
 
-import { getAdminDepartments } from "../../../services/admin/departmentService";
+import {
+  getAdminDepartments,
+} from "../../../services/admin/departmentService";
 
-import CreateEmployeeModal from "./CreateEmployeeModal";
-import EditEmployeeModal from "./EditEmployeeModal";
-import EmployeeDetailModal from "./EmployeeDetailModal";
-import ResetPasswordModal from "./ResetPasswordModal";
-import AssignDepartmentModal from "./AssignDepartmentModal";
-import ConfirmModal from "../../../components/modal/ConfirmModal";
-import Toast from "../../../components/common/Toast";
+import UsersHeader from "./components/UsersHeader";
+import UsersToolbar from "./components/UsersToolbar";
+import UsersSummary from "./components/UsersSummary";
+import UsersTable from "./components/UsersTable";
+import UsersPagination from "./components/UsersPagination";
+import UsersModals from "./components/UsersModals";
 
-
-/* =========================================================
-   ICONS
-========================================================= */
-
-function SearchIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="17"
-      height="17"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-3.5-3.5" />
-    </svg>
-  );
-}
-
-function RefreshIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="15"
-      height="15"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 11a8.1 8.1 0 0 0-14.8-4.5L4 8" />
-      <path d="M4 4v4h4" />
-      <path d="M4 13a8.1 8.1 0 0 0 14.8 4.5L20 16" />
-      <path d="M20 20v-4h-4" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="15"
-      height="15"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
-  );
-}
-
-function ChevronLeftIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m15 18-6-6 6-6" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m9 18 6-6-6-6" />
-    </svg>
-  );
-}
-
-function EyeIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
-      <circle cx="12" cy="12" r="2.5" />
-    </svg>
-  );
-}
-
-function EditIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
-    </svg>
-  );
-}
-
-function BuildingIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 21h18" />
-      <path d="M5 21V5l7-3v19" />
-      <path d="M12 8h7v13" />
-      <path d="M8 7h1" />
-      <path d="M8 11h1" />
-      <path d="M8 15h1" />
-      <path d="M15 11h1" />
-      <path d="M15 15h1" />
-    </svg>
-  );
-}
-
-function LockIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="4" y="10" width="16" height="10" rx="2" />
-      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-    </svg>
-  );
-}
-
-function UnlockIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="4" y="10" width="16" height="10" rx="2" />
-      <path d="M8 10V7a4 4 0 0 1 7.5-2" />
-    </svg>
-  );
-}
-
-function KeyIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="8" cy="15" r="4" />
-      <path d="m11 12 8-8" />
-      <path d="m17 6 2 2" />
-      <path d="m15 8 2 2" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M4 7h16" />
-      <path d="M10 11v6" />
-      <path d="M14 11v6" />
-      <path d="M6 7l1 13h10l1-13" />
-      <path d="M9 7V4h6v3" />
-    </svg>
-  );
-}
-
-function RestoreIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 12a9 9 0 1 0 3-6.7" />
-      <path d="M3 4v6h6" />
-    </svg>
-  );
-}
-
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-function getInitial(user) {
-  return (
-    user?.fullName?.trim()?.charAt(0) ||
-    user?.username?.trim()?.charAt(0) ||
-    "U"
-  ).toUpperCase();
-}
-
-function formatLastSeen(value) {
-  if (!value) {
-    return "Chưa hoạt động";
-  }
-
-  return new Date(value).toLocaleString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-
-/* =========================================================
-   PAGE
-========================================================= */
 
 export default function AdminUsersPage({
   currentUser,
@@ -326,16 +34,20 @@ export default function AdminUsersPage({
   ======================================================= */
 
   const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
 
-  const [departments, setDepartments] = useState([]);
+  const [selectedUser, setSelectedUser] =
+    useState(null);
+
+  const [departments, setDepartments] =
+    useState([]);
 
 
   /* =======================================================
      LOADING / ERROR
   ======================================================= */
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
   const [detailLoading, setDetailLoading] =
     useState(false);
@@ -343,7 +55,8 @@ export default function AdminUsersPage({
   const [departmentLoading, setDepartmentLoading] =
     useState(false);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
   const [actionLoading, setActionLoading] =
     useState(false);
@@ -371,14 +84,17 @@ export default function AdminUsersPage({
      FILTERS
   ======================================================= */
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] =
+    useState("");
 
-  const [role, setRole] = useState("");
+  const [role, setRole] =
+    useState("");
 
   const [departmentId, setDepartmentId] =
     useState("");
 
-  const [isActive, setIsActive] = useState("");
+  const [isActive, setIsActive] =
+    useState("");
 
   const [isDeleted, setIsDeleted] =
     useState(false);
@@ -388,11 +104,14 @@ export default function AdminUsersPage({
      PAGINATION
   ======================================================= */
 
-  const [page, setPage] = useState(1);
+  const [page, setPage] =
+    useState(1);
 
-  const [pageSize] = useState(20);
+  const [pageSize] =
+    useState(20);
 
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] =
+    useState(0);
 
   const [totalPages, setTotalPages] =
     useState(1);
@@ -474,7 +193,8 @@ export default function AdminUsersPage({
 
       const data =
         await getAdminUsers({
-          search: customSearch.trim(),
+          search:
+            customSearch.trim(),
           departmentId,
           role,
           isActive,
@@ -569,9 +289,9 @@ export default function AdminUsersPage({
           event.lastSeen ?? null;
 
 
-        /* =================================================
+        /* ================================================
            UPDATE USER LIST
-        ================================================= */
+        ================================================ */
 
         setUsers(
           (currentUsers) =>
@@ -600,9 +320,9 @@ export default function AdminUsersPage({
         );
 
 
-        /* =================================================
-           UPDATE SELECTED USER / DETAIL MODAL
-        ================================================= */
+        /* ================================================
+           UPDATE SELECTED USER
+        ================================================ */
 
         setSelectedUser(
           (currentUser) => {
@@ -659,6 +379,25 @@ export default function AdminUsersPage({
     );
   }
 
+  function handleSearchChange(
+    event
+  ) {
+    setSearch(
+      event.target.value
+    );
+  }
+
+  function handleClearSearch() {
+    setSearch("");
+
+    setPage(1);
+
+    loadUsers(
+      1,
+      ""
+    );
+  }
+
 
   /* =======================================================
      FILTER
@@ -705,8 +444,6 @@ export default function AdminUsersPage({
 
     setIsDeleted(deleted);
 
-    // Khi xem danh sách đã xóa,
-    // reset filter Active / Inactive.
     setIsActive("");
 
     setPage(1);
@@ -1055,7 +792,8 @@ export default function AdminUsersPage({
                     user.id
                       ? {
                           ...item,
-                          role: newRole,
+                          role:
+                            newRole,
                         }
                       : item
                 )
@@ -1067,7 +805,8 @@ export default function AdminUsersPage({
                 user.id
                   ? {
                       ...current,
-                      role: newRole,
+                      role:
+                        newRole,
                     }
                   : current
             );
@@ -1113,7 +852,6 @@ export default function AdminUsersPage({
     const currentUserId =
       Number(currentUser?.id);
 
-    // Không cho admin tự xóa tài khoản của chính mình
     if (
       currentUserId &&
       currentUserId ===
@@ -1157,7 +895,6 @@ export default function AdminUsersPage({
               user.id
             );
 
-            // Xóa khỏi danh sách hiện tại
             setUsers(
               (current) =>
                 current.filter(
@@ -1167,8 +904,6 @@ export default function AdminUsersPage({
                 )
             );
 
-            // Nếu đang xem detail
-            // của user này thì đóng detail
             setSelectedUser(
               (current) =>
                 current?.id ===
@@ -1177,7 +912,6 @@ export default function AdminUsersPage({
                   : current
             );
 
-            // Cập nhật tổng số nhân viên
             setTotal(
               (current) =>
                 Math.max(
@@ -1254,7 +988,6 @@ export default function AdminUsersPage({
               user.id
             );
 
-            // Xóa khỏi danh sách đã xóa
             setUsers(
               (current) =>
                 current.filter(
@@ -1264,7 +997,6 @@ export default function AdminUsersPage({
                 )
             );
 
-            // Cập nhật tổng số
             setTotal(
               (current) =>
                 Math.max(
@@ -1273,7 +1005,6 @@ export default function AdminUsersPage({
                 )
             );
 
-            // Đóng detail nếu đang mở
             setSelectedUser(
               (current) =>
                 current?.id ===
@@ -1468,9 +1199,7 @@ export default function AdminUsersPage({
   ======================================================= */
 
   function closeConfirmModal() {
-    if (
-      actionLoading
-    ) {
+    if (actionLoading) {
       return;
     }
 
@@ -1481,42 +1210,11 @@ export default function AdminUsersPage({
 
 
   /* =======================================================
-     CLOSE ALL MODALS
-  ======================================================= */
-
-  function closeAllModals() {
-    if (
-      actionLoading
-    ) {
-      return;
-    }
-
-    setShowCreateModal(
-      false
-    );
-
-    setShowEditModal(
-      false
-    );
-
-    setShowResetPasswordModal(
-      false
-    );
-
-    setShowAssignDepartmentModal(
-      false
-    );
-  }
-
-
-  /* =======================================================
      PAGINATION
   ======================================================= */
 
   function goToPreviousPage() {
-    if (
-      page <= 1
-    ) {
+    if (page <= 1) {
       return;
     }
 
@@ -1582,13 +1280,15 @@ export default function AdminUsersPage({
       index <= end;
       index += 1
     ) {
-      pages.push(
-        index
-      );
+      pages.push(index);
     }
 
     return pages;
   }
+
+
+  const pageNumbers =
+    getPageNumbers();
 
 
   /* =======================================================
@@ -1599,106 +1299,17 @@ export default function AdminUsersPage({
     <div className="admin-users-page">
 
       {/* =================================================
-          PAGE HEADER
+          HEADER
       ================================================= */}
 
-      <div className="admin-users-header">
-
-        <div className="admin-users-heading">
-
-          <div className="admin-users-title-row">
-
-            <div className="admin-users-title-icon">
-
-              <svg
-                viewBox="0 0 24 24"
-                width="19"
-                height="19"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle
-                  cx="9"
-                  cy="7"
-                  r="4"
-                />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-
-            </div>
-
-            <div>
-
-              <h1>
-                Employees
-              </h1>
-
-              <p>
-                Quản lý tài khoản và nhân sự
-                trong hệ thống
-              </p>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <div className="admin-users-header-actions">
-
-          <button
-            type="button"
-            className="admin-refresh-button"
-            onClick={
-              handleRefresh
-            }
-            disabled={
-              loading
-            }
-          >
-            <RefreshIcon />
-
-            <span>
-              {loading
-                ? "Đang tải..."
-                : "Làm mới"}
-            </span>
-
-          </button>
-
-
-          {/* Không cho tạo user khi đang xem
-              danh sách đã xóa */}
-
-          {!isDeleted && (
-            <button
-              type="button"
-              className="admin-create-button"
-              onClick={() =>
-                setShowCreateModal(
-                  true
-                )
-              }
-            >
-              <PlusIcon />
-
-              <span>
-                Thêm nhân viên
-              </span>
-
-            </button>
-          )}
-
-        </div>
-
-      </div>
+      <UsersHeader
+        loading={loading}
+        isDeleted={isDeleted}
+        onRefresh={handleRefresh}
+        onCreate={() =>
+          setShowCreateModal(true)
+        }
+      />
 
 
       {/* =================================================
@@ -1711,231 +1322,56 @@ export default function AdminUsersPage({
             TOOLBAR
         ================================================= */}
 
-        <div className="admin-users-toolbar">
-
-          <form
-            className="admin-users-search"
-            onSubmit={
-              handleSearchSubmit
-            }
-          >
-
-            <SearchIcon />
-
-            <input
-              type="search"
-              value={search}
-              onChange={(
-                event
-              ) =>
-                setSearch(
-                  event.target.value
-                )
-              }
-              placeholder="Tìm theo tên, username hoặc email..."
-              aria-label="Tìm kiếm nhân viên"
-            />
-
-            {search && (
-              <button
-                type="button"
-                className="admin-search-clear"
-                onClick={() => {
-                  setSearch(
-                    ""
-                  );
-
-                  setPage(
-                    1
-                  );
-
-                  loadUsers(
-                    1,
-                    ""
-                  );
-                }}
-                aria-label="Xóa tìm kiếm"
-              >
-                ×
-              </button>
-            )}
-
-          </form>
-
-
-          <div className="admin-users-filters">
-
-            {/* ===========================================
-                DEPARTMENT
-            =========================================== */}
-
-            <select
-              value={
-                departmentId
-              }
-              onChange={
-                handleDepartmentChange
-              }
-              aria-label="Lọc theo phòng ban"
-            >
-              <option value="">
-                Tất cả phòng ban
-              </option>
-
-              {departments.map(
-                (
-                  department
-                ) => (
-                  <option
-                    key={
-                      department.id
-                    }
-                    value={
-                      department.id
-                    }
-                  >
-                    {
-                      department.name
-                    }
-                  </option>
-                )
-              )}
-
-            </select>
-
-
-            {/* ===========================================
-                ROLE
-            =========================================== */}
-
-            <select
-              value={
-                role
-              }
-              onChange={
-                handleRoleChange
-              }
-              aria-label="Lọc theo role"
-            >
-              <option value="">
-                Tất cả role
-              </option>
-
-              <option value="Admin">
-                Admin
-              </option>
-
-              <option value="Employee">
-                Employee
-              </option>
-            </select>
-
-
-            {/* ===========================================
-                ACTIVE STATUS
-            =========================================== */}
-
-            <select
-              value={
-                isActive
-              }
-              onChange={
-                handleStatusChange
-              }
-              aria-label="Lọc theo trạng thái"
-              disabled={
-                isDeleted
-              }
-            >
-              <option value="">
-                Tất cả trạng thái
-              </option>
-
-              <option value="true">
-                Hoạt động
-              </option>
-
-              <option value="false">
-                Bị khóa
-              </option>
-            </select>
-
-
-            {/* ===========================================
-                DELETED STATUS
-            =========================================== */}
-
-            <select
-              value={
-                isDeleted
-                  ? "true"
-                  : "false"
-              }
-              onChange={
-                handleDeletedChange
-              }
-              aria-label="Lọc theo trạng thái xóa"
-            >
-              <option value="false">
-                Nhân viên hiện tại
-              </option>
-
-              <option value="true">
-                Đã xóa
-              </option>
-            </select>
-
-          </div>
-
-        </div>
+        <UsersToolbar
+          search={search}
+          onSearchChange={
+            handleSearchChange
+          }
+          onSearchSubmit={
+            handleSearchSubmit
+          }
+          onClearSearch={
+            handleClearSearch
+          }
+          departmentId={
+            departmentId
+          }
+          onDepartmentChange={
+            handleDepartmentChange
+          }
+          departments={
+            departments
+          }
+          role={role}
+          onRoleChange={
+            handleRoleChange
+          }
+          isActive={
+            isActive
+          }
+          onStatusChange={
+            handleStatusChange
+          }
+          isDeleted={
+            isDeleted
+          }
+          onDeletedChange={
+            handleDeletedChange
+          }
+        />
 
 
         {/* =================================================
-            TABLE SUMMARY
+            SUMMARY
         ================================================= */}
 
-        <div className="admin-users-summary">
-
-          <div className="admin-users-summary-left">
-
-            <span className="admin-users-summary-label">
-              {isDeleted
-                ? "Nhân viên đã xóa"
-                : "Nhân viên"}
-            </span>
-
-            <span className="admin-users-summary-count">
-              {total}
-            </span>
-
-            <span className="admin-users-summary-text">
-              tài khoản
-            </span>
-
-          </div>
-
-
-          <div className="admin-users-summary-right">
-
-            <span>
-              Trang{" "}
-              <strong>
-                {page}
-              </strong>
-              {" "} / {totalPages}
-            </span>
-
-            <span className="admin-summary-divider">
-              |
-            </span>
-
-            <span>
-              {pageSize} / trang
-            </span>
-
-          </div>
-
-        </div>
+        <UsersSummary
+          total={total}
+          page={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          isDeleted={isDeleted}
+        />
 
 
         {/* =================================================
@@ -1944,7 +1380,6 @@ export default function AdminUsersPage({
 
         {error && (
           <div className="admin-users-error">
-
             <span className="admin-error-icon">
               !
             </span>
@@ -1961,7 +1396,6 @@ export default function AdminUsersPage({
             >
               Thử lại
             </button>
-
           </div>
         )}
 
@@ -1970,808 +1404,161 @@ export default function AdminUsersPage({
             TABLE
         ================================================= */}
 
-        <div className="admin-users-table-wrapper">
-
-          {loading ? (
-
-            <div className="admin-users-loading">
-
-              <div className="admin-loading-spinner" />
-
-              <span>
-                Đang tải danh sách nhân viên...
-              </span>
-
-            </div>
-
-          ) : users.length === 0 ? (
-
-            <div className="admin-users-empty">
-
-              <div className="admin-empty-icon">
-
-                <svg
-                  viewBox="0 0 24 24"
-                  width="28"
-                  height="28"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <circle
-                    cx="9"
-                    cy="8"
-                    r="4"
-                  />
-
-                  <path d="M3 21a6 6 0 0 1 12 0" />
-
-                  <path d="M16 11h5" />
-
-                  <path d="M18.5 8.5v5" />
-                </svg>
-
-              </div>
-
-              <strong>
-                {isDeleted
-                  ? "Không có nhân viên đã xóa"
-                  : "Không tìm thấy nhân viên"}
-              </strong>
-
-              <span>
-                {isDeleted
-                  ? "Hiện không có tài khoản nào đã bị xóa."
-                  : "Thử thay đổi từ khóa hoặc bộ lọc."}
-              </span>
-
-            </div>
-
-          ) : (
-
-            <table className="admin-users-table">
-
-              <thead>
-
-                <tr>
-                  <th>
-                    Employee
-                  </th>
-
-                  <th>
-                    Email
-                  </th>
-
-                  <th>
-                    Department
-                  </th>
-
-                  <th>
-                    Role
-                  </th>
-
-                  <th>
-                    Status
-                  </th>
-
-                  <th>
-                    Online
-                  </th>
-
-                  <th>
-                    Actions
-                  </th>
-                </tr>
-
-              </thead>
-
-
-              <tbody>
-
-                {users.map(
-                  (user) => {
-
-                    const isCurrentUser =
-                      Number(
-                        currentUser?.id
-                      ) ===
-                      Number(
-                        user.id
-                      );
-
-                    return (
-                      <tr
-                        key={
-                          user.id
-                        }
-                        className={
-                          isCurrentUser
-                            ? "is-current-user"
-                            : ""
-                        }
-                      >
-
-                        {/* =================================
-                            EMPLOYEE
-                        ================================= */}
-
-                        <td>
-
-                          <div className="admin-user-cell">
-
-                            <div className="admin-user-avatar">
-
-                              {getInitial(
-                                user
-                              )}
-
-                              {user.isOnline && (
-                                <span className="admin-avatar-online-dot" />
-                              )}
-
-                            </div>
-
-
-                            <div className="admin-user-info">
-
-                              <div className="admin-user-name-row">
-
-                                <strong>
-                                  {user.fullName ||
-                                    user.username}
-                                </strong>
-
-                                {isCurrentUser && (
-                                  <span className="admin-current-badge">
-                                    Bạn
-                                  </span>
-                                )}
-
-                              </div>
-
-                              <span>
-                                @{user.username}
-                              </span>
-
-                            </div>
-
-                          </div>
-
-                        </td>
-
-
-                        {/* =================================
-                            EMAIL
-                        ================================= */}
-
-                        <td>
-
-                          <span className="admin-user-email">
-                            {
-                              user.email
-                            }
-                          </span>
-
-                        </td>
-
-
-                        {/* =================================
-                            DEPARTMENT
-                        ================================= */}
-
-                        <td>
-
-                          <div className="admin-department-cell">
-
-                            <span className="admin-department-icon">
-                              <BuildingIcon />
-                            </span>
-
-                            <span>
-                              {
-                                user.departmentName ||
-                                "Chưa phân phòng ban"
-                              }
-                            </span>
-
-                          </div>
-
-                        </td>
-
-
-                        {/* =================================
-                            ROLE
-                        ================================= */}
-
-                        <td>
-
-                          <div
-                            className={`admin-role-control ${
-                              user.role ===
-                              "Admin"
-                                ? "role-admin"
-                                : "role-employee"
-                            }`}
-                          >
-
-                            <span className="admin-role-dot" />
-
-                            <select
-                              value={
-                                user.role
-                              }
-                              onChange={(
-                                event
-                              ) =>
-                                handleChangeRole(
-                                  user,
-                                  event
-                                    .target
-                                    .value
-                                )
-                              }
-                              disabled={
-                                actionLoading ||
-                                isCurrentUser ||
-                                isDeleted
-                              }
-                              aria-label={`Role của ${user.fullName}`}
-                            >
-
-                              <option value="Employee">
-                                Employee
-                              </option>
-
-                              <option value="Admin">
-                                Admin
-                              </option>
-
-                            </select>
-
-                          </div>
-
-                        </td>
-
-
-                        {/* =================================
-                            STATUS
-                        ================================= */}
-
-                        <td>
-
-                          <span
-                            className={`admin-user-status ${
-                              user.isActive
-                                ? "active"
-                                : "inactive"
-                            }`}
-                          >
-
-                            <span className="admin-status-dot" />
-
-                            {user.isActive
-                              ? "Hoạt động"
-                              : "Bị khóa"}
-
-                          </span>
-
-                        </td>
-
-
-                        {/* =================================
-                            ONLINE
-                        ================================= */}
-
-                        <td>
-
-                          <div
-                            className={`admin-user-online ${
-                              user.isOnline
-                                ? "online"
-                                : "offline"
-                            }`}
-                          >
-
-                            <span className="admin-online-dot" />
-
-                            <span>
-                              {user.isOnline
-                                ? "Online"
-                                : "Offline"}
-                            </span>
-
-                          </div>
-
-                        </td>
-
-
-                        {/* =================================
-                            ACTIONS
-                        ================================= */}
-
-                        <td>
-
-                          <div className="admin-user-actions">
-
-                            {/* =============================
-                                VIEW
-                            ============================= */}
-
-                            <button
-                              type="button"
-                              className="action-view"
-                              onClick={() =>
-                                handleViewUser(
-                                  user.id
-                                )
-                              }
-                              title="Xem thông tin"
-                            >
-                              <EyeIcon />
-
-                              <span>
-                                Xem
-                              </span>
-                            </button>
-
-
-                            {/* =============================
-                                NORMAL USER
-                            ============================= */}
-
-                            {!isDeleted ? (
-                              <>
-
-                                {/* EDIT */}
-
-                                <button
-                                  type="button"
-                                  className="action-edit"
-                                  onClick={() =>
-                                    handleEditUser(
-                                      user.id
-                                    )
-                                  }
-                                  title="Chỉnh sửa"
-                                >
-                                  <EditIcon />
-
-                                  <span>
-                                    Sửa
-                                  </span>
-                                </button>
-
-
-                                {/* DEPARTMENT */}
-
-                                <button
-                                  type="button"
-                                  className="action-department"
-                                  onClick={() =>
-                                    handleAssignDepartment(
-                                      user
-                                    )
-                                  }
-                                  title="Phân phòng ban"
-                                >
-                                  <BuildingIcon />
-
-                                  <span>
-                                    Phòng ban
-                                  </span>
-                                </button>
-
-
-                                {/* RESET PASSWORD */}
-
-                                <button
-                                  type="button"
-                                  className="action-password"
-                                  onClick={() =>
-                                    handleResetPassword(
-                                      user
-                                    )
-                                  }
-                                  title="Reset mật khẩu"
-                                >
-                                  <KeyIcon />
-
-                                  <span>
-                                    Reset PW
-                                  </span>
-                                </button>
-
-
-                                {/* ACTIVE / INACTIVE */}
-
-                                <button
-                                  type="button"
-                                  className={`action-active ${
-                                    user.isActive
-                                      ? "lock"
-                                      : "unlock"
-                                  }`}
-                                  onClick={() =>
-                                    handleToggleActive(
-                                      user
-                                    )
-                                  }
-                                  disabled={
-                                    actionLoading ||
-                                    isCurrentUser
-                                  }
-                                  title={
-                                    user.isActive
-                                      ? "Khóa tài khoản"
-                                      : "Mở khóa tài khoản"
-                                  }
-                                >
-                                  {user.isActive ? (
-                                    <LockIcon />
-                                  ) : (
-                                    <UnlockIcon />
-                                  )}
-
-                                  <span>
-                                    {user.isActive
-                                      ? "Khóa"
-                                      : "Mở"}
-                                  </span>
-                                </button>
-
-
-                                {/* DELETE */}
-
-                                <button
-                                  type="button"
-                                  className="action-delete"
-                                  onClick={() =>
-                                    handleDeleteUser(
-                                      user
-                                    )
-                                  }
-                                  disabled={
-                                    actionLoading ||
-                                    isCurrentUser
-                                  }
-                                  title="Xóa tài khoản"
-                                >
-                                  <TrashIcon />
-
-                                  <span>
-                                    Xóa
-                                  </span>
-                                </button>
-
-                              </>
-                            ) : (
-
-                              /* =========================
-                                 DELETED USER
-                              ========================= */
-
-                              <button
-                                type="button"
-                                className="action-active unlock"
-                                onClick={() =>
-                                  handleRestoreUser(
-                                    user
-                                  )
-                                }
-                                disabled={
-                                  actionLoading
-                                }
-                                title="Khôi phục nhân viên"
-                              >
-                                <RestoreIcon />
-
-                                <span>
-                                  Khôi phục
-                                </span>
-                              </button>
-
-                            )}
-
-                          </div>
-
-                        </td>
-
-                      </tr>
-                    );
-                  }
-                )}
-
-              </tbody>
-
-            </table>
-
-          )}
-
-        </div>
+        <UsersTable
+          users={users}
+          loading={loading}
+          isDeleted={isDeleted}
+          currentUser={currentUser}
+          actionLoading={
+            actionLoading
+          }
+          onViewUser={
+            handleViewUser
+          }
+          onEditUser={
+            handleEditUser
+          }
+          onAssignDepartment={
+            handleAssignDepartment
+          }
+          onResetPassword={
+            handleResetPassword
+          }
+          onToggleActive={
+            handleToggleActive
+          }
+          onDeleteUser={
+            handleDeleteUser
+          }
+          onRestoreUser={
+            handleRestoreUser
+          }
+          onChangeRole={
+            handleChangeRole
+          }
+        />
 
 
         {/* =================================================
             PAGINATION
         ================================================= */}
 
-        {!loading &&
-          users.length > 0 && (
-            <div className="admin-users-pagination">
-
-              <div className="admin-pagination-info">
-
-                Hiển thị{" "}
-
-                <strong>
-                  {(page - 1) *
-                    pageSize +
-                    1}
-                </strong>
-
-                {" – "}
-
-                <strong>
-                  {Math.min(
-                    page *
-                      pageSize,
-                    total
-                  )}
-                </strong>
-
-                {" "}trong{" "}
-
-                <strong>
-                  {total}
-                </strong>
-
-                {" "}
-
-                {isDeleted
-                  ? "nhân viên đã xóa"
-                  : "nhân viên"}
-
-              </div>
-
-
-              <div className="admin-pagination-controls">
-
-                <button
-                  type="button"
-                  className="admin-pagination-arrow"
-                  onClick={
-                    goToPreviousPage
-                  }
-                  disabled={
-                    page <= 1
-                  }
-                  aria-label="Trang trước"
-                >
-                  <ChevronLeftIcon />
-                </button>
-
-
-                {getPageNumbers().map(
-                  (
-                    pageNumber
-                  ) => (
-                    <button
-                      type="button"
-                      key={
-                        pageNumber
-                      }
-                      className={
-                        pageNumber ===
-                        page
-                          ? "active"
-                          : ""
-                      }
-                      onClick={() =>
-                        setPage(
-                          pageNumber
-                        )
-                      }
-                    >
-                      {
-                        pageNumber
-                      }
-                    </button>
-                  )
-                )}
-
-
-                <button
-                  type="button"
-                  className="admin-pagination-arrow"
-                  onClick={
-                    goToNextPage
-                  }
-                  disabled={
-                    page >=
-                    totalPages
-                  }
-                  aria-label="Trang sau"
-                >
-                  <ChevronRightIcon />
-                </button>
-
-              </div>
-
-            </div>
-          )}
+        <UsersPagination
+          loading={loading}
+          users={users}
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          totalPages={
+            totalPages
+          }
+          isDeleted={
+            isDeleted
+          }
+          pageNumbers={
+            pageNumbers
+          }
+          onPrevious={
+            goToPreviousPage
+          }
+          onNext={
+            goToNextPage
+          }
+          onPageChange={
+            setPage
+          }
+        />
 
       </section>
 
 
       {/* =================================================
-          CREATE MODAL
+          MODALS
       ================================================= */}
 
-      {showCreateModal && (
-        <CreateEmployeeModal
-          departments={
-            departments
-          }
-          departmentLoading={
-            departmentLoading
-          }
-          onClose={() =>
-            setShowCreateModal(
-              false
-            )
-          }
-          onCreated={
-            handleEmployeeCreated
-          }
-        />
-      )}
+      <UsersModals
+        showCreateModal={
+          showCreateModal
+        }
+        departments={
+          departments
+        }
+        departmentLoading={
+          departmentLoading
+        }
+        onCloseCreate={() =>
+          setShowCreateModal(
+            false
+          )
+        }
+        onEmployeeCreated={
+          handleEmployeeCreated
+        }
 
+        showEditModal={
+          showEditModal
+        }
+        selectedUser={
+          selectedUser
+        }
+        onCloseEdit={() =>
+          setShowEditModal(
+            false
+          )
+        }
+        onEmployeeUpdated={
+          handleEmployeeUpdated
+        }
 
-      {/* =================================================
-          EDIT MODAL
-      ================================================= */}
+        showResetPasswordModal={
+          showResetPasswordModal
+        }
+        onCloseResetPassword={() =>
+          setShowResetPasswordModal(
+            false
+          )
+        }
+        onPasswordReset={
+          handlePasswordReset
+        }
 
-      {showEditModal &&
-        selectedUser && (
-          <EditEmployeeModal
-            user={
-              selectedUser
-            }
-            onClose={() =>
-              setShowEditModal(
-                false
-              )
-            }
-            onUpdated={
-              handleEmployeeUpdated
-            }
-          />
-        )}
+        showAssignDepartmentModal={
+          showAssignDepartmentModal
+        }
+        onCloseAssignDepartment={() =>
+          setShowAssignDepartmentModal(
+            false
+          )
+        }
+        onDepartmentAssigned={
+          handleDepartmentAssigned
+        }
 
+        detailLoading={
+          detailLoading
+        }
+        onCloseDetail={() =>
+          setSelectedUser(null)
+        }
 
-      {/* =================================================
-          RESET PASSWORD MODAL
-      ================================================= */}
+        confirmModal={
+          confirmModal
+        }
+        actionLoading={
+          actionLoading
+        }
+        onConfirm={
+          confirmModal?.onConfirm
+        }
+        onCloseConfirm={
+          closeConfirmModal
+        }
 
-      {showResetPasswordModal &&
-        selectedUser && (
-          <ResetPasswordModal
-            user={
-              selectedUser
-            }
-            onClose={() =>
-              setShowResetPasswordModal(
-                false
-              )
-            }
-            onReset={
-              handlePasswordReset
-            }
-          />
-        )}
-
-
-      {/* =================================================
-          ASSIGN DEPARTMENT MODAL
-      ================================================= */}
-
-      {showAssignDepartmentModal &&
-        selectedUser && (
-          <AssignDepartmentModal
-            user={
-              selectedUser
-            }
-            departments={
-              departments
-            }
-            departmentLoading={
-              departmentLoading
-            }
-            onClose={() =>
-              setShowAssignDepartmentModal(
-                false
-              )
-            }
-            onAssigned={
-              handleDepartmentAssigned
-            }
-          />
-        )}
-
-
-      {/* =================================================
-          DETAIL MODAL
-      ================================================= */}
-
-      {selectedUser &&
-        !showEditModal &&
-        !showResetPasswordModal &&
-        !showAssignDepartmentModal && (
-          <EmployeeDetailModal
-            user={
-              selectedUser
-            }
-            loading={
-              detailLoading
-            }
-            onClose={() =>
-              setSelectedUser(
-                null
-              )
-            }
-          />
-        )}
-
-
-      {/* =================================================
-          CONFIRM MODAL
-      ================================================= */}
-
-      {confirmModal && (
-        <ConfirmModal
-          title={
-            confirmModal.title
-          }
-          message={
-            confirmModal.message
-          }
-          confirmText={
-            confirmModal.confirmText
-          }
-          cancelText={
-            confirmModal.cancelText
-          }
-          danger={
-            confirmModal.danger
-          }
-          loading={
-            actionLoading
-          }
-          onConfirm={
-            confirmModal.onConfirm
-          }
-          onClose={
-            closeConfirmModal
-          }
-        />
-      )}
-
-
-      {/* =================================================
-          TOAST
-      ================================================= */}
-
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() =>
-            setToast(null)
-          }
-        />
-      )}
+        toast={toast}
+        onCloseToast={() =>
+          setToast(null)
+        }
+      />
 
     </div>
   );
