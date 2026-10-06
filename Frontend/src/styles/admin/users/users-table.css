@@ -11,6 +11,7 @@
 .admin-users-table-wrapper {
   width: 100%;
   overflow-x: auto;
+
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
 }
@@ -28,6 +29,10 @@
   background: #cbd5e1;
 }
 
+.admin-users-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 
 /* =========================================================
    TABLE
@@ -36,8 +41,10 @@
 .admin-users-table {
   width: 100%;
   min-width: 1100px;
+
   border-collapse: separate;
   border-spacing: 0;
+
   table-layout: auto;
 }
 
@@ -48,21 +55,29 @@
 
 .admin-users-table thead th {
   height: 44px;
+
   padding: 0 13px;
+
   border-bottom: 1px solid #e2e8f0;
+
   background: #f8fafc;
+
   color: #64748b;
+
   font-size: 10px;
   font-weight: 750;
+
   text-align: left;
   text-transform: uppercase;
+
   letter-spacing: 0.045em;
+
   white-space: nowrap;
 }
 
 .admin-users-table thead th:first-child {
-  padding-left: 18px;
   min-width: 230px;
+  padding-left: 18px;
 }
 
 .admin-users-table thead th:nth-child(2) {
@@ -74,11 +89,11 @@
 }
 
 .admin-users-table thead th:nth-child(4) {
-  min-width: 120px;
+  min-width: 150px;
 }
 
 .admin-users-table thead th:nth-child(5) {
-  min-width: 100px;
+  min-width: 105px;
 }
 
 .admin-users-table thead th:nth-child(6) {
@@ -86,7 +101,7 @@
 }
 
 .admin-users-table thead th:last-child {
-  min-width: 360px;
+  min-width: 320px;
   padding-right: 18px;
 }
 
@@ -96,21 +111,27 @@
 ========================================================= */
 
 .admin-users-table tbody tr {
-  transition:
-    background 0.15s ease;
+  transition: background 0.15s ease;
 }
 
 .admin-users-table tbody td {
   height: 70px;
+
   padding: 10px 13px;
+
   border-bottom: 1px solid #edf1f5;
+
   background: #ffffff;
+
   color: #475569;
+
   font-size: 11px;
+
   vertical-align: middle;
+
   white-space: nowrap;
-  transition:
-    background 0.15s ease;
+
+  transition: background 0.15s ease;
 }
 
 .admin-users-table tbody tr:hover td {
@@ -119,14 +140,6 @@
 
 .admin-users-table tbody tr:last-child td {
   border-bottom: none;
-}
-
-.admin-users-table tbody tr.is-current-user td {
-  background: #f7faff;
-}
-
-.admin-users-table tbody tr.is-current-user:hover td {
-  background: #f2f7ff;
 }
 
 .admin-users-table tbody td:first-child {
@@ -142,11 +155,22 @@
    USER CELL
 ========================================================= */
 
-.admin-user-cell {
+.admin-user-info {
   display: flex;
   align-items: center;
+
   gap: 11px;
+
   min-width: 210px;
+}
+
+.admin-user-info > div:last-child {
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+
+  gap: 3px;
 }
 
 
@@ -155,75 +179,71 @@
 ========================================================= */
 
 .admin-user-avatar {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+
   width: 38px;
   height: 38px;
+
   flex: 0 0 38px;
+
   border: 1px solid #dbeafe;
   border-radius: 50%;
+
   background:
     linear-gradient(
       145deg,
       #f0f7ff,
       #dbeafe
     );
+
   color: #2563eb;
+
   font-size: 12px;
   font-weight: 750;
+
   box-shadow:
     0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 
 /* =========================================================
-   AVATAR ONLINE DOT
+   USER NAME
 ========================================================= */
 
-.admin-avatar-online-dot {
-  position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 10px;
-  height: 10px;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  background: #22c55e;
+.admin-user-name {
+  max-width: 175px;
+
+  overflow: hidden;
+
+  color: #1e293b;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  line-height: 1.35;
+
+  text-overflow: ellipsis;
 }
 
 
 /* =========================================================
-   USER INFO
+   USERNAME
 ========================================================= */
 
-.admin-user-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 3px;
-}
+.admin-user-username {
+  max-width: 175px;
 
-.admin-user-name-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.admin-user-info strong {
   overflow: hidden;
-  color: #1e293b;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-}
 
-.admin-user-info > span {
   color: #94a3b8;
+
   font-size: 10px;
+
+  line-height: 1.3;
+
+  text-overflow: ellipsis;
 }
 
 
@@ -234,16 +254,25 @@
 .admin-current-badge {
   display: inline-flex;
   align-items: center;
+
   height: 18px;
+
   padding: 0 6px;
+
   border: 1px solid #dbeafe;
   border-radius: 999px;
+
   background: #eff6ff;
+
   color: #2563eb !important;
+
   font-size: 8px !important;
   font-weight: 700;
+
   text-transform: uppercase;
+
   letter-spacing: 0.025em;
+
   flex-shrink: 0;
 }
 
@@ -252,8 +281,9 @@
    EMAIL
 ========================================================= */
 
-.admin-user-email {
+.admin-users-table tbody td:nth-child(2) {
   color: #526174;
+
   font-size: 11px;
 }
 
@@ -262,26 +292,22 @@
    DEPARTMENT
 ========================================================= */
 
-.admin-department-cell {
-  display: inline-flex;
-  align-items: center;
-  max-width: 180px;
-  gap: 7px;
+.admin-users-table tbody td:nth-child(3) {
   color: #526174;
+
   font-size: 11px;
 }
 
-.admin-department-cell > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.admin-users-table tbody td:nth-child(3) > span {
+  display: inline-block;
 
-.admin-department-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #8b5cf6;
-  flex-shrink: 0;
+  max-width: 140px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  vertical-align: middle;
 }
 
 
@@ -292,63 +318,136 @@
 .admin-role-control {
   display: inline-flex;
   align-items: center;
+
   gap: 7px;
+
+  min-width: 115px;
   height: 30px;
+
   padding: 0 8px;
+
   border: 1px solid #e2e8f0;
   border-radius: 7px;
+
   background: #f8fafc;
+
   transition:
     border-color 0.16s ease,
-    background 0.16s ease;
+    background 0.16s ease,
+    box-shadow 0.16s ease;
 }
+
+
+/* ---------------------------------------------------------
+   ADMIN ROLE
+--------------------------------------------------------- */
 
 .admin-role-control.role-admin {
   border-color: #ddd6fe;
+
   background: #f5f3ff;
 }
 
+.admin-role-control.role-admin .admin-role-dot {
+  background: #8b5cf6;
+}
+
+
+/* ---------------------------------------------------------
+   OTHER ROLES
+--------------------------------------------------------- */
+
 .admin-role-control.role-employee {
   border-color: #dbeafe;
+
   background: #eff6ff;
 }
+
+.admin-role-control.role-employee .admin-role-dot {
+  background: #60a5fa;
+}
+
+
+/* ---------------------------------------------------------
+   ROLE DOT
+--------------------------------------------------------- */
 
 .admin-role-dot {
   width: 6px;
   height: 6px;
+
   flex: 0 0 6px;
+
   border-radius: 50%;
+
   background: #60a5fa;
 }
 
-.role-admin .admin-role-dot {
-  background: #8b5cf6;
-}
+
+/* ---------------------------------------------------------
+   ROLE SELECT
+--------------------------------------------------------- */
 
 .admin-role-control select {
-  min-width: 80px;
+  min-width: 85px;
+
   padding: 0 17px 0 0;
+
   border: none;
   outline: none;
+
   appearance: auto;
+
   background: transparent;
+
   color: #475569;
+
   font-family: inherit;
+
   font-size: 10px;
   font-weight: 700;
+
   cursor: pointer;
 }
 
-.role-admin select {
+.admin-role-control.role-admin select {
   color: #6d28d9;
 }
 
-.role-employee select {
+.admin-role-control.role-employee select {
   color: #1d4ed8;
 }
 
+
+/* ---------------------------------------------------------
+   ROLE TEXT
+--------------------------------------------------------- */
+
+.admin-role-control > span:last-child {
+  color: #475569;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+.admin-role-control.role-admin > span:last-child {
+  color: #6d28d9;
+}
+
+.admin-role-control.role-employee > span:last-child {
+  color: #1d4ed8;
+}
+
+
+/* ---------------------------------------------------------
+   ROLE SELECT DISABLED
+--------------------------------------------------------- */
+
 .admin-role-control select:disabled {
   opacity: 0.55;
+
   cursor: not-allowed;
 }
 
@@ -357,67 +456,109 @@
    STATUS
 ========================================================= */
 
-.admin-user-status {
+.admin-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+
+  min-width: 75px;
   min-height: 26px;
+
   padding: 0 9px;
+
   border: 1px solid #bbf7d0;
   border-radius: 999px;
+
   background: #f0fdf4;
+
   color: #15803d;
+
   font-size: 10px;
   font-weight: 700;
+
+  white-space: nowrap;
 }
 
-.admin-user-status.inactive {
+
+/* ---------------------------------------------------------
+   ACTIVE
+--------------------------------------------------------- */
+
+.admin-status.active {
+  border-color: #bbf7d0;
+
+  background: #f0fdf4;
+
+  color: #15803d;
+}
+
+
+/* ---------------------------------------------------------
+   INACTIVE
+--------------------------------------------------------- */
+
+.admin-status.inactive {
   border-color: #fecaca;
+
   background: #fef2f2;
+
   color: #dc2626;
-}
-
-.admin-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #22c55e;
-}
-
-.admin-user-status.inactive .admin-status-dot {
-  background: #ef4444;
 }
 
 
 /* =========================================================
-   ONLINE
+   ONLINE STATUS
 ========================================================= */
 
-.admin-user-online {
+.admin-online-status {
   display: inline-flex;
   align-items: center;
+
   gap: 7px;
+
+  min-width: 65px;
+
   font-size: 10px;
   font-weight: 600;
 }
 
-.admin-user-online.online {
+
+/* ---------------------------------------------------------
+   ONLINE
+--------------------------------------------------------- */
+
+.admin-online-status.online {
   color: #15803d;
 }
 
-.admin-user-online.offline {
+
+/* ---------------------------------------------------------
+   OFFLINE
+--------------------------------------------------------- */
+
+.admin-online-status.offline {
   color: #94a3b8;
 }
+
+
+/* =========================================================
+   ONLINE DOT
+========================================================= */
 
 .admin-online-dot {
   width: 7px;
   height: 7px;
+
+  flex: 0 0 7px;
+
   border-radius: 50%;
+
   background: #cbd5e1;
 }
 
-.admin-user-online.online .admin-online-dot {
+.admin-online-status.online .admin-online-dot {
   background: #22c55e;
+
   box-shadow:
     0 0 0 3px #dcfce7;
 }
@@ -430,26 +571,40 @@
 .admin-user-actions {
   display: flex;
   align-items: center;
+
   gap: 5px;
+
   white-space: nowrap;
 }
 
-.admin-user-actions button {
+
+/* =========================================================
+   ACTION BUTTON BASE
+========================================================= */
+
+.admin-user-actions .admin-action-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+
+  width: 30px;
   height: 30px;
-  gap: 5px;
-  padding: 0 8px;
+
+  flex: 0 0 30px;
+
+  padding: 0;
+
   border: 1px solid #dbe2ea;
   border-radius: 6px;
+
   background: #ffffff;
+
   color: #64748b;
+
   font-family: inherit;
-  font-size: 9px;
-  font-weight: 650;
-  line-height: 1;
+
   cursor: pointer;
+
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
@@ -458,23 +613,50 @@
     transform 0.15s ease;
 }
 
-.admin-user-actions button svg {
+
+/* =========================================================
+   ACTION ICON
+========================================================= */
+
+.admin-user-actions .admin-action-button svg {
+  width: 14px;
+  height: 14px;
+
   flex: 0 0 auto;
 }
 
-.admin-user-actions button:hover:not(:disabled) {
+
+/* =========================================================
+   ACTION HOVER
+========================================================= */
+
+.admin-user-actions
+  .admin-action-button:hover:not(:disabled) {
   transform: translateY(-1px);
+
   box-shadow:
     0 2px 5px rgba(15, 23, 42, 0.06);
 }
 
-.admin-user-actions button:active:not(:disabled) {
+.admin-user-actions
+  .admin-action-button:active:not(:disabled) {
   transform: translateY(0);
 }
 
-.admin-user-actions button:disabled {
+
+/* =========================================================
+   ACTION DISABLED
+========================================================= */
+
+.admin-user-actions
+  .admin-action-button:disabled {
   opacity: 0.4;
+
   cursor: not-allowed;
+
+  transform: none;
+
+  box-shadow: none;
 }
 
 
@@ -482,15 +664,20 @@
    VIEW
 ========================================================= */
 
-.admin-user-actions .action-view {
+.admin-user-actions .admin-action-button:first-child {
   border-color: #bfdbfe;
+
   background: #eff6ff;
+
   color: #2563eb;
 }
 
-.admin-user-actions .action-view:hover:not(:disabled) {
+.admin-user-actions
+  .admin-action-button:first-child:hover:not(:disabled) {
   border-color: #93c5fd;
+
   background: #dbeafe;
+
   color: #1d4ed8;
 }
 
@@ -499,92 +686,275 @@
    EDIT
 ========================================================= */
 
-.admin-user-actions .action-edit {
+.admin-user-actions
+  .admin-action-button:not(.danger) {
+  /* Base style intentionally kept neutral.
+     Individual action classes can override later. */
+}
+
+
+/* =========================================================
+   DANGER
+========================================================= */
+
+.admin-user-actions
+  .admin-action-button.danger {
+  border-color: #fecaca;
+
+  background: #fffafa;
+
+  color: #dc2626;
+}
+
+.admin-user-actions
+  .admin-action-button.danger:hover:not(:disabled) {
+  border-color: #fca5a5;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+}
+
+
+/* =========================================================
+   ACTION BUTTON — ICON COLORS
+   Based on button position because JSX uses one
+   shared class: admin-action-button
+========================================================= */
+
+/* View */
+.admin-user-actions
+  .admin-action-button:nth-child(1) {
+  border-color: #bfdbfe;
+
+  background: #eff6ff;
+
+  color: #2563eb;
+}
+
+/* Edit */
+.admin-user-actions
+  .admin-action-button:nth-child(2) {
   border-color: #dbe2ea;
+
+  background: #ffffff;
+
   color: #475569;
 }
 
-.admin-user-actions .action-edit:hover:not(:disabled) {
+/* Department */
+.admin-user-actions
+  .admin-action-button:nth-child(3) {
+  border-color: #ddd6fe;
+
+  background: #faf5ff;
+
+  color: #7c3aed;
+}
+
+/* Password */
+.admin-user-actions
+  .admin-action-button:nth-child(4) {
+  border-color: #fde68a;
+
+  background: #fffbeb;
+
+  color: #b45309;
+}
+
+/* Lock / Unlock */
+.admin-user-actions
+  .admin-action-button:nth-child(5) {
+  border-color: #fed7aa;
+
+  background: #fff7ed;
+
+  color: #c2410c;
+}
+
+
+/* =========================================================
+   ACTION HOVER COLORS
+========================================================= */
+
+/* View */
+.admin-user-actions
+  .admin-action-button:nth-child(1):hover:not(:disabled) {
+  border-color: #93c5fd;
+
+  background: #dbeafe;
+
+  color: #1d4ed8;
+}
+
+
+/* Edit */
+.admin-user-actions
+  .admin-action-button:nth-child(2):hover:not(:disabled) {
+  border-color: #cbd5e1;
+
   background: #f8fafc;
+
   color: #1e293b;
 }
 
 
-/* =========================================================
-   DEPARTMENT
-========================================================= */
-
-.admin-user-actions .action-department {
-  border-color: #ddd6fe;
-  background: #faf5ff;
-  color: #7c3aed;
-}
-
-.admin-user-actions .action-department:hover:not(:disabled) {
+/* Department */
+.admin-user-actions
+  .admin-action-button:nth-child(3):hover:not(:disabled) {
   border-color: #c4b5fd;
+
   background: #f3e8ff;
+
   color: #6d28d9;
 }
 
 
-/* =========================================================
-   PASSWORD
-========================================================= */
-
-.admin-user-actions .action-password {
-  border-color: #fde68a;
-  background: #fffbeb;
-  color: #b45309;
-}
-
-.admin-user-actions .action-password:hover:not(:disabled) {
+/* Password */
+.admin-user-actions
+  .admin-action-button:nth-child(4):hover:not(:disabled) {
   border-color: #fcd34d;
+
   background: #fef3c7;
+
   color: #92400e;
 }
 
 
-/* =========================================================
-   LOCK / UNLOCK
-========================================================= */
-
-.admin-user-actions .action-active.lock {
-  border-color: #fed7aa;
-  background: #fff7ed;
-  color: #c2410c;
-}
-
-.admin-user-actions .action-active.lock:hover:not(:disabled) {
+/* Lock / Unlock */
+.admin-user-actions
+  .admin-action-button:nth-child(5):hover:not(:disabled) {
   border-color: #fdba74;
+
   background: #ffedd5;
+
   color: #9a3412;
 }
 
-.admin-user-actions .action-active.unlock {
+
+/* =========================================================
+   DELETE BUTTON
+   Override position-based styling
+========================================================= */
+
+.admin-user-actions
+  .admin-action-button.danger {
+  border-color: #fecaca;
+
+  background: #fffafa;
+
+  color: #dc2626;
+}
+
+.admin-user-actions
+  .admin-action-button.danger:hover:not(:disabled) {
+  border-color: #fca5a5;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+}
+
+
+/* =========================================================
+   RESTORE BUTTON
+   Restore is normally the only action in deleted mode.
+========================================================= */
+
+.admin-user-actions
+  .admin-action-button:not(.danger):only-child {
   border-color: #bbf7d0;
+
   background: #f0fdf4;
+
   color: #15803d;
 }
 
-.admin-user-actions .action-active.unlock:hover:not(:disabled) {
+.admin-user-actions
+  .admin-action-button:not(.danger):only-child:hover:not(:disabled) {
   border-color: #86efac;
+
   background: #dcfce7;
+
   color: #166534;
 }
 
 
 /* =========================================================
-   DELETE
+   EMPTY / LOADING
 ========================================================= */
 
-.admin-user-actions .action-delete {
-  border-color: #fecaca;
-  background: #fffafa;
-  color: #dc2626;
+.admin-users-loading,
+.admin-users-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 180px;
+
+  padding: 24px;
+
+  color: #64748b;
+
+  font-size: 12px;
+
+  text-align: center;
 }
 
-.admin-user-actions .action-delete:hover:not(:disabled) {
-  border-color: #fca5a5;
-  background: #fef2f2;
-  color: #b91c1c;
+.admin-users-empty {
+  color: #94a3b8;
+}
+
+
+/* =========================================================
+   TABLE FOCUS
+========================================================= */
+
+.admin-user-actions
+  .admin-action-button:focus-visible,
+.admin-role-control select:focus-visible {
+  outline: 2px solid #93c5fd;
+
+  outline-offset: 2px;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1200px) {
+  .admin-users-table {
+    min-width: 1050px;
+  }
+
+  .admin-users-table thead th:last-child {
+    min-width: 280px;
+  }
+
+  .admin-user-actions {
+    gap: 4px;
+  }
+
+  .admin-user-actions
+    .admin-action-button {
+    width: 29px;
+    height: 29px;
+
+    flex-basis: 29px;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-users-table tbody tr,
+  .admin-users-table tbody td,
+  .admin-role-control,
+  .admin-user-actions .admin-action-button {
+    transition: none;
+  }
 }

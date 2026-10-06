@@ -1,17 +1,18 @@
 import {
-  BuildingIcon,
-  EditIcon,
-  EyeIcon,
-  KeyIcon,
-  LockIcon,
-  RestoreIcon,
-  TrashIcon,
-  UnlockIcon,
-} from "./UsersIcons";
+  hasPermission,
+} from "../../../../utils/permissionUtils";
 
 import {
-  getInitial,
-} from "../utils/userHelpers";
+  EyeIcon,
+  EditIcon,
+  BuildingIcon,
+  LockIcon,
+  UnlockIcon,
+  KeyIcon,
+  TrashIcon,
+  RestoreIcon,
+} from "./UsersIcons";
+
 
 export default function UsersTable({
   users,
@@ -29,151 +30,220 @@ export default function UsersTable({
   onRestoreUser,
   onChangeRole,
 }) {
+
+  /* =========================================================
+     PERMISSIONS
+  ========================================================= */
+
+  const canViewEmployee =
+    hasPermission(
+      "Employee.View"
+    );
+
+  const canUpdateEmployee =
+    hasPermission(
+      "Employee.Update"
+    );
+
+  const canAssignDepartment =
+    hasPermission(
+      "Employee.AssignDepartment"
+    );
+
+  const canResetPassword =
+    hasPermission(
+      "Employee.ResetPassword"
+    );
+
+  const canLockEmployee =
+    hasPermission(
+      "Employee.Lock"
+    );
+
+  const canDeleteEmployee =
+    hasPermission(
+      "Employee.Delete"
+    );
+
+  const canRestoreEmployee =
+    hasPermission(
+      "Employee.Restore"
+    );
+
+  const canAssignRole =
+    hasPermission(
+      "Role.Assign"
+    );
+
+
+  /* =========================================================
+     LOADING
+  ========================================================= */
+
+  if (loading) {
+    return (
+      <div className="admin-users-loading">
+        Đang tải danh sách nhân viên...
+      </div>
+    );
+  }
+
+
+  /* =========================================================
+     EMPTY
+  ========================================================= */
+
+  if (!users || users.length === 0) {
+    return (
+      <div className="admin-users-empty">
+        Không có nhân viên nào.
+      </div>
+    );
+  }
+
+
+  /* =========================================================
+     TABLE
+  ========================================================= */
+
   return (
     <div className="admin-users-table-wrapper">
-      {loading ? (
-        <div className="admin-users-loading">
-          <div className="admin-loading-spinner" />
 
-          <span>
-            Đang tải danh sách nhân viên...
-          </span>
-        </div>
-      ) : users.length === 0 ? (
-        <div className="admin-users-empty">
-          <div className="admin-empty-icon">
-            <svg
-              viewBox="0 0 24 24"
-              width="28"
-              height="28"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle
-                cx="9"
-                cy="8"
-                r="4"
-              />
+      <table className="admin-users-table">
 
-              <path d="M3 21a6 6 0 0 1 12 0" />
+        <thead>
+          <tr>
 
-              <path d="M16 11h5" />
+            <th>
+              Nhân viên
+            </th>
 
-              <path d="M18.5 8.5v5" />
-            </svg>
-          </div>
+            <th>
+              Email
+            </th>
 
-          <strong>
-            {isDeleted
-              ? "Không có nhân viên đã xóa"
-              : "Không tìm thấy nhân viên"}
-          </strong>
+            <th>
+              Phòng ban
+            </th>
 
-          <span>
-            {isDeleted
-              ? "Hiện không có tài khoản nào đã bị xóa."
-              : "Thử thay đổi từ khóa hoặc bộ lọc."}
-          </span>
-        </div>
-      ) : (
-        <table className="admin-users-table">
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Email</th>
-              <th>Department</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Online</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
+            <th>
+              Role
+            </th>
 
-          <tbody>
-            {users.map((user) => {
-              const isCurrentUser =
-                Number(currentUser?.id) ===
-                Number(user.id);
+            <th>
+              Trạng thái
+            </th>
 
-              return (
-                <tr
-                  key={user.id}
-                  className={
-                    isCurrentUser
-                      ? "is-current-user"
-                      : ""
-                  }
-                >
-                  {/* EMPLOYEE */}
-                  <td>
-                    <div className="admin-user-cell">
-                      <div className="admin-user-avatar">
-                        {getInitial(user)}
+            <th>
+              Online
+            </th>
 
-                        {user.isOnline && (
-                          <span className="admin-avatar-online-dot" />
-                        )}
-                      </div>
+            <th>
+              Thao tác
+            </th>
 
-                      <div className="admin-user-info">
-                        <div className="admin-user-name-row">
-                          <strong>
-                            {user.fullName ||
-                              user.username}
-                          </strong>
+          </tr>
+        </thead>
 
-                          {isCurrentUser && (
-                            <span className="admin-current-badge">
-                              Bạn
-                            </span>
-                          )}
-                        </div>
 
-                        <span>
-                          @{user.username}
-                        </span>
-                      </div>
+        <tbody>
+
+          {users.map((user) => {
+
+            const isCurrentUser =
+              Number(currentUser?.id) ===
+              Number(user.id);
+
+
+            return (
+              <tr key={user.id}>
+
+                {/* =================================================
+                    EMPLOYEE
+                ================================================= */}
+
+                <td>
+
+                  <div className="admin-user-info">
+
+                    <div className="admin-user-avatar">
+                      {(user.fullName ||
+                        user.username ||
+                        "?")
+                        .charAt(0)
+                        .toUpperCase()}
                     </div>
-                  </td>
 
-                  {/* EMAIL */}
-                  <td>
-                    <span className="admin-user-email">
-                      {user.email}
+                    <div>
+
+                      <div className="admin-user-name">
+                        {user.fullName ||
+                          user.username}
+                      </div>
+
+                      <div className="admin-user-username">
+                        @{user.username}
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </td>
+
+
+                {/* =================================================
+                    EMAIL
+                ================================================= */}
+
+                <td>
+                  {user.email || "—"}
+                </td>
+
+
+                {/* =================================================
+                    DEPARTMENT
+                ================================================= */}
+
+                <td>
+
+                  {user.departmentName ? (
+                    <span>
+                      {user.departmentName}
                     </span>
-                  </td>
+                  ) : (
+                    <span>
+                      Chưa có
+                    </span>
+                  )}
 
-                  {/* DEPARTMENT */}
-                  <td>
-                    <div className="admin-department-cell">
-                      <span className="admin-department-icon">
-                        <BuildingIcon />
-                      </span>
+                </td>
 
-                      <span>
-                        {user.departmentName ||
-                          "Chưa phân phòng ban"}
-                      </span>
-                    </div>
-                  </td>
 
-                  {/* ROLE */}
-                  <td>
+                {/* =================================================
+                    ROLE
+                ================================================= */}
+
+                <td>
+
+                  {canAssignRole ? (
+
                     <div
-                      className={`admin-role-control ${
-                        user.role === "Admin"
-                          ? "role-admin"
-                          : "role-employee"
-                      }`}
+                      className={
+                        `admin-role-control ${
+                          user.role === "Admin"
+                            ? "role-admin"
+                            : "role-employee"
+                        }`
+                      }
                     >
+
                       <span className="admin-role-dot" />
 
                       <select
-                        value={user.role}
+                        value={
+                          user.role || "Employee"
+                        }
                         onChange={(event) =>
                           onChangeRole(
                             user,
@@ -182,209 +252,294 @@ export default function UsersTable({
                         }
                         disabled={
                           actionLoading ||
-                          isCurrentUser ||
-                          isDeleted
+                          isCurrentUser
                         }
-                        aria-label={`Role của ${user.fullName}`}
                       >
-                        <option value="Employee">
-                          Employee
-                        </option>
 
                         <option value="Admin">
                           Admin
                         </option>
+
+                        <option value="HR">
+                          HR
+                        </option>
+
+                        <option value="Department Manager">
+                          Department Manager
+                        </option>
+
+                        <option value="Support">
+                          Support
+                        </option>
+
+                        <option value="Employee">
+                          Employee
+                        </option>
+
                       </select>
+
                     </div>
-                  </td>
 
-                  {/* STATUS */}
-                  <td>
-                    <span
-                      className={`admin-user-status ${
-                        user.isActive
-                          ? "active"
-                          : "inactive"
-                      }`}
-                    >
-                      <span className="admin-status-dot" />
+                  ) : (
 
-                      {user.isActive
-                        ? "Hoạt động"
-                        : "Bị khóa"}
-                    </span>
-                  </td>
-
-                  {/* ONLINE */}
-                  <td>
                     <div
-                      className={`admin-user-online ${
-                        user.isOnline
-                          ? "online"
-                          : "offline"
-                      }`}
+                      className={
+                        `admin-role-control ${
+                          user.role === "Admin"
+                            ? "role-admin"
+                            : "role-employee"
+                        }`
+                      }
                     >
-                      <span className="admin-online-dot" />
+
+                      <span className="admin-role-dot" />
 
                       <span>
-                        {user.isOnline
-                          ? "Online"
-                          : "Offline"}
+                        {user.role || "Employee"}
                       </span>
-                    </div>
-                  </td>
 
-                  {/* ACTIONS */}
-                  <td>
-                    <div className="admin-user-actions">
-                      {/* VIEW */}
+                    </div>
+
+                  )}
+
+                </td>
+
+
+                {/* =================================================
+                    ACTIVE STATUS
+                ================================================= */}
+
+                <td>
+
+                  {user.isActive ? (
+                    <span className="admin-status active">
+                      Hoạt động
+                    </span>
+                  ) : (
+                    <span className="admin-status inactive">
+                      Đã khóa
+                    </span>
+                  )}
+
+                </td>
+
+
+                {/* =================================================
+                    ONLINE
+                ================================================= */}
+
+                <td>
+
+                  {user.isOnline ? (
+                    <span className="admin-online-status online">
+                      <span className="admin-online-dot" />
+                      Online
+                    </span>
+                  ) : (
+                    <span className="admin-online-status offline">
+                      <span className="admin-online-dot" />
+                      Offline
+                    </span>
+                  )}
+
+                </td>
+
+
+                {/* =================================================
+                    ACTIONS
+                ================================================= */}
+
+                <td>
+
+                  <div className="admin-user-actions">
+
+                    {/* =============================================
+                        VIEW
+                    ============================================= */}
+
+                    {canViewEmployee && (
                       <button
                         type="button"
-                        className="action-view"
+                        className="admin-action-button"
                         onClick={() =>
                           onViewUser(user.id)
+                        }
+                        disabled={
+                          actionLoading
                         }
                         title="Xem thông tin"
                       >
                         <EyeIcon />
-
-                        <span>
-                          Xem
-                        </span>
                       </button>
+                    )}
 
-                      {!isDeleted ? (
-                        <>
-                          {/* EDIT */}
-                          <button
-                            type="button"
-                            className="action-edit"
-                            onClick={() =>
-                              onEditUser(user.id)
-                            }
-                            title="Chỉnh sửa"
-                          >
-                            <EditIcon />
 
-                            <span>
-                              Sửa
-                            </span>
-                          </button>
+                    {/* =============================================
+                        EDIT
+                    ============================================= */}
 
-                          {/* DEPARTMENT */}
-                          <button
-                            type="button"
-                            className="action-department"
-                            onClick={() =>
-                              onAssignDepartment(user)
-                            }
-                            title="Phân phòng ban"
-                          >
-                            <BuildingIcon />
-
-                            <span>
-                              Phòng ban
-                            </span>
-                          </button>
-
-                          {/* RESET PASSWORD */}
-                          <button
-                            type="button"
-                            className="action-password"
-                            onClick={() =>
-                              onResetPassword(user)
-                            }
-                            title="Reset mật khẩu"
-                          >
-                            <KeyIcon />
-
-                            <span>
-                              Reset PW
-                            </span>
-                          </button>
-
-                          {/* ACTIVE / INACTIVE */}
-                          <button
-                            type="button"
-                            className={`action-active ${
-                              user.isActive
-                                ? "lock"
-                                : "unlock"
-                            }`}
-                            onClick={() =>
-                              onToggleActive(user)
-                            }
-                            disabled={
-                              actionLoading ||
-                              isCurrentUser
-                            }
-                            title={
-                              user.isActive
-                                ? "Khóa tài khoản"
-                                : "Mở khóa tài khoản"
-                            }
-                          >
-                            {user.isActive ? (
-                              <LockIcon />
-                            ) : (
-                              <UnlockIcon />
-                            )}
-
-                            <span>
-                              {user.isActive
-                                ? "Khóa"
-                                : "Mở"}
-                            </span>
-                          </button>
-
-                          {/* DELETE */}
-                          <button
-                            type="button"
-                            className="action-delete"
-                            onClick={() =>
-                              onDeleteUser(user)
-                            }
-                            disabled={
-                              actionLoading ||
-                              isCurrentUser
-                            }
-                            title="Xóa tài khoản"
-                          >
-                            <TrashIcon />
-
-                            <span>
-                              Xóa
-                            </span>
-                          </button>
-                        </>
-                      ) : (
-                        /* RESTORE */
+                    {!isDeleted &&
+                      canUpdateEmployee && (
                         <button
                           type="button"
-                          className="action-active unlock"
+                          className="admin-action-button"
                           onClick={() =>
-                            onRestoreUser(user)
+                            onEditUser(user.id)
                           }
                           disabled={
                             actionLoading
                           }
-                          title="Khôi phục nhân viên"
+                          title="Chỉnh sửa"
                         >
-                          <RestoreIcon />
-
-                          <span>
-                            Khôi phục
-                          </span>
+                          <EditIcon />
                         </button>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
+
+
+                    {/* =============================================
+                        ASSIGN DEPARTMENT
+                    ============================================= */}
+
+                    {!isDeleted &&
+                      canAssignDepartment && (
+                        <button
+                          type="button"
+                          className="admin-action-button"
+                          onClick={() =>
+                            onAssignDepartment(
+                              user
+                            )
+                          }
+                          disabled={
+                            actionLoading
+                          }
+                          title="Phòng ban"
+                        >
+                          <BuildingIcon />
+                        </button>
+                      )}
+
+
+                    {/* =============================================
+                        RESET PASSWORD
+                    ============================================= */}
+
+                    {!isDeleted &&
+                      canResetPassword && (
+                        <button
+                          type="button"
+                          className="admin-action-button"
+                          onClick={() =>
+                            onResetPassword(
+                              user
+                            )
+                          }
+                          disabled={
+                            actionLoading
+                          }
+                          title="Reset mật khẩu"
+                        >
+                          <KeyIcon />
+                        </button>
+                      )}
+
+
+                    {/* =============================================
+                        LOCK / UNLOCK
+                    ============================================= */}
+
+                    {!isDeleted &&
+                      canLockEmployee && (
+                        <button
+                          type="button"
+                          className="admin-action-button"
+                          onClick={() =>
+                            onToggleActive(
+                              user
+                            )
+                          }
+                          disabled={
+                            actionLoading ||
+                            isCurrentUser
+                          }
+                          title={
+                            user.isActive
+                              ? "Khóa tài khoản"
+                              : "Mở khóa tài khoản"
+                          }
+                        >
+
+                          {user.isActive ? (
+                            <LockIcon />
+                          ) : (
+                            <UnlockIcon />
+                          )}
+
+                        </button>
+                      )}
+
+
+                    {/* =============================================
+                        DELETE
+                    ============================================= */}
+
+                    {!isDeleted &&
+                      canDeleteEmployee && (
+                        <button
+                          type="button"
+                          className="admin-action-button danger"
+                          onClick={() =>
+                            onDeleteUser(
+                              user
+                            )
+                          }
+                          disabled={
+                            actionLoading ||
+                            isCurrentUser
+                          }
+                          title="Xóa nhân viên"
+                        >
+                          <TrashIcon />
+                        </button>
+                      )}
+
+
+                    {/* =============================================
+                        RESTORE
+                    ============================================= */}
+
+                    {isDeleted &&
+                      canRestoreEmployee && (
+                        <button
+                          type="button"
+                          className="admin-action-button"
+                          onClick={() =>
+                            onRestoreUser(
+                              user
+                            )
+                          }
+                          disabled={
+                            actionLoading
+                          }
+                          title="Khôi phục"
+                        >
+                          <RestoreIcon />
+                        </button>
+                      )}
+
+                  </div>
+
+                </td>
+
+              </tr>
+            );
+
+          })}
+
+        </tbody>
+
+      </table>
+
     </div>
   );
 }

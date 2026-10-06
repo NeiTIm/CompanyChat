@@ -18,6 +18,10 @@ import "./styles/index.css";
 ========================================================= */
 
 function App() {
+  /* =========================================================
+     CURRENT USER
+  ========================================================= */
+
   const [currentUser, setCurrentUser] =
     useState(() => {
       const savedUser =
@@ -28,12 +32,58 @@ function App() {
       }
 
       try {
-        return JSON.parse(savedUser);
+        const user =
+          JSON.parse(savedUser);
+
+        /*
+         * Permissions được lưu riêng
+         * trong localStorage.
+         *
+         * Khi reload trang,
+         * ghép permissions trở lại currentUser.
+         */
+
+        const savedPermissions =
+          localStorage.getItem(
+            "permissions"
+          );
+
+        let permissions = [];
+
+        if (savedPermissions) {
+          try {
+            const parsedPermissions =
+              JSON.parse(
+                savedPermissions
+              );
+
+            if (
+              Array.isArray(
+                parsedPermissions
+              )
+            ) {
+              permissions =
+                parsedPermissions;
+            }
+          } catch {
+            permissions = [];
+          }
+        }
+
+        return {
+          ...user,
+          permissions,
+        };
+
       } catch {
         return null;
       }
     });
 
+
+  /* =========================================================
+     CURRENT PAGE
+  ========================================================= */
 
   const [currentPage, setCurrentPage] =
     useState(() => {
@@ -45,14 +95,14 @@ function App() {
       }
 
       try {
-        const user =
-          JSON.parse(savedUser);
+        JSON.parse(savedUser);
 
-        if (user.role === "Admin") {
-          return "admin";
-        }
+        /*
+         * Tất cả authenticated users
+         * đều có thể vào Management Dashboard.
+         */
+        return "admin";
 
-        return "chat";
       } catch {
         return "login";
       }
@@ -96,6 +146,7 @@ function App() {
      * Chỉ xử lý event đặc biệt
      * khi tài khoản bị khóa / xóa.
      */
+
     if (
       socketEvent.type !==
       "account_disabled"
@@ -125,12 +176,14 @@ function App() {
       ) {
         message =
           "⚠️ Tài khoản của bạn đã bị khóa.";
+
       } else if (
         socketEvent.reason ===
         "deleted"
       ) {
         message =
           "⚠️ Tài khoản của bạn đã bị xóa.";
+
       } else {
         message =
           "⚠️ Tài khoản của bạn không còn hoạt động.";
@@ -155,6 +208,10 @@ function App() {
 
     localStorage.removeItem(
       "user"
+    );
+
+    localStorage.removeItem(
+      "permissions"
     );
 
 
@@ -190,9 +247,14 @@ function App() {
       "user"
     );
 
+    localStorage.removeItem(
+      "permissions"
+    );
+
     setLoginError("");
 
     setCurrentUser(null);
+
     setCurrentPage("login");
   }
 
@@ -204,13 +266,21 @@ function App() {
   function handleLogin(user) {
     setLoginError("");
 
+    /*
+     * LoginPage hiện tại đã truyền:
+     *
+     * {
+     *   ...user,
+     *   permissions
+     * }
+     */
+
     setCurrentUser(user);
 
-    if (user.role === "Admin") {
-      setCurrentPage("admin");
-    } else {
-      setCurrentPage("chat");
-    }
+    /*
+     * Tất cả Role đều vào Dashboard.
+     */
+    setCurrentPage("admin");
   }
 
 
@@ -229,11 +299,10 @@ function App() {
 
 
   /* =========================================================
-     ADMIN
+     MANAGEMENT DASHBOARD
   ========================================================= */
 
   if (
-    currentUser.role === "Admin" &&
     currentPage === "admin"
   ) {
     return (

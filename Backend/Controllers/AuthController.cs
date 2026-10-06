@@ -3,6 +3,8 @@ using CompanyChat.Api.DTOs.Auth;
 using CompanyChat.Api.DTOs.User;
 using CompanyChat.Api.Models;
 using CompanyChat.Api.Services;
+using CompanyChat.Api.Services.Authorization;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +14,8 @@ namespace CompanyChat.Api.Controllers;
 [Route("api/auth")]
 public class AuthController(
     AppDbContext db,
-    JwtService jwt) : ControllerBase
+    JwtService jwt,
+    PermissionService permissionService) : ControllerBase
 {
     // =========================================================
     // LOGIN
@@ -69,12 +72,25 @@ public class AuthController(
         }
 
         // -----------------------------------------------------
+        // GET USER PERMISSIONS
+        // -----------------------------------------------------
+
+        var permissions =
+            await permissionService
+                .GetUserPermissionsAsync(user.Id);
+
+        // -----------------------------------------------------
         // LOGIN SUCCESS
         // -----------------------------------------------------
 
-        return Ok(new LoginResponse(
-            jwt.CreateToken(user),
-            ToDto(user)));
+        return Ok(new
+        {
+            token = jwt.CreateToken(user),
+
+            user = ToDto(user),
+
+            permissions
+        });
     }
 
 

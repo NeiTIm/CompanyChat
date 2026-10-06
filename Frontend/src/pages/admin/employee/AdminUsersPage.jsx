@@ -17,6 +17,10 @@ import {
   getAdminDepartments,
 } from "../../../services/admin/departmentService";
 
+import {
+  hasPermission,
+} from "../../../utils/permissionUtils";
+
 import UsersHeader from "./components/UsersHeader";
 import UsersToolbar from "./components/UsersToolbar";
 import UsersSummary from "./components/UsersSummary";
@@ -29,11 +33,63 @@ export default function AdminUsersPage({
   currentUser,
   socketEvent,
 }) {
+
+  /* =======================================================
+     PERMISSIONS
+  ======================================================= */
+
+  const canView =
+    hasPermission(
+      "Employee.View"
+    );
+
+  const canCreate =
+    hasPermission(
+      "Employee.Create"
+    );
+
+  const canUpdate =
+    hasPermission(
+      "Employee.Update"
+    );
+
+  const canDelete =
+    hasPermission(
+      "Employee.Delete"
+    );
+
+  const canRestore =
+    hasPermission(
+      "Employee.Restore"
+    );
+
+  const canLock =
+    hasPermission(
+      "Employee.Lock"
+    );
+
+  const canResetPassword =
+    hasPermission(
+      "Employee.ResetPassword"
+    );
+
+  const canAssignDepartment =
+    hasPermission(
+      "Employee.AssignDepartment"
+    );
+
+  const canAssignRole =
+    hasPermission(
+      "Role.Assign"
+    );
+
+
   /* =======================================================
      DATA
   ======================================================= */
 
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] =
+    useState([]);
 
   const [selectedUser, setSelectedUser] =
     useState(null);
@@ -68,6 +124,7 @@ export default function AdminUsersPage({
 
   const [toast, setToast] =
     useState(null);
+
 
   function showToast(
     type,
@@ -160,6 +217,7 @@ export default function AdminUsersPage({
             : [];
 
       setDepartments(items);
+
     } catch (error) {
       console.error(
         "Không thể tải phòng ban:",
@@ -173,6 +231,7 @@ export default function AdminUsersPage({
         error?.response?.data?.message ||
           "Không thể tải danh sách phòng ban."
       );
+
     } finally {
       setDepartmentLoading(false);
     }
@@ -187,6 +246,14 @@ export default function AdminUsersPage({
     customPage = page,
     customSearch = search
   ) {
+    if (!canView) {
+      setUsers([]);
+      setTotal(0);
+      setTotalPages(1);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
@@ -195,11 +262,18 @@ export default function AdminUsersPage({
         await getAdminUsers({
           search:
             customSearch.trim(),
+
           departmentId,
+
           role,
+
           isActive,
+
           isDeleted,
-          page: customPage,
+
+          page:
+            customPage,
+
           pageSize,
         });
 
@@ -217,6 +291,7 @@ export default function AdminUsersPage({
           1
         )
       );
+
     } catch (error) {
       console.error(
         "Không thể tải danh sách nhân viên:",
@@ -233,6 +308,7 @@ export default function AdminUsersPage({
         "error",
         message
       );
+
     } finally {
       setLoading(false);
     }
@@ -244,8 +320,14 @@ export default function AdminUsersPage({
   ======================================================= */
 
   useEffect(() => {
-    loadDepartments();
+    if (
+      canView ||
+      canAssignDepartment
+    ) {
+      loadDepartments();
+    }
   }, []);
+
 
   useEffect(() => {
     loadUsers(
@@ -352,6 +434,7 @@ export default function AdminUsersPage({
       []
     );
 
+
   useEffect(() => {
     handleUserStatus(
       socketEvent
@@ -379,6 +462,7 @@ export default function AdminUsersPage({
     );
   }
 
+
   function handleSearchChange(
     event
   ) {
@@ -386,6 +470,7 @@ export default function AdminUsersPage({
       event.target.value
     );
   }
+
 
   function handleClearSearch() {
     setSearch("");
@@ -413,6 +498,7 @@ export default function AdminUsersPage({
     setPage(1);
   }
 
+
   function handleDepartmentChange(
     event
   ) {
@@ -423,6 +509,7 @@ export default function AdminUsersPage({
     setPage(1);
   }
 
+
   function handleStatusChange(
     event
   ) {
@@ -432,6 +519,7 @@ export default function AdminUsersPage({
 
     setPage(1);
   }
+
 
   function handleDeletedChange(
     event
@@ -469,6 +557,10 @@ export default function AdminUsersPage({
   async function handleViewUser(
     id
   ) {
+    if (!canView) {
+      return;
+    }
+
     try {
       setDetailLoading(true);
 
@@ -476,6 +568,7 @@ export default function AdminUsersPage({
         await getAdminUser(id);
 
       setSelectedUser(user);
+
     } catch (error) {
       console.error(
         "Không thể tải thông tin nhân viên:",
@@ -487,6 +580,7 @@ export default function AdminUsersPage({
         error?.response?.data?.message ||
           "Không thể tải thông tin nhân viên."
       );
+
     } finally {
       setDetailLoading(false);
     }
@@ -500,6 +594,10 @@ export default function AdminUsersPage({
   async function handleEditUser(
     id
   ) {
+    if (!canUpdate) {
+      return;
+    }
+
     try {
       setDetailLoading(true);
 
@@ -509,6 +607,7 @@ export default function AdminUsersPage({
       setSelectedUser(user);
 
       setShowEditModal(true);
+
     } catch (error) {
       console.error(
         "Không thể tải nhân viên:",
@@ -520,6 +619,7 @@ export default function AdminUsersPage({
         error?.response?.data?.message ||
           "Không thể tải thông tin nhân viên."
       );
+
     } finally {
       setDetailLoading(false);
     }
@@ -533,6 +633,10 @@ export default function AdminUsersPage({
   async function handleResetPassword(
     user
   ) {
+    if (!canResetPassword) {
+      return;
+    }
+
     try {
       setDetailLoading(true);
 
@@ -546,6 +650,7 @@ export default function AdminUsersPage({
       setShowResetPasswordModal(
         true
       );
+
     } catch (error) {
       console.error(
         "Không thể tải nhân viên:",
@@ -557,6 +662,7 @@ export default function AdminUsersPage({
         error?.response?.data?.message ||
           "Không thể tải thông tin nhân viên."
       );
+
     } finally {
       setDetailLoading(false);
     }
@@ -570,6 +676,10 @@ export default function AdminUsersPage({
   async function handleAssignDepartment(
     user
   ) {
+    if (!canAssignDepartment) {
+      return;
+    }
+
     try {
       setDetailLoading(true);
 
@@ -583,6 +693,7 @@ export default function AdminUsersPage({
       setShowAssignDepartmentModal(
         true
       );
+
     } catch (error) {
       console.error(
         "Không thể tải nhân viên:",
@@ -594,6 +705,7 @@ export default function AdminUsersPage({
         error?.response?.data?.message ||
           "Không thể tải thông tin nhân viên."
       );
+
     } finally {
       setDetailLoading(false);
     }
@@ -607,6 +719,10 @@ export default function AdminUsersPage({
   function handleToggleActive(
     user
   ) {
+    if (!canLock) {
+      return;
+    }
+
     const currentUserId =
       Number(currentUser?.id);
 
@@ -646,7 +762,8 @@ export default function AdminUsersPage({
           ? "Mở khóa"
           : "Khóa tài khoản",
 
-      cancelText: "Hủy",
+      cancelText:
+        "Hủy",
 
       danger:
         !nextActive,
@@ -700,6 +817,7 @@ export default function AdminUsersPage({
                 ? "Đã mở khóa nhân viên."
                 : "Đã khóa nhân viên."
             );
+
           } catch (error) {
             console.error(
               "Không thể cập nhật trạng thái:",
@@ -708,11 +826,10 @@ export default function AdminUsersPage({
 
             showToast(
               "error",
-              error?.response
-                ?.data
-                ?.message ||
+              error?.response?.data?.message ||
                 "Không thể cập nhật trạng thái."
             );
+
           } finally {
             setActionLoading(
               false
@@ -731,6 +848,10 @@ export default function AdminUsersPage({
     user,
     newRole
   ) {
+    if (!canAssignRole) {
+      return;
+    }
+
     const currentUserId =
       Number(currentUser?.id);
 
@@ -819,6 +940,7 @@ export default function AdminUsersPage({
               "success",
               `Đã đổi role của "${user.fullName || user.username}" thành ${newRole}.`
             );
+
           } catch (error) {
             console.error(
               "Không thể cập nhật role:",
@@ -827,11 +949,10 @@ export default function AdminUsersPage({
 
             showToast(
               "error",
-              error?.response
-                ?.data
-                ?.message ||
+              error?.response?.data?.message ||
                 "Không thể cập nhật role."
             );
+
           } finally {
             setActionLoading(
               false
@@ -849,6 +970,10 @@ export default function AdminUsersPage({
   function handleDeleteUser(
     user
   ) {
+    if (!canDelete) {
+      return;
+    }
+
     const currentUserId =
       Number(currentUser?.id);
 
@@ -928,6 +1053,7 @@ export default function AdminUsersPage({
               "success",
               `Đã xóa nhân viên "${user.fullName || user.username}".`
             );
+
           } catch (error) {
             console.error(
               "Không thể xóa nhân viên:",
@@ -936,11 +1062,10 @@ export default function AdminUsersPage({
 
             showToast(
               "error",
-              error?.response
-                ?.data
-                ?.message ||
+              error?.response?.data?.message ||
                 "Không thể xóa nhân viên."
             );
+
           } finally {
             setActionLoading(
               false
@@ -958,6 +1083,10 @@ export default function AdminUsersPage({
   function handleRestoreUser(
     user
   ) {
+    if (!canRestore) {
+      return;
+    }
+
     setConfirmModal({
       title:
         "Xác nhận khôi phục nhân viên",
@@ -1021,6 +1150,7 @@ export default function AdminUsersPage({
               "success",
               `Đã khôi phục nhân viên "${user.fullName || user.username}".`
             );
+
           } catch (error) {
             console.error(
               "Không thể khôi phục nhân viên:",
@@ -1029,11 +1159,10 @@ export default function AdminUsersPage({
 
             showToast(
               "error",
-              error?.response
-                ?.data
-                ?.message ||
+              error?.response?.data?.message ||
                 "Không thể khôi phục nhân viên."
             );
+
           } finally {
             setActionLoading(
               false
@@ -1105,6 +1234,7 @@ export default function AdminUsersPage({
         "success",
         "Đã cập nhật thông tin nhân viên."
       );
+
     } catch (error) {
       console.error(
         "Không thể refresh nhân viên:",
@@ -1224,6 +1354,7 @@ export default function AdminUsersPage({
     );
   }
 
+
   function goToNextPage() {
     if (
       page >=
@@ -1292,6 +1423,35 @@ export default function AdminUsersPage({
 
 
   /* =======================================================
+     NO VIEW PERMISSION
+  ======================================================= */
+
+  if (!canView) {
+    return (
+      <div className="admin-users-page">
+
+        <section className="admin-users-card">
+
+          <div className="admin-users-error">
+
+            <span className="admin-error-icon">
+              !
+            </span>
+
+            <span>
+              Bạn không có quyền xem danh sách nhân viên.
+            </span>
+
+          </div>
+
+        </section>
+
+      </div>
+    );
+  }
+
+
+  /* =======================================================
      RENDER
   ======================================================= */
 
@@ -1305,9 +1465,21 @@ export default function AdminUsersPage({
       <UsersHeader
         loading={loading}
         isDeleted={isDeleted}
-        onRefresh={handleRefresh}
-        onCreate={() =>
-          setShowCreateModal(true)
+
+        onRefresh={
+          handleRefresh
+        }
+
+        onCreate={() => {
+          if (!canCreate) {
+            return;
+          }
+
+          setShowCreateModal(true);
+        }}
+
+        canCreate={
+          canCreate
         }
       />
 
@@ -1324,37 +1496,51 @@ export default function AdminUsersPage({
 
         <UsersToolbar
           search={search}
+
           onSearchChange={
             handleSearchChange
           }
+
           onSearchSubmit={
             handleSearchSubmit
           }
+
           onClearSearch={
             handleClearSearch
           }
+
           departmentId={
             departmentId
           }
+
           onDepartmentChange={
             handleDepartmentChange
           }
+
           departments={
             departments
           }
-          role={role}
+
+          role={
+            role
+          }
+
           onRoleChange={
             handleRoleChange
           }
+
           isActive={
             isActive
           }
+
           onStatusChange={
             handleStatusChange
           }
+
           isDeleted={
             isDeleted
           }
+
           onDeletedChange={
             handleDeletedChange
           }
@@ -1380,6 +1566,7 @@ export default function AdminUsersPage({
 
         {error && (
           <div className="admin-users-error">
+
             <span className="admin-error-icon">
               !
             </span>
@@ -1396,6 +1583,7 @@ export default function AdminUsersPage({
             >
               Thử lại
             </button>
+
           </div>
         )}
 
@@ -1412,29 +1600,69 @@ export default function AdminUsersPage({
           actionLoading={
             actionLoading
           }
+
           onViewUser={
             handleViewUser
           }
+
           onEditUser={
             handleEditUser
           }
+
           onAssignDepartment={
             handleAssignDepartment
           }
+
           onResetPassword={
             handleResetPassword
           }
+
           onToggleActive={
             handleToggleActive
           }
+
           onDeleteUser={
             handleDeleteUser
           }
+
           onRestoreUser={
             handleRestoreUser
           }
+
           onChangeRole={
             handleChangeRole
+          }
+
+          canView={
+            canView
+          }
+
+          canUpdate={
+            canUpdate
+          }
+
+          canAssignDepartment={
+            canAssignDepartment
+          }
+
+          canResetPassword={
+            canResetPassword
+          }
+
+          canLock={
+            canLock
+          }
+
+          canDelete={
+            canDelete
+          }
+
+          canRestore={
+            canRestore
+          }
+
+          canAssignRole={
+            canAssignRole
           }
         />
 
@@ -1480,81 +1708,121 @@ export default function AdminUsersPage({
         showCreateModal={
           showCreateModal
         }
+
         departments={
           departments
         }
+
         departmentLoading={
           departmentLoading
         }
+
         onCloseCreate={() =>
           setShowCreateModal(
             false
           )
         }
+
         onEmployeeCreated={
           handleEmployeeCreated
         }
 
+        canCreate={
+          canCreate
+        }
+
+
         showEditModal={
           showEditModal
         }
+
         selectedUser={
           selectedUser
         }
+
         onCloseEdit={() =>
           setShowEditModal(
             false
           )
         }
+
         onEmployeeUpdated={
           handleEmployeeUpdated
         }
 
+        canUpdate={
+          canUpdate
+        }
+
+
         showResetPasswordModal={
           showResetPasswordModal
         }
+
         onCloseResetPassword={() =>
           setShowResetPasswordModal(
             false
           )
         }
+
         onPasswordReset={
           handlePasswordReset
         }
 
+        canResetPassword={
+          canResetPassword
+        }
+
+
         showAssignDepartmentModal={
           showAssignDepartmentModal
         }
+
         onCloseAssignDepartment={() =>
           setShowAssignDepartmentModal(
             false
           )
         }
+
         onDepartmentAssigned={
           handleDepartmentAssigned
         }
 
+        canAssignDepartment={
+          canAssignDepartment
+        }
+
+
         detailLoading={
           detailLoading
         }
+
         onCloseDetail={() =>
           setSelectedUser(null)
         }
 
+
         confirmModal={
           confirmModal
         }
+
         actionLoading={
           actionLoading
         }
+
         onConfirm={
           confirmModal?.onConfirm
         }
+
         onCloseConfirm={
           closeConfirmModal
         }
 
-        toast={toast}
+
+        toast={
+          toast
+        }
+
         onCloseToast={() =>
           setToast(null)
         }

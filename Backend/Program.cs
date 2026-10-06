@@ -4,11 +4,12 @@ using System.Text;
 using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
 using CompanyChat.Api.Services;
+using CompanyChat.Api.Services.Authorization;
 using CompanyChat.Api.Services.Admin;
 using CompanyChat.Api.Services.Chat;
 using CompanyChat.Api.Services.Notification;
 using CompanyChat.Api.WebSockets;
-
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -50,6 +51,10 @@ builder.Services.AddDbContext<AppDbContext>(
 
 builder.Services.AddScoped<JwtService>();
 
+builder.Services.AddScoped<PermissionService>();
+
+
+
 builder.Services.AddScoped<
     ConversationAccessService>();
 
@@ -63,6 +68,17 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     DashboardService>();
 
+/* =========================================================
+   AUTHORIZATION SERVICES
+========================================================= */
+
+builder.Services.AddScoped<
+    IAuthorizationHandler,
+    PermissionAuthorizationHandler>();
+
+builder.Services.AddSingleton<
+    IAuthorizationPolicyProvider,
+    PermissionPolicyProvider>();
 
 /* =========================================================
    WEBSOCKET SERVICES

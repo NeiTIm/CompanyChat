@@ -1,9 +1,16 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import { getAdminDashboard } from "../../services/admin/adminDashboardService";
 
 import AdminUsersPage from "./employee/AdminUsersPage";
 import AdminDepartmentsPage from "./department/AdminDepartmentsPage";
+
+import {
+  hasPermission,
+} from "../../utils/permissionUtils";
 
 
 function AdminDashboardPage({
@@ -11,14 +18,49 @@ function AdminDashboardPage({
   onBackToChat,
   onLogout,
 }) {
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [dashboard, setDashboard] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
 
   // Menu đang được chọn
   const [activeMenu, setActiveMenu] =
     useState("dashboard");
 
+
+  /* =========================================================
+     PERMISSIONS
+  ========================================================= */
+
+  const canViewEmployees =
+    hasPermission(
+      "Employee.View"
+    );
+
+  const canViewDepartments =
+    hasPermission(
+      "Department.View"
+    );
+
+  const canViewRoles =
+    hasPermission(
+      "Role.View"
+    );
+
+  const canViewPermissions =
+    hasPermission(
+      "System.Security"
+    );
+
+
+  /* =========================================================
+     LOAD DASHBOARD
+  ========================================================= */
 
   useEffect(() => {
     loadDashboard();
@@ -34,18 +76,31 @@ function AdminDashboardPage({
         await getAdminDashboard();
 
       setDashboard(data);
+
     } catch (error) {
       console.error(
-        "Không thể tải Admin Dashboard:",
+        "Không thể tải Dashboard:",
         error
       );
 
       setError(
         "Không thể tải dữ liệu Dashboard."
       );
+
     } finally {
       setLoading(false);
     }
+  }
+
+
+  /* =========================================================
+     MENU ACCESS
+  ========================================================= */
+
+  function handleMenuChange(
+    menu
+  ) {
+    setActiveMenu(menu);
   }
 
 
@@ -58,7 +113,10 @@ function AdminDashboardPage({
 
       <aside className="admin-sidebar">
 
-        {/* LOGO */}
+        {/* ===================================================
+            LOGO
+        =================================================== */}
+
         <div className="admin-logo">
 
           <div className="admin-logo-icon">
@@ -66,19 +124,24 @@ function AdminDashboardPage({
           </div>
 
           <div>
+
             <div className="admin-logo-title">
               CompanyChat
             </div>
 
             <div className="admin-logo-subtitle">
-              Administration
+              Management
             </div>
+
           </div>
 
         </div>
 
 
-        {/* MENU */}
+        {/* ===================================================
+            MENU
+        =================================================== */}
+
         <nav className="admin-menu">
 
           {/* =================================================
@@ -92,50 +155,121 @@ function AdminDashboardPage({
                 : "admin-menu-item"
             }
             onClick={() =>
-              setActiveMenu("dashboard")
+              handleMenuChange(
+                "dashboard"
+              )
             }
           >
-            <span>📊</span>
+            <span>
+              📊
+            </span>
+
             Dashboard
           </button>
 
 
           {/* =================================================
-              USERS
+              USERS / EMPLOYEES
           ================================================= */}
 
-          <button
-            className={
-              activeMenu === "users"
-                ? "admin-menu-item active"
-                : "admin-menu-item"
-            }
-            onClick={() =>
-              setActiveMenu("users")
-            }
-          >
-            <span>👥</span>
-            Users
-          </button>
+          {canViewEmployees && (
+            <button
+              className={
+                activeMenu === "users"
+                  ? "admin-menu-item active"
+                  : "admin-menu-item"
+              }
+              onClick={() =>
+                handleMenuChange(
+                  "users"
+                )
+              }
+            >
+              <span>
+                👥
+              </span>
+
+              Users
+            </button>
+          )}
 
 
           {/* =================================================
               DEPARTMENTS
           ================================================= */}
 
-          <button
-            className={
-              activeMenu === "departments"
-                ? "admin-menu-item active"
-                : "admin-menu-item"
-            }
-            onClick={() =>
-              setActiveMenu("departments")
-            }
-          >
-            <span>🏢</span>
-            Departments
-          </button>
+          {canViewDepartments && (
+            <button
+              className={
+                activeMenu === "departments"
+                  ? "admin-menu-item active"
+                  : "admin-menu-item"
+              }
+              onClick={() =>
+                handleMenuChange(
+                  "departments"
+                )
+              }
+            >
+              <span>
+                🏢
+              </span>
+
+              Departments
+            </button>
+          )}
+
+
+          {/* =================================================
+              ROLES
+          ================================================= */}
+
+          {canViewRoles && (
+            <button
+              className={
+                activeMenu === "roles"
+                  ? "admin-menu-item active"
+                  : "admin-menu-item"
+              }
+              onClick={() =>
+                handleMenuChange(
+                  "roles"
+                )
+              }
+            >
+              <span>
+                🛡️
+              </span>
+
+              Roles
+            </button>
+          )}
+
+
+          {/* =================================================
+              PERMISSIONS
+          ================================================= */}
+
+          {canViewPermissions && (
+            <button
+              className={
+                activeMenu === "permissions"
+                  ? "admin-menu-item active"
+                  : "admin-menu-item"
+              }
+              onClick={() =>
+                handleMenuChange(
+                  "permissions"
+                )
+              }
+            >
+              <span>
+                🔐
+              </span>
+
+              Permissions
+            </button>
+          )}
 
 
           {/* =================================================
@@ -145,8 +279,12 @@ function AdminDashboardPage({
 
           <button
             className="admin-menu-item"
+            disabled
           >
-            <span>💬</span>
+            <span>
+              💬
+            </span>
+
             Conversations
           </button>
 
@@ -158,8 +296,12 @@ function AdminDashboardPage({
 
           <button
             className="admin-menu-item"
+            disabled
           >
-            <span>📨</span>
+            <span>
+              📨
+            </span>
+
             Messages
           </button>
 
@@ -171,18 +313,26 @@ function AdminDashboardPage({
 
           <button
             className="admin-menu-item"
+            disabled
           >
-            <span>🧹</span>
+            <span>
+              🧹
+            </span>
+
             Cleanup
           </button>
 
         </nav>
 
 
-        {/* SIDEBAR BOTTOM */}
+        {/* ===================================================
+            SIDEBAR BOTTOM
+        =================================================== */}
+
         <div className="admin-sidebar-bottom">
 
           {/* BACK TO CHAT */}
+
           <button
             className="admin-back-button"
             onClick={onBackToChat}
@@ -192,6 +342,7 @@ function AdminDashboardPage({
 
 
           {/* LOGOUT */}
+
           <button
             className="admin-logout-button"
             onClick={onLogout}
@@ -225,6 +376,10 @@ function AdminDashboardPage({
                 ? "Users"
                 : activeMenu === "departments"
                 ? "Departments"
+                : activeMenu === "roles"
+                ? "Roles"
+                : activeMenu === "permissions"
+                ? "Permissions"
                 : "Dashboard"}
             </h1>
 
@@ -235,7 +390,10 @@ function AdminDashboardPage({
           </div>
 
 
-          {/* ADMIN PROFILE */}
+          {/* =================================================
+              CURRENT USER PROFILE
+          ================================================= */}
+
           <div className="admin-profile">
 
             <div className="admin-avatar">
@@ -243,7 +401,7 @@ function AdminDashboardPage({
               {(
                 currentUser?.fullName ||
                 currentUser?.username ||
-                "A"
+                "U"
               )
                 .charAt(0)
                 .toUpperCase()}
@@ -256,11 +414,12 @@ function AdminDashboardPage({
               <strong>
                 {currentUser?.fullName ||
                   currentUser?.username ||
-                  "Admin"}
+                  "User"}
               </strong>
 
               <span>
-                Administrator
+                {currentUser?.role ||
+                  "Employee"}
               </span>
 
             </div>
@@ -285,6 +444,7 @@ function AdminDashboardPage({
             <>
 
               {/* ERROR */}
+
               {error && (
                 <div className="admin-error">
 
@@ -307,6 +467,7 @@ function AdminDashboardPage({
               <div className="admin-stats">
 
                 {/* USERS */}
+
                 <div className="admin-stat-card">
 
                   <div className="admin-stat-icon">
@@ -332,6 +493,7 @@ function AdminDashboardPage({
 
 
                 {/* ONLINE */}
+
                 <div className="admin-stat-card">
 
                   <div className="admin-stat-icon">
@@ -357,6 +519,7 @@ function AdminDashboardPage({
 
 
                 {/* CONVERSATIONS */}
+
                 <div className="admin-stat-card">
 
                   <div className="admin-stat-icon">
@@ -382,6 +545,7 @@ function AdminDashboardPage({
 
 
                 {/* MESSAGES */}
+
                 <div className="admin-stat-card">
 
                   <div className="admin-stat-icon">
@@ -415,6 +579,7 @@ function AdminDashboardPage({
               <div className="admin-panel">
 
                 {/* PANEL HEADER */}
+
                 <div className="admin-panel-header">
 
                   <div>
@@ -443,9 +608,11 @@ function AdminDashboardPage({
 
 
                 {/* OVERVIEW */}
+
                 <div className="admin-overview">
 
                   {/* ACTIVE USERS */}
+
                   <div className="admin-overview-item">
 
                     <span>
@@ -463,6 +630,7 @@ function AdminDashboardPage({
 
 
                   {/* DELETED MESSAGES */}
+
                   <div className="admin-overview-item">
 
                     <span>
@@ -480,6 +648,7 @@ function AdminDashboardPage({
 
 
                   {/* ONLINE RATE */}
+
                   <div className="admin-overview-item">
 
                     <span>
@@ -512,25 +681,88 @@ function AdminDashboardPage({
               USERS
           ================================================= */}
 
-          {activeMenu === "users" && (
-            <AdminUsersPage
-              currentUser={currentUser}
-            />
-          )}
+          {activeMenu === "users" &&
+            canViewEmployees && (
+              <AdminUsersPage
+                currentUser={
+                  currentUser
+                }
+              />
+            )}
 
 
           {/* =================================================
               DEPARTMENTS
           ================================================= */}
 
-          {activeMenu === "departments" && (
-            <AdminDepartmentsPage />
-          )}
+          {activeMenu === "departments" &&
+            canViewDepartments && (
+              <AdminDepartmentsPage />
+            )}
+
+
+          {/* =================================================
+              ROLES
+              CHƯA TRIỂN KHAI
+          ================================================= */}
+
+          {activeMenu === "roles" &&
+            canViewRoles && (
+              <div className="admin-panel">
+
+                <div className="admin-panel-header">
+
+                  <div>
+
+                    <h2>
+                      Role Management
+                    </h2>
+
+                    <p>
+                      Quản lý vai trò và quyền
+                      của người dùng.
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+            )}
+
+
+          {/* =================================================
+              PERMISSIONS
+              CHƯA TRIỂN KHAI
+          ================================================= */}
+
+          {activeMenu === "permissions" &&
+            canViewPermissions && (
+              <div className="admin-panel">
+
+                <div className="admin-panel-header">
+
+                  <div>
+
+                    <h2>
+                      Permission Management
+                    </h2>
+
+                    <p>
+                      Quản lý Permission của
+                      CompanyChat.
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+            )}
 
 
           {/* =================================================
               CONVERSATIONS
-              TẠM THỜI CHƯA LÀM
           ================================================= */}
 
           {activeMenu === "conversations" && (
@@ -542,7 +774,6 @@ function AdminDashboardPage({
 
           {/* =================================================
               MESSAGES
-              TẠM THỜI CHƯA LÀM
           ================================================= */}
 
           {activeMenu === "messages" && (
@@ -554,7 +785,6 @@ function AdminDashboardPage({
 
           {/* =================================================
               CLEANUP
-              TẠM THỜI CHƯA LÀM
           ================================================= */}
 
           {activeMenu === "cleanup" && (

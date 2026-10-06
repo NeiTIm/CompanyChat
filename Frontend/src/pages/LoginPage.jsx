@@ -61,19 +61,45 @@ function LoginPage({
       const {
         token,
         user,
+        permissions = [],
       } = data;
+
+      // ---------------------------------------------------
+      // SAVE TOKEN
+      // ---------------------------------------------------
 
       localStorage.setItem(
         "token",
         token
       );
 
+      // ---------------------------------------------------
+      // SAVE USER
+      // ---------------------------------------------------
+
       localStorage.setItem(
         "user",
         JSON.stringify(user)
       );
 
-      onLogin(user);
+      // ---------------------------------------------------
+      // SAVE PERMISSIONS
+      // ---------------------------------------------------
+
+      localStorage.setItem(
+        "permissions",
+        JSON.stringify(permissions)
+      );
+
+      // ---------------------------------------------------
+      // PASS USER + PERMISSIONS TO APP
+      // ---------------------------------------------------
+
+      onLogin({
+        ...user,
+        permissions,
+      });
+
     } catch (error) {
       console.error(
         "Login error:",
