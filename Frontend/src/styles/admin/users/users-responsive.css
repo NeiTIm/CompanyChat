@@ -1,0 +1,202 @@
+/* =========================================================
+   ADMIN USERS
+   RESPONSIVE
+========================================================= */
+
+
+/* =========================================================
+   LARGE TABLET
+========================================================= */
+
+@media (max-width: 1100px) {
+  .admin-users-page {
+    padding: 24px 20px 35px;
+  }
+
+  .admin-users-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-users-search {
+    width: 100%;
+  }
+
+  .admin-users-filters {
+    width: 100%;
+  }
+
+  .admin-users-filters select {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 900px) {
+  .admin-users-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-users-header-actions {
+    width: 100%;
+  }
+
+  .admin-users-header-actions button {
+    flex: 1;
+  }
+
+  .admin-users-table {
+    min-width: 1100px;
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 640px) {
+  .admin-users-page {
+    padding: 18px 12px 28px;
+  }
+
+  .admin-users-title-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .admin-users-header h1 {
+    font-size: 21px;
+  }
+
+  .admin-users-header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .admin-users-header-actions button {
+    width: 100%;
+  }
+
+  .admin-users-toolbar {
+    padding: 12px;
+  }
+
+  .admin-users-filters {
+    display: grid;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-users-filters select {
+    width: 100%;
+  }
+
+  .admin-users-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+    padding: 12px 14px;
+  }
+
+  .admin-users-summary-right {
+    width: 100%;
+  }
+
+  .admin-users-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 14px;
+  }
+
+  .admin-pagination-controls {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .admin-modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .admin-user-modal {
+    width: 100%;
+    max-height: 92vh;
+    border-radius:
+      16px 16px 0 0;
+    animation:
+      admin-modal-mobile-up
+      0.22s ease;
+  }
+
+  .admin-create-form {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .admin-detail-list {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-detail-list > div {
+    border-right: none !important;
+    border-bottom: 1px solid #edf1f5 !important;
+  }
+
+  .admin-detail-list > div:last-child {
+    border-bottom: none !important;
+  }
+
+  .admin-modal-actions {
+    padding: 13px 18px;
+  }
+
+  .admin-modal-actions button {
+    flex: 1;
+  }
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 420px) {
+  .admin-users-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-users-header-actions {
+    gap: 7px;
+  }
+
+  .admin-users-header-actions button {
+    height: 36px;
+  }
+
+  .admin-users-search input {
+    height: 38px;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

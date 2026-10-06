@@ -1,0 +1,590 @@
+/* =========================================================
+   ADMIN USERS
+   TABLE / USER / ROLE / STATUS / ACTIONS
+========================================================= */
+
+
+/* =========================================================
+   TABLE WRAPPER
+========================================================= */
+
+.admin-users-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.admin-users-table-wrapper::-webkit-scrollbar {
+  height: 7px;
+}
+
+.admin-users-table-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-users-table-wrapper::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+
+/* =========================================================
+   TABLE
+========================================================= */
+
+.admin-users-table {
+  width: 100%;
+  min-width: 1100px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+}
+
+
+/* =========================================================
+   TABLE HEADER
+========================================================= */
+
+.admin-users-table thead th {
+  height: 44px;
+  padding: 0 13px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 750;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+  white-space: nowrap;
+}
+
+.admin-users-table thead th:first-child {
+  padding-left: 18px;
+  min-width: 230px;
+}
+
+.admin-users-table thead th:nth-child(2) {
+  min-width: 185px;
+}
+
+.admin-users-table thead th:nth-child(3) {
+  min-width: 155px;
+}
+
+.admin-users-table thead th:nth-child(4) {
+  min-width: 120px;
+}
+
+.admin-users-table thead th:nth-child(5) {
+  min-width: 100px;
+}
+
+.admin-users-table thead th:nth-child(6) {
+  min-width: 105px;
+}
+
+.admin-users-table thead th:last-child {
+  min-width: 360px;
+  padding-right: 18px;
+}
+
+
+/* =========================================================
+   TABLE BODY
+========================================================= */
+
+.admin-users-table tbody tr {
+  transition:
+    background 0.15s ease;
+}
+
+.admin-users-table tbody td {
+  height: 70px;
+  padding: 10px 13px;
+  border-bottom: 1px solid #edf1f5;
+  background: #ffffff;
+  color: #475569;
+  font-size: 11px;
+  vertical-align: middle;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease;
+}
+
+.admin-users-table tbody tr:hover td {
+  background: #f8fbff;
+}
+
+.admin-users-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-users-table tbody tr.is-current-user td {
+  background: #f7faff;
+}
+
+.admin-users-table tbody tr.is-current-user:hover td {
+  background: #f2f7ff;
+}
+
+.admin-users-table tbody td:first-child {
+  padding-left: 18px;
+}
+
+.admin-users-table tbody td:last-child {
+  padding-right: 18px;
+}
+
+
+/* =========================================================
+   USER CELL
+========================================================= */
+
+.admin-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 210px;
+}
+
+
+/* =========================================================
+   AVATAR
+========================================================= */
+
+.admin-user-avatar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border: 1px solid #dbeafe;
+  border-radius: 50%;
+  background:
+    linear-gradient(
+      145deg,
+      #f0f7ff,
+      #dbeafe
+    );
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 750;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+
+/* =========================================================
+   AVATAR ONLINE DOT
+========================================================= */
+
+.admin-avatar-online-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+
+/* =========================================================
+   USER INFO
+========================================================= */
+
+.admin-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+
+.admin-user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-user-info strong {
+  overflow: hidden;
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+.admin-user-info > span {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+
+/* =========================================================
+   CURRENT USER
+========================================================= */
+
+.admin-current-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb !important;
+  font-size: 8px !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  flex-shrink: 0;
+}
+
+
+/* =========================================================
+   EMAIL
+========================================================= */
+
+.admin-user-email {
+  color: #526174;
+  font-size: 11px;
+}
+
+
+/* =========================================================
+   DEPARTMENT
+========================================================= */
+
+.admin-department-cell {
+  display: inline-flex;
+  align-items: center;
+  max-width: 180px;
+  gap: 7px;
+  color: #526174;
+  font-size: 11px;
+}
+
+.admin-department-cell > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-department-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b5cf6;
+  flex-shrink: 0;
+}
+
+
+/* =========================================================
+   ROLE
+========================================================= */
+
+.admin-role-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #f8fafc;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+
+.admin-role-control.role-admin {
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+}
+
+.admin-role-control.role-employee {
+  border-color: #dbeafe;
+  background: #eff6ff;
+}
+
+.admin-role-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: #60a5fa;
+}
+
+.role-admin .admin-role-dot {
+  background: #8b5cf6;
+}
+
+.admin-role-control select {
+  min-width: 80px;
+  padding: 0 17px 0 0;
+  border: none;
+  outline: none;
+  appearance: auto;
+  background: transparent;
+  color: #475569;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.role-admin select {
+  color: #6d28d9;
+}
+
+.role-employee select {
+  color: #1d4ed8;
+}
+
+.admin-role-control select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.admin-user-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.admin-user-status.inactive {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.admin-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.admin-user-status.inactive .admin-status-dot {
+  background: #ef4444;
+}
+
+
+/* =========================================================
+   ONLINE
+========================================================= */
+
+.admin-user-online {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.admin-user-online.online {
+  color: #15803d;
+}
+
+.admin-user-online.offline {
+  color: #94a3b8;
+}
+
+.admin-online-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #cbd5e1;
+}
+
+.admin-user-online.online .admin-online-dot {
+  background: #22c55e;
+  box-shadow:
+    0 0 0 3px #dcfce7;
+}
+
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+
+.admin-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.admin-user-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid #dbe2ea;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.admin-user-actions button svg {
+  flex: 0 0 auto;
+}
+
+.admin-user-actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 2px 5px rgba(15, 23, 42, 0.06);
+}
+
+.admin-user-actions button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.admin-user-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   VIEW
+========================================================= */
+
+.admin-user-actions .action-view {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.admin-user-actions .action-view:hover:not(:disabled) {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+
+/* =========================================================
+   EDIT
+========================================================= */
+
+.admin-user-actions .action-edit {
+  border-color: #dbe2ea;
+  color: #475569;
+}
+
+.admin-user-actions .action-edit:hover:not(:disabled) {
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+
+/* =========================================================
+   DEPARTMENT
+========================================================= */
+
+.admin-user-actions .action-department {
+  border-color: #ddd6fe;
+  background: #faf5ff;
+  color: #7c3aed;
+}
+
+.admin-user-actions .action-department:hover:not(:disabled) {
+  border-color: #c4b5fd;
+  background: #f3e8ff;
+  color: #6d28d9;
+}
+
+
+/* =========================================================
+   PASSWORD
+========================================================= */
+
+.admin-user-actions .action-password {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.admin-user-actions .action-password:hover:not(:disabled) {
+  border-color: #fcd34d;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+
+/* =========================================================
+   LOCK / UNLOCK
+========================================================= */
+
+.admin-user-actions .action-active.lock {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.admin-user-actions .action-active.lock:hover:not(:disabled) {
+  border-color: #fdba74;
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.admin-user-actions .action-active.unlock {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.admin-user-actions .action-active.unlock:hover:not(:disabled) {
+  border-color: #86efac;
+  background: #dcfce7;
+  color: #166534;
+}
+
+
+/* =========================================================
+   DELETE
+========================================================= */
+
+.admin-user-actions .action-delete {
+  border-color: #fecaca;
+  background: #fffafa;
+  color: #dc2626;
+}
+
+.admin-user-actions .action-delete:hover:not(:disabled) {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #b91c1c;
+}
