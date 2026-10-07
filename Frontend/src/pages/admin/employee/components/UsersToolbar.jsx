@@ -1,6 +1,4 @@
-import {
-  SearchIcon,
-} from "./UsersIcons";
+import { SearchIcon } from "./UsersIcons";
 
 export default function UsersToolbar({
   search,
@@ -34,6 +32,10 @@ export default function UsersToolbar({
 
   return (
     <div className="admin-users-toolbar">
+      {/* =====================================================
+          SEARCH
+      ===================================================== */}
+
       <form
         className="admin-users-search"
         onSubmit={onSearchSubmit}
@@ -61,7 +63,6 @@ export default function UsersToolbar({
       </form>
 
       <div className="admin-users-filters">
-
         {/* =====================================================
             DEPARTMENT
         ===================================================== */}
@@ -75,18 +76,16 @@ export default function UsersToolbar({
             Tất cả phòng ban
           </option>
 
-          {departments.map(
-            (department) => (
+          {Array.isArray(departments) &&
+            departments.map((department) => (
               <option
                 key={department.id}
                 value={department.id}
               >
                 {department.name}
               </option>
-            )
-          )}
+            ))}
         </select>
-
 
         {/* =====================================================
             ROLE
@@ -102,38 +101,33 @@ export default function UsersToolbar({
             Tất cả role
           </option>
 
-          {availableRoles.map(
-            (item) => (
-              <option
-                key={
-                  item.id ??
-                  item.name
-                }
-                value={item.name}
-              >
-                {item.name}
-              </option>
-            )
-          )}
+          {availableRoles.map((item) => (
+            <option
+              key={item.id ?? item.name}
+              value={item.name}
+            >
+              {item.name}
+            </option>
+          ))}
         </select>
 
-
         {/* =====================================================
-            ACTIVE STATUS
+            ACCOUNT STATUS
+            Hoạt động / Bị khóa
         ===================================================== */}
 
         <select
           value={isActive}
           onChange={onStatusChange}
-          aria-label="Lọc theo trạng thái"
+          aria-label="Lọc theo trạng thái tài khoản"
           disabled={isDeleted}
         >
           <option value="">
-            Tất cả trạng thái
+            Tất cả trạng thái tài khoản
           </option>
 
           <option value="true">
-            Hoạt động
+            Đang hoạt động
           </option>
 
           <option value="false">
@@ -141,17 +135,12 @@ export default function UsersToolbar({
           </option>
         </select>
 
-
         {/* =====================================================
             DELETED STATUS
         ===================================================== */}
 
         <select
-          value={
-            isDeleted
-              ? "true"
-              : "false"
-          }
+          value={isDeleted ? "true" : "false"}
           onChange={onDeletedChange}
           aria-label="Lọc theo trạng thái xóa"
         >
@@ -163,7 +152,6 @@ export default function UsersToolbar({
             Đã xóa
           </option>
         </select>
-
       </div>
     </div>
   );

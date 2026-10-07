@@ -11,6 +11,7 @@ import {
   updateUserRole,
   deleteAdminUser,
   restoreAdminUser,
+  getEmployeeRoles,
 } from "../../../services/admin/adminUserService";
 
 import {
@@ -82,6 +83,14 @@ export default function AdminUsersPage({
       "Employee.AssignDepartment"
     );
 
+  /*
+   * Role.Assign chỉ dùng cho:
+   * - thay đổi Role
+   * - quản lý Role
+   *
+   * Không dùng quyền này để chặn
+   * Role filter trong UsersToolbar.
+   */
   const canAssignRole =
     hasPermission(
       "Role.Assign"
@@ -246,43 +255,47 @@ export default function AdminUsersPage({
 
 
   /* =======================================================
-        LOAD ROLES
-      ======================================================= */
+     LOAD ROLES
+     
+     IMPORTANT:
+     Role filter không phải Role Management.
+     
+     Vì vậy KHÔNG được kiểm tra:
+     
+     if (!canAssignRole) return;
+     
+     Mọi user đã có Employee.View đều
+     được tải danh sách Role để filter.
+  ======================================================= */
 
-      async function loadRoles() {
-        if (!canAssignRole) {
-          setRoles([]);
-          return;
-        }
+  async function loadRoles() {
+    try {
+     const data = await getEmployeeRoles();
 
-        try {
-          const data =
-            await getRoles();
+      const items =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data?.items)
+            ? data.items
+            : [];
 
-          const items =
-            Array.isArray(data)
-              ? data
-              : Array.isArray(data?.items)
-                ? data.items
-                : [];
+      setRoles(items);
 
-          setRoles(items);
+    } catch (error) {
+      console.error(
+        "Không thể tải danh sách role:",
+        error
+      );
 
-        } catch (error) {
-          console.error(
-            "Không thể tải danh sách role:",
-            error
-          );
+      setRoles([]);
 
-          setRoles([]);
-
-          showToast(
-            "error",
-            error?.response?.data?.message ||
-              "Không thể tải danh sách role."
-          );
-        }
-      }
+      showToast(
+        "error",
+        error?.response?.data?.message ||
+          "Không thể tải danh sách role."
+      );
+    }
+  }
 
 
   /* =======================================================
@@ -364,6 +377,13 @@ export default function AdminUsersPage({
 
   /* =======================================================
      INITIAL LOAD
+     
+     Department:
+     - dùng cho Department filter
+     
+     Role:
+     - dùng cho Role filter
+     - không phụ thuộc Role.Assign
   ======================================================= */
 
   useEffect(() => {
@@ -374,11 +394,15 @@ export default function AdminUsersPage({
       loadDepartments();
     }
 
-    if (canAssignRole) {
+    if (canView) {
       loadRoles();
     }
   }, []);
 
+
+  /* =======================================================
+     RELOAD USERS WHEN FILTER CHANGES
+  ======================================================= */
 
   useEffect(() => {
     loadUsers(
@@ -581,7 +605,9 @@ export default function AdminUsersPage({
     const deleted =
       value === "true";
 
-    setIsDeleted(deleted);
+    setIsDeleted(
+      deleted
+    );
 
     setIsActive("");
 
@@ -657,7 +683,9 @@ export default function AdminUsersPage({
 
       setSelectedUser(user);
 
-      setShowEditModal(true);
+      setShowEditModal(
+        true
+      );
 
     } catch (error) {
       console.error(
@@ -696,7 +724,9 @@ export default function AdminUsersPage({
           user.id
         );
 
-      setSelectedUser(detail);
+      setSelectedUser(
+        detail
+      );
 
       setShowResetPasswordModal(
         true
@@ -739,7 +769,9 @@ export default function AdminUsersPage({
           user.id
         );
 
-      setSelectedUser(detail);
+      setSelectedUser(
+        detail
+      );
 
       setShowAssignDepartmentModal(
         true
@@ -1526,7 +1558,9 @@ export default function AdminUsersPage({
             return;
           }
 
-          setShowCreateModal(true);
+          setShowCreateModal(
+            true
+          );
         }}
 
         canCreate={
@@ -1546,8 +1580,14 @@ export default function AdminUsersPage({
         ================================================= */}
 
         <UsersToolbar
-          search={search}
-          roles={roles}
+          search={
+            search
+          }
+
+          roles={
+            roles
+          }
+
           onSearchChange={
             handleSearchChange
           }
@@ -1603,11 +1643,25 @@ export default function AdminUsersPage({
         ================================================= */}
 
         <UsersSummary
-          total={total}
-          page={page}
-          totalPages={totalPages}
-          pageSize={pageSize}
-          isDeleted={isDeleted}
+          total={
+            total
+          }
+
+          page={
+            page
+          }
+
+          totalPages={
+            totalPages
+          }
+
+          pageSize={
+            pageSize
+          }
+
+          isDeleted={
+            isDeleted
+          }
         />
 
 
@@ -1644,11 +1698,26 @@ export default function AdminUsersPage({
         ================================================= */}
 
         <UsersTable
-          users={users}
-          loading={loading}
-          roles={roles}
-          isDeleted={isDeleted}
-          currentUser={currentUser}
+          users={
+            users
+          }
+
+          loading={
+            loading
+          }
+
+          roles={
+            roles
+          }
+
+          isDeleted={
+            isDeleted
+          }
+
+          currentUser={
+            currentUser
+          }
+
           actionLoading={
             actionLoading
           }
@@ -1724,26 +1793,46 @@ export default function AdminUsersPage({
         ================================================= */}
 
         <UsersPagination
-          loading={loading}
-          users={users}
-          page={page}
-          pageSize={pageSize}
-          total={total}
+          loading={
+            loading
+          }
+
+          users={
+            users
+          }
+
+          page={
+            page
+          }
+
+          pageSize={
+            pageSize
+          }
+
+          total={
+            total
+          }
+
           totalPages={
             totalPages
           }
+
           isDeleted={
             isDeleted
           }
+
           pageNumbers={
             pageNumbers
           }
+
           onPrevious={
             goToPreviousPage
           }
+
           onNext={
             goToNextPage
           }
+
           onPageChange={
             setPage
           }
@@ -1846,7 +1935,9 @@ export default function AdminUsersPage({
         }
 
         onCloseDetail={() =>
-          setSelectedUser(null)
+          setSelectedUser(
+            null
+          )
         }
 
 
@@ -1872,7 +1963,9 @@ export default function AdminUsersPage({
         }
 
         onCloseToast={() =>
-          setToast(null)
+          setToast(
+            null
+          )
         }
       />
 

@@ -167,3 +167,9 @@ export async function removeEmployeeDepartment(id, departmentId) {
 
   return response.data;
 }
+//Lấy danh sách role cho nhân viên
+export async function getEmployeeRoles() {
+  const response = await api.get("/admin/employees/roles");
+
+  return response.data;
+}
