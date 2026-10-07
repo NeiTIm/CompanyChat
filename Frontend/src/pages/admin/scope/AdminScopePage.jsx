@@ -441,7 +441,7 @@ export default function AdminScopePage() {
   const [page, setPage] =
     useState(1);
 
-  const pageSize = 20;
+  const pageSize = 10;
 
   const [total, setTotal] =
     useState(0);
@@ -1230,19 +1230,14 @@ const handleSave = async (
       ================================================= */}
 
       <ScopeSummary
-        totalUsers={
-          statistics.totalUsers
-        }
-        usersWithScope={
-          statistics.usersWithScope
-        }
-        totalScopes={
-          statistics.totalScopes
-        }
-        totalDepartments={
-          statistics.totalDepartments
-        }
-      />
+  totalUsers={statistics.totalUsers}
+  usersWithScope={statistics.usersWithScope}
+  totalScopes={statistics.totalScopes}
+  totalDepartments={statistics.totalDepartments}
+  page={page}
+  pageSize={pageSize}
+  total={total}
+/>
 
       {/* =================================================
           TOOLBAR

@@ -362,7 +362,7 @@ export default function AdminDepartmentsPage() {
     useState(1);
 
   const [pageSize] =
-    useState(20);
+    useState(10);
 
   const [total, setTotal] =
     useState(0);
