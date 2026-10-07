@@ -14,6 +14,9 @@ export default function UsersModals({
   showCreateModal,
   departments,
   departmentLoading,
+  roles,
+  canCreate,
+  canAssignRole,
   onCloseCreate,
   onEmployeeCreated,
 
@@ -61,17 +64,24 @@ export default function UsersModals({
 }) {
   return (
     <>
-      {/* CREATE */}
+      {/* =================================================
+          CREATE
+      ================================================= */}
       {showCreateModal && (
         <CreateEmployeeModal
           departments={departments}
           departmentLoading={departmentLoading}
+          roles={roles}
+          canCreate={canCreate}
+          canAssignRole={canAssignRole}
           onClose={onCloseCreate}
           onCreated={onEmployeeCreated}
         />
       )}
 
-      {/* EDIT */}
+      {/* =================================================
+          EDIT
+      ================================================= */}
       {showEditModal &&
         selectedUser && (
           <EditEmployeeModal
@@ -81,7 +91,9 @@ export default function UsersModals({
           />
         )}
 
-      {/* RESET PASSWORD */}
+      {/* =================================================
+          RESET PASSWORD
+      ================================================= */}
       {showResetPasswordModal &&
         selectedUser && (
           <ResetPasswordModal
@@ -91,7 +103,9 @@ export default function UsersModals({
           />
         )}
 
-      {/* ASSIGN DEPARTMENT */}
+      {/* =================================================
+          ASSIGN DEPARTMENT
+      ================================================= */}
       {showAssignDepartmentModal &&
         selectedUser && (
           <AssignDepartmentModal
@@ -103,7 +117,9 @@ export default function UsersModals({
           />
         )}
 
-      {/* DETAIL */}
+      {/* =================================================
+          DETAIL
+      ================================================= */}
       {selectedUser &&
         !showEditModal &&
         !showResetPasswordModal &&
@@ -115,7 +131,9 @@ export default function UsersModals({
           />
         )}
 
-      {/* CONFIRM */}
+      {/* =================================================
+          CONFIRM
+      ================================================= */}
       {confirmModal && (
         <ConfirmModal
           title={confirmModal.title}
@@ -135,7 +153,9 @@ export default function UsersModals({
         />
       )}
 
-      {/* TOAST */}
+      {/* =================================================
+          TOAST
+      ================================================= */}
       {toast && (
         <Toast
           type={toast.type}

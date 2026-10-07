@@ -14,6 +14,7 @@ export default function UsersToolbar({
 
   role,
   onRoleChange,
+  roles,
 
   isActive,
   onStatusChange,
@@ -21,6 +22,16 @@ export default function UsersToolbar({
   isDeleted,
   onDeletedChange,
 }) {
+  const availableRoles =
+    Array.isArray(roles)
+      ? roles.filter(
+          (item) =>
+            item &&
+            typeof item.name === "string" &&
+            item.name.trim() !== ""
+        )
+      : [];
+
   return (
     <div className="admin-users-toolbar">
       <form
@@ -50,7 +61,11 @@ export default function UsersToolbar({
       </form>
 
       <div className="admin-users-filters">
-        {/* DEPARTMENT */}
+
+        {/* =====================================================
+            DEPARTMENT
+        ===================================================== */}
+
         <select
           value={departmentId}
           onChange={onDepartmentChange}
@@ -72,7 +87,12 @@ export default function UsersToolbar({
           )}
         </select>
 
-        {/* ROLE */}
+
+        {/* =====================================================
+            ROLE
+            System Role + Custom Role
+        ===================================================== */}
+
         <select
           value={role}
           onChange={onRoleChange}
@@ -82,16 +102,26 @@ export default function UsersToolbar({
             Tất cả role
           </option>
 
-          <option value="Admin">
-            Admin
-          </option>
-
-          <option value="Employee">
-            Employee
-          </option>
+          {availableRoles.map(
+            (item) => (
+              <option
+                key={
+                  item.id ??
+                  item.name
+                }
+                value={item.name}
+              >
+                {item.name}
+              </option>
+            )
+          )}
         </select>
 
-        {/* ACTIVE STATUS */}
+
+        {/* =====================================================
+            ACTIVE STATUS
+        ===================================================== */}
+
         <select
           value={isActive}
           onChange={onStatusChange}
@@ -111,7 +141,11 @@ export default function UsersToolbar({
           </option>
         </select>
 
-        {/* DELETED STATUS */}
+
+        {/* =====================================================
+            DELETED STATUS
+        ===================================================== */}
+
         <select
           value={
             isDeleted
@@ -129,6 +163,7 @@ export default function UsersToolbar({
             Đã xóa
           </option>
         </select>
+
       </div>
     </div>
   );

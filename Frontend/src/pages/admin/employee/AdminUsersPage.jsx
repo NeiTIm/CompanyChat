@@ -18,6 +18,10 @@ import {
 } from "../../../services/admin/departmentService";
 
 import {
+  getRoles,
+} from "../../../services/admin/roleService";
+
+import {
   hasPermission,
 } from "../../../utils/permissionUtils";
 
@@ -95,6 +99,9 @@ export default function AdminUsersPage({
     useState(null);
 
   const [departments, setDepartments] =
+    useState([]);
+
+  const [roles, setRoles] =
     useState([]);
 
 
@@ -239,6 +246,46 @@ export default function AdminUsersPage({
 
 
   /* =======================================================
+        LOAD ROLES
+      ======================================================= */
+
+      async function loadRoles() {
+        if (!canAssignRole) {
+          setRoles([]);
+          return;
+        }
+
+        try {
+          const data =
+            await getRoles();
+
+          const items =
+            Array.isArray(data)
+              ? data
+              : Array.isArray(data?.items)
+                ? data.items
+                : [];
+
+          setRoles(items);
+
+        } catch (error) {
+          console.error(
+            "Không thể tải danh sách role:",
+            error
+          );
+
+          setRoles([]);
+
+          showToast(
+            "error",
+            error?.response?.data?.message ||
+              "Không thể tải danh sách role."
+          );
+        }
+      }
+
+
+  /* =======================================================
      LOAD USERS
   ======================================================= */
 
@@ -325,6 +372,10 @@ export default function AdminUsersPage({
       canAssignDepartment
     ) {
       loadDepartments();
+    }
+
+    if (canAssignRole) {
+      loadRoles();
     }
   }, []);
 
@@ -1496,7 +1547,7 @@ export default function AdminUsersPage({
 
         <UsersToolbar
           search={search}
-
+          roles={roles}
           onSearchChange={
             handleSearchChange
           }
@@ -1595,6 +1646,7 @@ export default function AdminUsersPage({
         <UsersTable
           users={users}
           loading={loading}
+          roles={roles}
           isDeleted={isDeleted}
           currentUser={currentUser}
           actionLoading={
@@ -1717,6 +1769,18 @@ export default function AdminUsersPage({
           departmentLoading
         }
 
+        roles={
+          roles
+        }
+
+        canCreate={
+          canCreate
+        }
+
+        canAssignRole={
+          canAssignRole
+        }
+
         onCloseCreate={() =>
           setShowCreateModal(
             false
@@ -1725,10 +1789,6 @@ export default function AdminUsersPage({
 
         onEmployeeCreated={
           handleEmployeeCreated
-        }
-
-        canCreate={
-          canCreate
         }
 
 
@@ -1750,10 +1810,6 @@ export default function AdminUsersPage({
           handleEmployeeUpdated
         }
 
-        canUpdate={
-          canUpdate
-        }
-
 
         showResetPasswordModal={
           showResetPasswordModal
@@ -1769,10 +1825,6 @@ export default function AdminUsersPage({
           handlePasswordReset
         }
 
-        canResetPassword={
-          canResetPassword
-        }
-
 
         showAssignDepartmentModal={
           showAssignDepartmentModal
@@ -1786,10 +1838,6 @@ export default function AdminUsersPage({
 
         onDepartmentAssigned={
           handleDepartmentAssigned
-        }
-
-        canAssignDepartment={
-          canAssignDepartment
         }
 
 

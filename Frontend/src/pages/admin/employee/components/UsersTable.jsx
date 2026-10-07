@@ -21,6 +21,8 @@ export default function UsersTable({
   currentUser,
   actionLoading,
 
+  roles,
+
   onViewUser,
   onEditUser,
   onAssignDepartment,
@@ -74,6 +76,22 @@ export default function UsersTable({
     hasPermission(
       "Role.Assign"
     );
+
+
+  /* =========================================================
+     ROLES
+     System Role + Custom Role
+  ========================================================= */
+
+  const availableRoles =
+    Array.isArray(roles)
+      ? roles.filter(
+          (role) =>
+            role &&
+            typeof role.name === "string" &&
+            role.name.trim() !== ""
+        )
+      : [];
 
 
   /* =========================================================
@@ -154,6 +172,10 @@ export default function UsersTable({
               Number(currentUser?.id) ===
               Number(user.id);
 
+            const userRole =
+              user.role?.trim() ||
+              "Employee";
+
 
             return (
               <tr key={user.id}>
@@ -231,7 +253,7 @@ export default function UsersTable({
                     <div
                       className={
                         `admin-role-control ${
-                          user.role === "Admin"
+                          userRole === "Admin"
                             ? "role-admin"
                             : "role-employee"
                         }`
@@ -241,9 +263,7 @@ export default function UsersTable({
                       <span className="admin-role-dot" />
 
                       <select
-                        value={
-                          user.role || "Employee"
-                        }
+                        value={userRole}
                         onChange={(event) =>
                           onChangeRole(
                             user,
@@ -256,25 +276,33 @@ export default function UsersTable({
                         }
                       >
 
-                        <option value="Admin">
-                          Admin
-                        </option>
+                        {availableRoles.length > 0 ? (
 
-                        <option value="HR">
-                          HR
-                        </option>
+                          availableRoles.map(
+                            (role) => (
+                              <option
+                                key={
+                                  role.id ??
+                                  role.name
+                                }
+                                value={
+                                  role.name
+                                }
+                              >
+                                {role.name}
+                              </option>
+                            )
+                          )
 
-                        <option value="Department Manager">
-                          Department Manager
-                        </option>
+                        ) : (
 
-                        <option value="Support">
-                          Support
-                        </option>
+                          <option
+                            value={userRole}
+                          >
+                            {userRole}
+                          </option>
 
-                        <option value="Employee">
-                          Employee
-                        </option>
+                        )}
 
                       </select>
 
@@ -285,7 +313,7 @@ export default function UsersTable({
                     <div
                       className={
                         `admin-role-control ${
-                          user.role === "Admin"
+                          userRole === "Admin"
                             ? "role-admin"
                             : "role-employee"
                         }`
@@ -295,7 +323,7 @@ export default function UsersTable({
                       <span className="admin-role-dot" />
 
                       <span>
-                        {user.role || "Employee"}
+                        {userRole}
                       </span>
 
                     </div>
