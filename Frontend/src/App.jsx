@@ -18,12 +18,14 @@ import "./styles/index.css";
 ========================================================= */
 
 function App() {
+
   /* =========================================================
      CURRENT USER
   ========================================================= */
 
   const [currentUser, setCurrentUser] =
     useState(() => {
+
       const savedUser =
         localStorage.getItem("user");
 
@@ -32,43 +34,57 @@ function App() {
       }
 
       try {
+
         const user =
           JSON.parse(savedUser);
 
-        /*
-         * Permissions được lưu riêng
-         * trong localStorage.
-         *
-         * Khi reload trang,
-         * ghép permissions trở lại currentUser.
-         */
+
+        /* =================================================
+           LOAD PERMISSIONS
+        ================================================= */
 
         const savedPermissions =
           localStorage.getItem(
             "permissions"
           );
 
+
         let permissions = [];
 
+
         if (savedPermissions) {
+
           try {
+
             const parsedPermissions =
               JSON.parse(
                 savedPermissions
               );
+
 
             if (
               Array.isArray(
                 parsedPermissions
               )
             ) {
+
               permissions =
                 parsedPermissions;
+
             }
+
           } catch {
+
             permissions = [];
+
           }
+
         }
+
+
+        /* =================================================
+           RESTORE USER
+        ================================================= */
 
         return {
           ...user,
@@ -76,8 +92,11 @@ function App() {
         };
 
       } catch {
+
         return null;
+
       }
+
     });
 
 
@@ -87,25 +106,146 @@ function App() {
 
   const [currentPage, setCurrentPage] =
     useState(() => {
+
       const savedUser =
         localStorage.getItem("user");
 
+
       if (!savedUser) {
+
         return "login";
+
       }
+
 
       try {
-        JSON.parse(savedUser);
 
-        /*
-         * Tất cả authenticated users
-         * đều có thể vào Management Dashboard.
-         */
-        return "admin";
+        const user =
+          JSON.parse(savedUser);
+
+
+        /* =================================================
+           LOAD PERMISSIONS
+        ================================================= */
+
+        const savedPermissions =
+          localStorage.getItem(
+            "permissions"
+          );
+
+
+        let permissions = [];
+
+
+        if (savedPermissions) {
+
+          try {
+
+            const parsedPermissions =
+              JSON.parse(
+                savedPermissions
+              );
+
+
+            if (
+              Array.isArray(
+                parsedPermissions
+              )
+            ) {
+
+              permissions =
+                parsedPermissions;
+
+            }
+
+          } catch {
+
+            permissions = [];
+
+          }
+
+        }
+
+
+        /* =================================================
+           EMPLOYEE
+           
+           Employee không có quyền quản trị
+           → đi thẳng vào Chat.
+        ================================================= */
+
+        const isEmployee =
+          user?.role === "Employee";
+
+
+        if (isEmployee) {
+
+          return "chat";
+
+        }
+
+
+        /* =================================================
+           MANAGEMENT ACCESS
+           
+           Không kiểm tra riêng Dashboard.View
+           vì các role khác có thể chỉ có:
+           
+           Employee.View
+           Department.View
+           Role.View
+           Scope.View
+           ...
+           
+           Nếu có ít nhất một quyền quản trị
+           → mở AdminDashboardPage.
+           
+           AdminDashboardPage sẽ tự chọn menu
+           đầu tiên mà user có quyền.
+        ================================================= */
+
+        const hasManagementAccess =
+          permissions.includes(
+            "Dashboard.View"
+          ) ||
+          permissions.includes(
+            "Employee.View"
+          ) ||
+          permissions.includes(
+            "Department.View"
+          ) ||
+          permissions.includes(
+            "Role.View"
+          ) ||
+          permissions.includes(
+            "Scope.View"
+          ) ||
+          permissions.includes(
+            "System.Security"
+          );
+
+
+        if (hasManagementAccess) {
+
+          return "admin";
+
+        }
+
+
+        /* =================================================
+           KHÔNG CÓ QUYỀN QUẢN TRỊ
+           
+           → Chat
+        ================================================= */
+
+        return "chat";
 
       } catch {
+
         return "login";
+
       }
+
     });
 
 
@@ -134,24 +274,28 @@ function App() {
   ========================================================= */
 
   useEffect(() => {
+
     if (
       !currentUser ||
       !socketEvent
     ) {
+
       return;
+
     }
 
 
-    /*
-     * Chỉ xử lý event đặc biệt
-     * khi tài khoản bị khóa / xóa.
-     */
+    /* =====================================================
+       CHỈ XỬ LÝ ACCOUNT DISABLED
+    ===================================================== */
 
     if (
       socketEvent.type !==
       "account_disabled"
     ) {
+
       return;
+
     }
 
 
@@ -170,10 +314,12 @@ function App() {
 
 
     if (!message) {
+
       if (
         socketEvent.reason ===
         "locked"
       ) {
+
         message =
           "⚠️ Tài khoản của bạn đã bị khóa.";
 
@@ -181,13 +327,17 @@ function App() {
         socketEvent.reason ===
         "deleted"
       ) {
+
         message =
           "⚠️ Tài khoản của bạn đã bị xóa.";
 
       } else {
+
         message =
           "⚠️ Tài khoản của bạn không còn hoạt động.";
+
       }
+
     }
 
 
@@ -237,7 +387,13 @@ function App() {
   ========================================================= */
 
   function handleLogout() {
+
     closeWebSocket();
+
+
+    /* =====================================================
+       CLEAR LOGIN DATA
+    ===================================================== */
 
     localStorage.removeItem(
       "token"
@@ -251,11 +407,17 @@ function App() {
       "permissions"
     );
 
+
+    /* =====================================================
+       RESET STATE
+    ===================================================== */
+
     setLoginError("");
 
     setCurrentUser(null);
 
     setCurrentPage("login");
+
   }
 
 
@@ -264,23 +426,105 @@ function App() {
   ========================================================= */
 
   function handleLogin(user) {
+
     setLoginError("");
 
-    /*
-     * LoginPage hiện tại đã truyền:
-     *
-     * {
-     *   ...user,
-     *   permissions
-     * }
-     */
+
+    /* =====================================================
+       SAVE CURRENT USER
+    ===================================================== */
 
     setCurrentUser(user);
 
-    /*
-     * Tất cả Role đều vào Dashboard.
-     */
-    setCurrentPage("admin");
+
+    /* =====================================================
+       EMPLOYEE
+       
+       Employee không vào Management.
+       → Chat.
+    ===================================================== */
+
+    if (
+      user?.role === "Employee"
+    ) {
+
+      setCurrentPage("chat");
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       LOAD PERMISSIONS
+    ===================================================== */
+
+    const permissions =
+      Array.isArray(
+        user?.permissions
+      )
+        ? user.permissions
+        : [];
+
+
+    /* =====================================================
+       MANAGEMENT ACCESS
+       
+       Không bắt buộc Dashboard.View.
+       
+       Các quyền sau đều có thể đưa user
+       vào Management:
+       
+       Dashboard.View
+       Employee.View
+       Department.View
+       Role.View
+       Scope.View
+       System.Security
+    ===================================================== */
+
+    const hasManagementAccess =
+      permissions.includes(
+        "Dashboard.View"
+      ) ||
+      permissions.includes(
+        "Employee.View"
+      ) ||
+      permissions.includes(
+        "Department.View"
+      ) ||
+      permissions.includes(
+        "Role.View"
+      ) ||
+      permissions.includes(
+        "Scope.View"
+      ) ||
+      permissions.includes(
+        "System.Security"
+      );
+
+
+    /* =====================================================
+       CHỌN PAGE
+    ===================================================== */
+
+    if (hasManagementAccess) {
+
+      setCurrentPage("admin");
+
+      return;
+
+    }
+
+
+    /* =====================================================
+       USER KHÔNG CÓ MANAGEMENT ACCESS
+       
+       → Chat
+    ===================================================== */
+
+    setCurrentPage("chat");
+
   }
 
 
@@ -289,12 +533,16 @@ function App() {
   ========================================================= */
 
   if (!currentUser) {
+
     return (
+
       <LoginPage
         onLogin={handleLogin}
         initialError={loginError}
       />
+
     );
+
   }
 
 
@@ -305,19 +553,37 @@ function App() {
   if (
     currentPage === "admin"
   ) {
+
     return (
+
       <AdminDashboardPage
-        currentUser={currentUser}
-        socketEvent={socketEvent}
+        currentUser={
+          currentUser
+        }
+
+        socketEvent={
+          socketEvent
+        }
+
         websocketConnected={
           websocketConnected
         }
+
         onBackToChat={() => {
-          setCurrentPage("chat");
+
+          setCurrentPage(
+            "chat"
+          );
+
         }}
-        onLogout={handleLogout}
+
+        onLogout={
+          handleLogout
+        }
       />
+
     );
+
   }
 
 
@@ -326,22 +592,87 @@ function App() {
   ========================================================= */
 
   return (
+
     <ChatPage
-      currentUser={currentUser}
-      websocket={websocket}
+      currentUser={
+        currentUser
+      }
+
+      websocket={
+        websocket
+      }
+
       websocketConnected={
         websocketConnected
       }
-      socketEvent={socketEvent}
+
+      socketEvent={
+        socketEvent
+      }
+
       closeWebSocket={
         closeWebSocket
       }
+
       onGoToAdmin={() => {
-        setCurrentPage("admin");
+
+        /* =================================================
+           CHỈ CHO USER CÓ QUYỀN MANAGEMENT
+           ĐI VÀO ADMIN DASHBOARD
+        ================================================= */
+
+        const permissions =
+          Array.isArray(
+            currentUser?.permissions
+          )
+            ? currentUser.permissions
+            : [];
+
+
+        const hasManagementAccess =
+          currentUser?.role !==
+            "Employee" &&
+          (
+            permissions.includes(
+              "Dashboard.View"
+            ) ||
+            permissions.includes(
+              "Employee.View"
+            ) ||
+            permissions.includes(
+              "Department.View"
+            ) ||
+            permissions.includes(
+              "Role.View"
+            ) ||
+            permissions.includes(
+              "Scope.View"
+            ) ||
+            permissions.includes(
+              "System.Security"
+            )
+          );
+
+
+        if (
+          hasManagementAccess
+        ) {
+
+          setCurrentPage(
+            "admin"
+          );
+
+        }
+
       }}
-      onLogout={handleLogout}
+
+      onLogout={
+        handleLogout
+      }
     />
+
   );
+
 }
 
 

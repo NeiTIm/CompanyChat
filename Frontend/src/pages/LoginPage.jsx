@@ -6,11 +6,14 @@ function LoginPage({
   onLogin,
   initialError = "",
 }) {
-  const [username, setUsername] =
-    useState("tien");
+  // const [username, setUsername] =
+  //   useState("tien");
+// set sẵn để test nhanh, sau này xóa đi
+   const [password, setPassword] =
+     useState("123456");
 
-  const [password, setPassword] =
-    useState("123456");
+  const [username, setUsername] = useState("");
+// const [password, setPassword] = useState("");
 
   const [error, setError] =
     useState(initialError);

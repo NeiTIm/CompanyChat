@@ -36,10 +36,12 @@ public class AuthController(
         // USER KHÔNG TỒN TẠI / PASSWORD SAI
         // -----------------------------------------------------
 
-        if (user is null ||
+        if (
+            user is null ||
             !BCrypt.Net.BCrypt.Verify(
                 request.Password,
-                user.PasswordHash))
+                user.PasswordHash)
+        )
         {
             return Unauthorized(new
             {
@@ -80,19 +82,24 @@ public class AuthController(
                 .GetUserPermissionsAsync(user.Id);
 
         // -----------------------------------------------------
+        // CREATE TOKEN
+        // -----------------------------------------------------
+
+        var token = jwt.CreateToken(user);
+
+        // -----------------------------------------------------
         // LOGIN SUCCESS
         // -----------------------------------------------------
 
         return Ok(new
         {
-            token = jwt.CreateToken(user),
+            token,
 
             user = ToDto(user),
 
             permissions
         });
     }
-
 
     // =========================================================
     // REGISTER
@@ -107,7 +114,7 @@ public class AuthController(
         var email = request.Email.Trim();
 
         // -----------------------------------------------------
-        // USERNAME
+        // CHECK USERNAME
         // -----------------------------------------------------
 
         if (await db.Users.AnyAsync(
@@ -120,7 +127,7 @@ public class AuthController(
         }
 
         // -----------------------------------------------------
-        // EMAIL
+        // CHECK EMAIL
         // -----------------------------------------------------
 
         if (await db.Users.AnyAsync(
@@ -146,6 +153,7 @@ public class AuthController(
                 BCrypt.Net.BCrypt.HashPassword(
                     request.Password),
 
+            // Default role
             Role = "Employee",
 
             // Account status
@@ -164,15 +172,16 @@ public class AuthController(
 
         await db.SaveChangesAsync();
 
-        // Load Department navigation nếu sau này
-        // Register có DepartmentId.
+        // -----------------------------------------------------
+        // LOAD DEPARTMENT
+        // -----------------------------------------------------
+
         await db.Entry(user)
             .Reference(x => x.Department)
             .LoadAsync();
 
         return Ok(ToDto(user));
     }
-
 
     // =========================================================
     // USER DTO
@@ -192,6 +201,7 @@ public class AuthController(
             user.DepartmentId,
             user.Department != null
                 ? user.Department.Name
-                : null);
+                : null
+        );
     }
 }
