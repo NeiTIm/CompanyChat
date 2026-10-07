@@ -24,6 +24,7 @@ import EditRoleModal from "./EditRoleModal";
 import RoleDetailModal from "./RoleDetailModal";
 import RolePermissionModal from "./RolePermissionModal";
 
+import Toast from "../../../components/common/Toast";
 
 export default function AdminRolesPage() {
 
@@ -84,6 +85,9 @@ export default function AdminRolesPage() {
   const [actionLoading, setActionLoading] =
     useState(false);
 
+  const [toast, setToast] =
+    useState(null);
+
   const [error, setError] =
     useState("");
 
@@ -91,10 +95,6 @@ export default function AdminRolesPage() {
   /* =======================================================
      TOAST
   ======================================================= */
-
-  const [toast, setToast] =
-    useState(null);
-
 
   function showToast(
     type,
@@ -161,9 +161,9 @@ export default function AdminRolesPage() {
 
   /* =======================================================
      LOAD ROLE OPTIONS
-     
+
      Dùng riêng cho dropdown Role Name.
-     
+
      Không dùng roles của page hiện tại vì đang
      server-side pagination.
   ======================================================= */
@@ -171,9 +171,12 @@ export default function AdminRolesPage() {
   async function loadRoleOptions() {
 
     if (!canView) {
+
       setRoleOptions([]);
+
       return;
     }
+
 
     try {
 
@@ -186,12 +189,14 @@ export default function AdminRolesPage() {
           pageSize: 100,
         });
 
+
       const items =
         Array.isArray(data)
           ? data
           : Array.isArray(data?.items)
             ? data.items
             : [];
+
 
       const uniqueRoles = [
         ...new Map(
@@ -211,6 +216,7 @@ export default function AdminRolesPage() {
         ).values(),
       ];
 
+
       uniqueRoles.sort(
         (a, b) =>
           a.name.localeCompare(
@@ -221,6 +227,7 @@ export default function AdminRolesPage() {
             }
           )
       );
+
 
       setRoleOptions(
         uniqueRoles
@@ -252,8 +259,11 @@ export default function AdminRolesPage() {
     if (!canView) {
 
       setRoles([]);
+
       setTotal(0);
+
       setTotalPages(1);
+
       setLoading(false);
 
       return;
@@ -263,6 +273,7 @@ export default function AdminRolesPage() {
     try {
 
       setLoading(true);
+
       setError("");
 
 
@@ -387,12 +398,14 @@ export default function AdminRolesPage() {
       return;
     }
 
+
     loadRoles(
       search,
       systemOnly,
       roleName,
       page
     );
+
 
     loadRoleOptions();
 
@@ -548,6 +561,7 @@ export default function AdminRolesPage() {
       roleName,
       page
     );
+
 
     loadRoleOptions();
   }
@@ -1716,31 +1730,25 @@ export default function AdminRolesPage() {
 
       {toast && (
 
-        <div
-          className={
-            `admin-toast ${
-              toast.type === "error"
-                ? "error"
-                : "success"
-            }`
+        <Toast
+          type={
+            toast.type
           }
-        >
 
-          <span>
-            {toast.message}
-          </span>
+          message={
+            toast.message
+          }
 
-          <button
-            type="button"
-            onClick={() =>
-              setToast(null)
-            }
-            aria-label="Đóng thông báo"
-          >
-            ×
-          </button>
+          duration={
+            3000
+          }
 
-        </div>
+          onClose={() =>
+            setToast(
+              null
+            )
+          }
+        />
 
       )}
 

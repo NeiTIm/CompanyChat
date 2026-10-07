@@ -352,15 +352,23 @@ const normalizeStatistics = (
   }
 
   return {
+    /* -----------------------------------------------------
+       TỔNG USER
+       Phải là tổng tất cả User trong hệ thống.
+       KHÔNG fallback sang totalUsersWithScope.
+    ----------------------------------------------------- */
+
     totalUsers: Number(
       data?.totalUsers ??
         data?.TotalUsers ??
         data?.userCount ??
         data?.UserCount ??
-        data?.totalUsersWithScope ??
-        data?.TotalUsersWithScope ??
         0,
     ),
+
+    /* -----------------------------------------------------
+       USER CÓ SCOPE
+    ----------------------------------------------------- */
 
     usersWithScope: Number(
       data?.usersWithScope ??
@@ -370,6 +378,10 @@ const normalizeStatistics = (
         0,
     ),
 
+    /* -----------------------------------------------------
+       TỔNG SCOPE
+    ----------------------------------------------------- */
+
     totalScopes: Number(
       data?.totalScopes ??
         data?.TotalScopes ??
@@ -377,6 +389,10 @@ const normalizeStatistics = (
         data?.TotalScopeCount ??
         0,
     ),
+
+    /* -----------------------------------------------------
+       TỔNG DEPARTMENT
+    ----------------------------------------------------- */
 
     totalDepartments: Number(
       data?.totalDepartments ??

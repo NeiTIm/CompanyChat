@@ -720,28 +720,62 @@ public class ScopeController : ControllerBase
     [Authorize(Policy = "Permission:Scope.View")]
     public async Task<IActionResult> GetStatistics()
     {
+        // =====================================================
+        // TOTAL USERS
+        // Tổng tất cả User chưa bị xóa
+        // =====================================================
+
+        var totalUsers =
+            await db.Users
+                .AsNoTracking()
+                .CountAsync(x => !x.IsDeleted);
+
+        // =====================================================
+        // USERS WITH SCOPE
+        // =====================================================
+
         var totalUsersWithScope =
             await scopeService
                 .GetUsersWithScopeCountAsync();
+
+        // =====================================================
+        // TOTAL SCOPE
+        // =====================================================
 
         var totalScopeCount =
             await scopeService
                 .GetTotalScopeCountAsync();
 
+        // =====================================================
+        // DEPARTMENTS WITH SCOPE
+        // =====================================================
+
         var totalDepartmentsWithScope =
             await scopeService
                 .GetDepartmentsWithScopeCountAsync();
+
+        // =====================================================
+        // TOTAL DEPARTMENTS
+        // =====================================================
 
         var totalDepartments =
             await db.Departments
                 .AsNoTracking()
                 .CountAsync();
 
+        // =====================================================
+        // DEPARTMENTS WITHOUT SCOPE
+        // =====================================================
+
         var totalDepartmentsWithoutScope =
             Math.Max(
                 0,
                 totalDepartments -
                 totalDepartmentsWithScope);
+
+        // =====================================================
+        // AVERAGE DEPARTMENTS / USER
+        // =====================================================
 
         var averageDepartmentsPerUser =
             totalUsersWithScope == 0
@@ -757,8 +791,10 @@ public class ScopeController : ControllerBase
 
         return Ok(new
         {
+            totalUsers,
             totalUsersWithScope,
             totalScopeCount,
+            totalDepartments,
             totalDepartmentsWithScope,
             totalDepartmentsWithoutScope,
             averageDepartmentsPerUser
