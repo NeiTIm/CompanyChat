@@ -91,7 +91,7 @@ public class DepartmentScopeService
     // Admin là GLOBAL scope.
     //
     // Admin không cần tồn tại trong
-    // UserManagedDepartments.
+    // UserManagedDepartments hoặc ScopeGroup.
     // =========================================================
 
     public async Task<bool> IsAdminAsync(
@@ -105,9 +105,15 @@ public class DepartmentScopeService
 
 
     // =========================================================
-    // GET MANAGED DEPARTMENT IDS
+    // EFFECTIVE MANAGED DEPARTMENT IDS QUERY
     //
-    // Scope được xác định bởi:
+    // Effective Scope =
+    //
+    // Direct Scope
+    // +
+    // Group Scope
+    //
+    // Direct Scope:
     //
     // User
     //   ↓
@@ -115,20 +121,123 @@ public class DepartmentScopeService
     //   ↓
     // Department
     //
-    // Không kiểm tra Role.
+    // Group Scope:
     //
-    // Vì vậy sau này:
+    // User
+    //   ↓
+    // ScopeGroupMember
+    //   ↓
+    // ScopeGroup
+    //   ↓
+    // ScopeGroupDepartment
+    //   ↓
+    // Department
     //
-    // Department Manager
-    // HR Manager
-    // Sales Manager
-    // Regional Manager
+    // QUAN TRỌNG:
     //
-    // đều có thể sử dụng cùng cơ chế Scope.
+    // Chỉ ScopeGroupMember trực tiếp mới được
+    // hưởng Department Scope của ScopeGroup.
     //
-    // Chỉ trả Department đang active.
+    // Không dùng HasEffectiveScopeAsync()
+    // ở GroupScopeService tại đây.
+    //
+    // Lý do:
+    //
+    // HasEffectiveScopeAsync() còn có logic:
+    //
+    // User thuộc Department
+    //   ↓
+    // Department nằm trong ScopeGroup
+    //   ↓
+    // User được xem là effective member
+    //
+    // Logic đó phù hợp cho việc tính
+    // "effective users" của Group Scope,
+    // nhưng KHÔNG nên dùng để cấp quyền
+    // quản lý Department.
+    //
+    // Nếu dùng sẽ có nguy cơ:
+    //
+    // User chỉ thuộc IT
+    //   ↓
+    // Group có IT
+    //   ↓
+    // User tự động có quyền quản lý IT
+    //
+    // Đây không phải explicit management scope.
+    // =========================================================
+
+    private IQueryable<int>
+        GetEffectiveManagedDepartmentIdsQuery(
+            int userId)
+    {
+        // -----------------------------------------------------
+        // DIRECT SCOPE
+        // -----------------------------------------------------
+
+        var directDepartmentIds =
+            db.UserManagedDepartments
+                .AsNoTracking()
+                .Where(x =>
+                    x.UserId == userId)
+                .Select(x =>
+                    x.DepartmentId);
+
+
+        // -----------------------------------------------------
+        // GROUP SCOPE
+        //
+        // User phải là thành viên trực tiếp
+        // của ScopeGroup.
+        //
+        // Sau đó lấy toàn bộ Department
+        // được assign cho ScopeGroup đó.
+        // -----------------------------------------------------
+
+        var groupDepartmentIds =
+            db.ScopeGroupMembers
+                .AsNoTracking()
+                .Where(x =>
+                    x.UserId == userId)
+                .Join(
+                    db.ScopeGroupDepartments
+                        .AsNoTracking(),
+                    member =>
+                        member.ScopeGroupId,
+                    departmentScope =>
+                        departmentScope.ScopeGroupId,
+                    (member, departmentScope) =>
+                        departmentScope.DepartmentId);
+
+
+        // -----------------------------------------------------
+        // EFFECTIVE SCOPE
+        //
+        // Direct Scope
+        // +
+        // Group Scope
+        //
+        // Union tự loại bỏ Department bị trùng.
+        // -----------------------------------------------------
+
+        return directDepartmentIds
+            .Union(groupDepartmentIds);
+    }
+
+
+    // =========================================================
+    // GET MANAGED DEPARTMENT IDS
+    //
+    // Scope được xác định bởi:
+    //
+    // Direct Scope
+    // +
+    // Group Scope
+    //
+    // Chỉ trả Department đang ACTIVE.
     //
     // Lưu ý:
+    //
     // CanManageDepartmentAsync KHÔNG phụ thuộc
     // vào IsActive để Manager vẫn có thể
     // re-enable Department nếu có permission phù hợp.
@@ -146,14 +255,24 @@ public class DepartmentScopeService
             return [];
         }
 
-        return await db.UserManagedDepartments
-            .AsNoTracking()
-            .Where(x =>
-                x.UserId == currentUser.Id &&
-                x.Department.IsActive)
-            .Select(x =>
-                x.DepartmentId)
+        var effectiveDepartmentIds =
+            GetEffectiveManagedDepartmentIdsQuery(
+                currentUser.Id);
+
+        return await effectiveDepartmentIds
+            .Join(
+                db.Departments
+                    .AsNoTracking()
+                    .Where(x =>
+                        x.IsActive),
+                departmentId =>
+                    departmentId,
+                department =>
+                    department.Id,
+                (departmentId, department) =>
+                    departmentId)
             .Distinct()
+            .OrderBy(x => x)
             .ToListAsync();
     }
 
@@ -176,6 +295,11 @@ public class DepartmentScopeService
     //
     // hoặc PermissionService.
     //
+    // Effective Scope gồm:
+    //
+    // Direct Scope
+    // +
+    // Group Scope
     // =========================================================
 
     public async Task<bool> CanManageDepartmentAsync(
@@ -203,9 +327,6 @@ public class DepartmentScopeService
         // đang disabled để thực hiện:
         //
         // disabled → enabled
-        //
-        // Việc Department có được phép nhận member mới
-        // hay không sẽ do nghiệp vụ của Controller kiểm tra.
         // -----------------------------------------------------
 
         var departmentExists =
@@ -233,24 +354,23 @@ public class DepartmentScopeService
 
 
         // -----------------------------------------------------
-        // USER MANAGED DEPARTMENT
+        // EFFECTIVE SCOPE
         //
-        // Không kiểm tra Role.
+        // Bao gồm:
         //
-        // Bất kỳ user nào được cấp:
+        // 1. Direct Scope
+        // 2. Group Scope
         //
-        // UserManagedDepartment
+        // Group Scope:
         //
-        // đều có Scope tới Department tương ứng.
-        //
-        // Role chỉ quyết định Permission.
+        // User phải là ScopeGroupMember
+        // trực tiếp.
         // -----------------------------------------------------
 
-        return await db.UserManagedDepartments
-            .AsNoTracking()
+        return await GetEffectiveManagedDepartmentIdsQuery(
+                currentUser.Id)
             .AnyAsync(x =>
-                x.UserId == currentUser.Id &&
-                x.DepartmentId == departmentId);
+                x == departmentId);
     }
 
 
@@ -269,13 +389,11 @@ public class DepartmentScopeService
     //
     // → phải có Scope A + B.
     //
-    // Hoặc:
+    // Effective Scope:
     //
-    // Transfer:
-    //     A → B
-    //
-    // → phải có Scope A + B.
-    //
+    // Direct Scope
+    // +
+    // Group Scope
     // =========================================================
 
     public async Task<bool>
@@ -305,6 +423,7 @@ public class DepartmentScopeService
             return false;
         }
 
+
         // -----------------------------------------------------
         // ADMIN
         // -----------------------------------------------------
@@ -325,22 +444,24 @@ public class DepartmentScopeService
         // -----------------------------------------------------
         // NON-ADMIN
         //
-        // Một query duy nhất thay vì:
+        // Trước đây chỉ kiểm tra:
         //
-        // foreach
-        //     CanManageDepartmentAsync()
+        // UserManagedDepartments
         //
-        // giúp giảm số lần query database.
+        // Bây giờ kiểm tra:
+        //
+        // Direct Scope
+        // +
+        // Group Scope
+        //
+        // Một query duy nhất.
         // -----------------------------------------------------
 
         var managedCount =
-            await db.UserManagedDepartments
-                .AsNoTracking()
+            await GetEffectiveManagedDepartmentIdsQuery(
+                    currentUser.Id)
                 .Where(x =>
-                    x.UserId == currentUser.Id &&
-                    ids.Contains(x.DepartmentId))
-                .Select(x =>
-                    x.DepartmentId)
+                    ids.Contains(x))
                 .Distinct()
                 .CountAsync();
 
@@ -364,9 +485,11 @@ public class DepartmentScopeService
     // trong ít nhất một Department mà user quản lý,
     // dùng method này.
     //
-    // Ví dụ:
-    // Employee list / employee visibility.
+    // Effective Scope:
     //
+    // Direct Scope
+    // +
+    // Group Scope
     // =========================================================
 
     public async Task<bool>
@@ -392,6 +515,7 @@ public class DepartmentScopeService
             return false;
         }
 
+
         // -----------------------------------------------------
         // ADMIN
         // -----------------------------------------------------
@@ -404,15 +528,19 @@ public class DepartmentScopeService
                     ids.Contains(x.Id));
         }
 
+
         // -----------------------------------------------------
         // NON-ADMIN
+        //
+        // Direct Scope
+        // +
+        // Group Scope
         // -----------------------------------------------------
 
-        return await db.UserManagedDepartments
-            .AsNoTracking()
+        return await GetEffectiveManagedDepartmentIdsQuery(
+                currentUser.Id)
             .AnyAsync(x =>
-                x.UserId == currentUser.Id &&
-                ids.Contains(x.DepartmentId));
+                ids.Contains(x));
     }
 
 
