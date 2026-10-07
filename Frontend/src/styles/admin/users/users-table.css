@@ -682,15 +682,7 @@
 }
 
 
-/* =========================================================
-   EDIT
-========================================================= */
 
-.admin-user-actions
-  .admin-action-button:not(.danger) {
-  /* Base style intentionally kept neutral.
-     Individual action classes can override later. */
-}
 
 
 /* =========================================================

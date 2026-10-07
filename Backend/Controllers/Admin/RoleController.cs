@@ -1,4 +1,3 @@
-using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
 using CompanyChat.Api.DTOs.Admin;
 using CompanyChat.Api.Models;
@@ -10,14 +9,15 @@ namespace CompanyChat.Api.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/roles")]
-[Authorize(Policy = Policies.ManageUsers)]
 public class RoleController(AppDbContext db) : ControllerBase
 {
     // =========================================================
     // GET: api/admin/roles
+    // Permission: Role.View
     // =========================================================
 
     [HttpGet]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetRoles(
         [FromQuery] string? search = null,
         [FromQuery] bool? systemOnly = null)
@@ -66,9 +66,11 @@ public class RoleController(AppDbContext db) : ControllerBase
 
     // =========================================================
     // GET: api/admin/roles/{id}
+    // Permission: Role.View
     // =========================================================
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetRole(int id)
     {
         var role = await db.Roles
@@ -115,9 +117,11 @@ public class RoleController(AppDbContext db) : ControllerBase
 
     // =========================================================
     // POST: api/admin/roles
+    // Permission: Role.Create
     // =========================================================
 
     [HttpPost]
+    [Authorize(Policy = "Permission:Role.Create")]
     public async Task<IActionResult> CreateRole(
         [FromBody] CreateRoleDto request)
     {
@@ -186,9 +190,11 @@ public class RoleController(AppDbContext db) : ControllerBase
 
     // =========================================================
     // PUT: api/admin/roles/{id}
+    // Permission: Role.Update
     // =========================================================
 
     [HttpPut("{id:int}")]
+    [Authorize(Policy = "Permission:Role.Update")]
     public async Task<IActionResult> UpdateRole(
         int id,
         [FromBody] UpdateRoleDto request)
@@ -205,8 +211,7 @@ public class RoleController(AppDbContext db) : ControllerBase
         }
 
         // =====================================================
-        // System Role
-        // Không cho đổi tên
+        // Validate
         // =====================================================
 
         var newName = request.Name?.Trim();
@@ -235,6 +240,11 @@ public class RoleController(AppDbContext db) : ControllerBase
                 message = "Mô tả role không được vượt quá 500 ký tự."
             });
         }
+
+        // =====================================================
+        // System Role
+        // Không cho đổi tên
+        // =====================================================
 
         if (role.IsSystemRole &&
             !string.Equals(
@@ -312,9 +322,11 @@ public class RoleController(AppDbContext db) : ControllerBase
 
     // =========================================================
     // DELETE: api/admin/roles/{id}
+    // Permission: Role.Delete
     // =========================================================
 
     [HttpDelete("{id:int}")]
+    [Authorize(Policy = "Permission:Role.Delete")]
     public async Task<IActionResult> DeleteRole(int id)
     {
         var role = await db.Roles
@@ -375,9 +387,11 @@ public class RoleController(AppDbContext db) : ControllerBase
 
     // =========================================================
     // GET: api/admin/roles/{id}/permissions
+    // Permission: Role.View
     // =========================================================
 
     [HttpGet("{id:int}/permissions")]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetRolePermissions(int id)
     {
         var roleExists = await db.Roles
@@ -410,9 +424,11 @@ public class RoleController(AppDbContext db) : ControllerBase
 
     // =========================================================
     // PUT: api/admin/roles/{id}/permissions
+    // Permission: Role.Assign
     // =========================================================
 
     [HttpPut("{id:int}/permissions")]
+    [Authorize(Policy = "Permission:Role.Assign")]
     public async Task<IActionResult> UpdateRolePermissions(
         int id,
         [FromBody] UpdateRolePermissionsDto request)
@@ -493,10 +509,14 @@ public class RoleController(AppDbContext db) : ControllerBase
     }
 
     // =========================================================
-    // POST: api/admin/roles/{id}/permissions/{permissionId}
+    // POST:
+    // api/admin/roles/{id}/permissions/{permissionId}
+    //
+    // Permission: Role.Assign
     // =========================================================
 
     [HttpPost("{id:int}/permissions/{permissionId:int}")]
+    [Authorize(Policy = "Permission:Role.Assign")]
     public async Task<IActionResult> AddPermissionToRole(
         int id,
         int permissionId)
@@ -553,10 +573,14 @@ public class RoleController(AppDbContext db) : ControllerBase
     }
 
     // =========================================================
-    // DELETE: api/admin/roles/{id}/permissions/{permissionId}
+    // DELETE:
+    // api/admin/roles/{id}/permissions/{permissionId}
+    //
+    // Permission: Role.Assign
     // =========================================================
 
     [HttpDelete("{id:int}/permissions/{permissionId:int}")]
+    [Authorize(Policy = "Permission:Role.Assign")]
     public async Task<IActionResult> RemovePermissionFromRole(
         int id,
         int permissionId)
@@ -611,9 +635,15 @@ public class RoleController(AppDbContext db) : ControllerBase
     // =========================================================
     // GET:
     // api/admin/roles/{id}/available-permissions
+    //
+    // Permission: Role.Assign
+    //
+    // Chỉ người có quyền Role.Assign mới được xem
+    // Permission Matrix.
     // =========================================================
 
     [HttpGet("{id:int}/available-permissions")]
+    [Authorize(Policy = "Permission:Role.Assign")]
     public async Task<IActionResult> GetAvailablePermissions(int id)
     {
         var roleExists = await db.Roles
@@ -651,9 +681,12 @@ public class RoleController(AppDbContext db) : ControllerBase
     // =========================================================
     // GET:
     // api/admin/roles/{id}/users
+    //
+    // Permission: Role.View
     // =========================================================
 
     [HttpGet("{id:int}/users")]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetRoleUsers(
         int id,
         [FromQuery] string? search = null,
@@ -720,6 +753,7 @@ public class RoleController(AppDbContext db) : ControllerBase
                 x.IsOnline,
                 x.LastSeen,
                 x.DepartmentId,
+
                 DepartmentName = x.Department != null
                     ? x.Department.Name
                     : null

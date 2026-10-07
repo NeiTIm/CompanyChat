@@ -3,10 +3,13 @@ import {
   useState,
 } from "react";
 
-import { getAdminDashboard } from "../../services/admin/adminDashboardService";
+import {
+  getAdminDashboard,
+} from "../../services/admin/adminDashboardService";
 
 import AdminUsersPage from "./employee/AdminUsersPage";
 import AdminDepartmentsPage from "./department/AdminDepartmentsPage";
+import AdminRolesPage from "./role/AdminRolesPage";
 
 import {
   hasPermission,
@@ -22,13 +25,16 @@ function AdminDashboardPage({
     useState(null);
 
   const [loading, setLoading] =
-    useState(true);
+    useState(false);
 
   const [error, setError] =
     useState("");
 
 
-  // Menu đang được chọn
+  /* =========================================================
+     MENU
+  ========================================================= */
+
   const [activeMenu, setActiveMenu] =
     useState("dashboard");
 
@@ -36,6 +42,11 @@ function AdminDashboardPage({
   /* =========================================================
      PERMISSIONS
   ========================================================= */
+
+  const canViewDashboard =
+    hasPermission(
+      "Dashboard.View"
+    );
 
   const canViewEmployees =
     hasPermission(
@@ -59,12 +70,51 @@ function AdminDashboardPage({
 
 
   /* =========================================================
+     FIRST AVAILABLE MENU
+  ========================================================= */
+
+  function getFirstAvailableMenu() {
+    if (canViewDashboard) {
+      return "dashboard";
+    }
+
+    if (canViewEmployees) {
+      return "users";
+    }
+
+    if (canViewDepartments) {
+      return "departments";
+    }
+
+    if (canViewRoles) {
+      return "roles";
+    }
+
+    if (canViewPermissions) {
+      return "permissions";
+    }
+
+    return null;
+  }
+
+
+  /* =========================================================
      LOAD DASHBOARD
   ========================================================= */
 
   useEffect(() => {
+    if (
+      activeMenu !== "dashboard" ||
+      !canViewDashboard
+    ) {
+      return;
+    }
+
     loadDashboard();
-  }, []);
+  }, [
+    activeMenu,
+    canViewDashboard,
+  ]);
 
 
   async function loadDashboard() {
@@ -94,13 +144,165 @@ function AdminDashboardPage({
 
 
   /* =========================================================
+     INITIAL MENU VALIDATION
+  ========================================================= */
+
+  useEffect(() => {
+    const firstAvailableMenu =
+      getFirstAvailableMenu();
+
+    if (!firstAvailableMenu) {
+      setActiveMenu(null);
+      return;
+    }
+
+    const hasAccessToCurrentMenu =
+      (
+        activeMenu === "dashboard" &&
+        canViewDashboard
+      ) ||
+      (
+        activeMenu === "users" &&
+        canViewEmployees
+      ) ||
+      (
+        activeMenu === "departments" &&
+        canViewDepartments
+      ) ||
+      (
+        activeMenu === "roles" &&
+        canViewRoles
+      ) ||
+      (
+        activeMenu === "permissions" &&
+        canViewPermissions
+      );
+
+    if (!hasAccessToCurrentMenu) {
+      setActiveMenu(
+        firstAvailableMenu
+      );
+    }
+  }, [
+    activeMenu,
+    canViewDashboard,
+    canViewEmployees,
+    canViewDepartments,
+    canViewRoles,
+    canViewPermissions,
+  ]);
+
+
+  /* =========================================================
      MENU ACCESS
   ========================================================= */
 
   function handleMenuChange(
     menu
   ) {
+    if (menu === "dashboard") {
+      if (!canViewDashboard) {
+        return;
+      }
+    }
+
+    if (menu === "users") {
+      if (!canViewEmployees) {
+        return;
+      }
+    }
+
+    if (menu === "departments") {
+      if (!canViewDepartments) {
+        return;
+      }
+    }
+
+    if (menu === "roles") {
+      if (!canViewRoles) {
+        return;
+      }
+    }
+
+    if (menu === "permissions") {
+      if (!canViewPermissions) {
+        return;
+      }
+    }
+
     setActiveMenu(menu);
+  }
+
+
+  /* =========================================================
+     PAGE TITLE
+  ========================================================= */
+
+  function getPageTitle() {
+    switch (activeMenu) {
+      case "dashboard":
+        return "Dashboard";
+
+      case "users":
+        return "Users";
+
+      case "departments":
+        return "Departments";
+
+      case "roles":
+        return "Roles";
+
+      case "permissions":
+        return "Permissions";
+
+      default:
+        return "CompanyChat";
+    }
+  }
+
+
+  /* =========================================================
+     NO PERMISSION
+  ========================================================= */
+
+  const firstAvailableMenu =
+    getFirstAvailableMenu();
+
+  if (!firstAvailableMenu) {
+    return (
+      <div className="admin-layout">
+
+        <main className="admin-main">
+
+          <section className="admin-content">
+
+            <div className="admin-panel">
+
+              <div className="admin-panel-header">
+
+                <div>
+
+                  <h2>
+                    Không có quyền truy cập
+                  </h2>
+
+                  <p>
+                    Tài khoản của bạn chưa được
+                    cấp quyền quản trị phù hợp.
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </section>
+
+        </main>
+
+      </div>
+    );
   }
 
 
@@ -148,24 +350,27 @@ function AdminDashboardPage({
               DASHBOARD
           ================================================= */}
 
-          <button
-            className={
-              activeMenu === "dashboard"
-                ? "admin-menu-item active"
-                : "admin-menu-item"
-            }
-            onClick={() =>
-              handleMenuChange(
-                "dashboard"
-              )
-            }
-          >
-            <span>
-              📊
-            </span>
+          {canViewDashboard && (
+            <button
+              type="button"
+              className={
+                activeMenu === "dashboard"
+                  ? "admin-menu-item active"
+                  : "admin-menu-item"
+              }
+              onClick={() =>
+                handleMenuChange(
+                  "dashboard"
+                )
+              }
+            >
+              <span>
+                📊
+              </span>
 
-            Dashboard
-          </button>
+              Dashboard
+            </button>
+          )}
 
 
           {/* =================================================
@@ -174,6 +379,7 @@ function AdminDashboardPage({
 
           {canViewEmployees && (
             <button
+              type="button"
               className={
                 activeMenu === "users"
                   ? "admin-menu-item active"
@@ -200,6 +406,7 @@ function AdminDashboardPage({
 
           {canViewDepartments && (
             <button
+              type="button"
               className={
                 activeMenu === "departments"
                   ? "admin-menu-item active"
@@ -226,6 +433,7 @@ function AdminDashboardPage({
 
           {canViewRoles && (
             <button
+              type="button"
               className={
                 activeMenu === "roles"
                   ? "admin-menu-item active"
@@ -252,6 +460,7 @@ function AdminDashboardPage({
 
           {canViewPermissions && (
             <button
+              type="button"
               className={
                 activeMenu === "permissions"
                   ? "admin-menu-item active"
@@ -278,6 +487,7 @@ function AdminDashboardPage({
           ================================================= */}
 
           <button
+            type="button"
             className="admin-menu-item"
             disabled
           >
@@ -295,6 +505,7 @@ function AdminDashboardPage({
           ================================================= */}
 
           <button
+            type="button"
             className="admin-menu-item"
             disabled
           >
@@ -312,6 +523,7 @@ function AdminDashboardPage({
           ================================================= */}
 
           <button
+            type="button"
             className="admin-menu-item"
             disabled
           >
@@ -334,6 +546,7 @@ function AdminDashboardPage({
           {/* BACK TO CHAT */}
 
           <button
+            type="button"
             className="admin-back-button"
             onClick={onBackToChat}
           >
@@ -344,6 +557,7 @@ function AdminDashboardPage({
           {/* LOGOUT */}
 
           <button
+            type="button"
             className="admin-logout-button"
             onClick={onLogout}
           >
@@ -370,17 +584,7 @@ function AdminDashboardPage({
           <div>
 
             <h1>
-              {activeMenu === "dashboard"
-                ? "Dashboard"
-                : activeMenu === "users"
-                ? "Users"
-                : activeMenu === "departments"
-                ? "Departments"
-                : activeMenu === "roles"
-                ? "Roles"
-                : activeMenu === "permissions"
-                ? "Permissions"
-                : "Dashboard"}
+              {getPageTitle()}
             </h1>
 
             <p>
@@ -440,241 +644,250 @@ function AdminDashboardPage({
               DASHBOARD
           ================================================= */}
 
-          {activeMenu === "dashboard" && (
-            <>
+          {activeMenu === "dashboard" &&
+            canViewDashboard && (
+              <>
 
-              {/* ERROR */}
+                {/* ERROR */}
 
-              {error && (
-                <div className="admin-error">
+                {error && (
+                  <div className="admin-error">
 
-                  {error}
+                    {error}
 
-                  <button
-                    onClick={loadDashboard}
-                  >
-                    Thử lại
-                  </button>
-
-                </div>
-              )}
-
-
-              {/* =============================================
-                  STAT CARDS
-              ============================================= */}
-
-              <div className="admin-stats">
-
-                {/* USERS */}
-
-                <div className="admin-stat-card">
-
-                  <div className="admin-stat-icon">
-                    👥
-                  </div>
-
-                  <div>
-
-                    <span>
-                      Tổng Users
-                    </span>
-
-                    <strong>
-                      {loading
-                        ? "..."
-                        : dashboard?.totalUsers ??
-                          0}
-                    </strong>
+                    <button
+                      type="button"
+                      onClick={
+                        loadDashboard
+                      }
+                    >
+                      Thử lại
+                    </button>
 
                   </div>
-
-                </div>
-
-
-                {/* ONLINE */}
-
-                <div className="admin-stat-card">
-
-                  <div className="admin-stat-icon">
-                    🟢
-                  </div>
-
-                  <div>
-
-                    <span>
-                      Đang online
-                    </span>
-
-                    <strong>
-                      {loading
-                        ? "..."
-                        : dashboard?.onlineUsers ??
-                          0}
-                    </strong>
-
-                  </div>
-
-                </div>
+                )}
 
 
-                {/* CONVERSATIONS */}
+                {/* =============================================
+                    STAT CARDS
+                ============================================= */}
 
-                <div className="admin-stat-card">
+                <div className="admin-stats">
 
-                  <div className="admin-stat-icon">
-                    💬
-                  </div>
+                  {/* USERS */}
 
-                  <div>
+                  <div className="admin-stat-card">
 
-                    <span>
-                      Conversations
-                    </span>
+                    <div className="admin-stat-icon">
+                      👥
+                    </div>
 
-                    <strong>
-                      {loading
-                        ? "..."
-                        : dashboard?.totalConversations ??
-                          0}
-                    </strong>
+                    <div>
 
-                  </div>
+                      <span>
+                        Tổng Users
+                      </span>
 
-                </div>
+                      <strong>
+                        {loading
+                          ? "..."
+                          : dashboard?.totalUsers ??
+                            0}
+                      </strong>
 
-
-                {/* MESSAGES */}
-
-                <div className="admin-stat-card">
-
-                  <div className="admin-stat-icon">
-                    📨
-                  </div>
-
-                  <div>
-
-                    <span>
-                      Messages
-                    </span>
-
-                    <strong>
-                      {loading
-                        ? "..."
-                        : dashboard?.totalMessages ??
-                          0}
-                    </strong>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-
-              {/* =============================================
-                  SYSTEM OVERVIEW
-              ============================================= */}
-
-              <div className="admin-panel">
-
-                {/* PANEL HEADER */}
-
-                <div className="admin-panel-header">
-
-                  <div>
-
-                    <h2>
-                      Tổng quan hệ thống
-                    </h2>
-
-                    <p>
-                      Thông tin hiện tại của
-                      CompanyChat
-                    </p>
+                    </div>
 
                   </div>
 
 
-                  <button
-                    className="admin-refresh-button"
-                    onClick={loadDashboard}
-                    disabled={loading}
-                  >
-                    ↻ Làm mới
-                  </button>
+                  {/* ONLINE */}
 
-                </div>
+                  <div className="admin-stat-card">
 
+                    <div className="admin-stat-icon">
+                      🟢
+                    </div>
 
-                {/* OVERVIEW */}
+                    <div>
 
-                <div className="admin-overview">
+                      <span>
+                        Đang online
+                      </span>
 
-                  {/* ACTIVE USERS */}
+                      <strong>
+                        {loading
+                          ? "..."
+                          : dashboard?.onlineUsers ??
+                            0}
+                      </strong>
 
-                  <div className="admin-overview-item">
-
-                    <span>
-                      Người dùng hoạt động
-                    </span>
-
-                    <strong>
-                      {loading
-                        ? "..."
-                        : dashboard?.activeUsers ??
-                          0}
-                    </strong>
+                    </div>
 
                   </div>
 
 
-                  {/* DELETED MESSAGES */}
+                  {/* CONVERSATIONS */}
 
-                  <div className="admin-overview-item">
+                  <div className="admin-stat-card">
 
-                    <span>
-                      Tin nhắn đã xóa
-                    </span>
+                    <div className="admin-stat-icon">
+                      💬
+                    </div>
 
-                    <strong>
-                      {loading
-                        ? "..."
-                        : dashboard?.deletedMessages ??
-                          0}
-                    </strong>
+                    <div>
+
+                      <span>
+                        Conversations
+                      </span>
+
+                      <strong>
+                        {loading
+                          ? "..."
+                          : dashboard?.totalConversations ??
+                            0}
+                      </strong>
+
+                    </div>
 
                   </div>
 
 
-                  {/* ONLINE RATE */}
+                  {/* MESSAGES */}
 
-                  <div className="admin-overview-item">
+                  <div className="admin-stat-card">
 
-                    <span>
-                      Tỷ lệ online
-                    </span>
+                    <div className="admin-stat-icon">
+                      📨
+                    </div>
 
-                    <strong>
-                      {loading
-                        ? "..."
-                        : dashboard?.totalUsers
-                        ? `${Math.round(
-                            (dashboard.onlineUsers /
-                              dashboard.totalUsers) *
-                              100
-                          )}%`
-                        : "0%"}
-                    </strong>
+                    <div>
+
+                      <span>
+                        Messages
+                      </span>
+
+                      <strong>
+                        {loading
+                          ? "..."
+                          : dashboard?.totalMessages ??
+                            0}
+                      </strong>
+
+                    </div>
 
                   </div>
 
                 </div>
 
-              </div>
 
-            </>
-          )}
+                {/* =============================================
+                    SYSTEM OVERVIEW
+                ============================================= */}
+
+                <div className="admin-panel">
+
+                  {/* PANEL HEADER */}
+
+                  <div className="admin-panel-header">
+
+                    <div>
+
+                      <h2>
+                        Tổng quan hệ thống
+                      </h2>
+
+                      <p>
+                        Thông tin hiện tại của
+                        CompanyChat
+                      </p>
+
+                    </div>
+
+
+                    <button
+                      type="button"
+                      className="admin-refresh-button"
+                      onClick={
+                        loadDashboard
+                      }
+                      disabled={loading}
+                    >
+                      ↻ Làm mới
+                    </button>
+
+                  </div>
+
+
+                  {/* OVERVIEW */}
+
+                  <div className="admin-overview">
+
+                    {/* ACTIVE USERS */}
+
+                    <div className="admin-overview-item">
+
+                      <span>
+                        Người dùng hoạt động
+                      </span>
+
+                      <strong>
+                        {loading
+                          ? "..."
+                          : dashboard?.activeUsers ??
+                            0}
+                      </strong>
+
+                    </div>
+
+
+                    {/* DELETED MESSAGES */}
+
+                    <div className="admin-overview-item">
+
+                      <span>
+                        Tin nhắn đã xóa
+                      </span>
+
+                      <strong>
+                        {loading
+                          ? "..."
+                          : dashboard?.deletedMessages ??
+                            0}
+                      </strong>
+
+                    </div>
+
+
+                    {/* ONLINE RATE */}
+
+                    <div className="admin-overview-item">
+
+                      <span>
+                        Tỷ lệ online
+                      </span>
+
+                      <strong>
+                        {loading
+                          ? "..."
+                          : dashboard?.totalUsers
+                          ? `${Math.round(
+                              (
+                                dashboard.onlineUsers /
+                                dashboard.totalUsers
+                              ) *
+                                100
+                            )}%`
+                          : "0%"}
+                      </strong>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </>
+            )}
 
 
           {/* =================================================
@@ -702,38 +915,17 @@ function AdminDashboardPage({
 
 
           {/* =================================================
-              ROLES
-              CHƯA TRIỂN KHAI
-          ================================================= */}
+                  ROLES
+              ================================================= */}
 
-          {activeMenu === "roles" &&
-            canViewRoles && (
-              <div className="admin-panel">
-
-                <div className="admin-panel-header">
-
-                  <div>
-
-                    <h2>
-                      Role Management
-                    </h2>
-
-                    <p>
-                      Quản lý vai trò và quyền
-                      của người dùng.
-                    </p>
-
-                  </div>
-
-                </div>
-
-              </div>
-            )}
+              {activeMenu === "roles" &&
+                canViewRoles && (
+                  <AdminRolesPage />
+                )}
 
 
           {/* =================================================
               PERMISSIONS
-              CHƯA TRIỂN KHAI
           ================================================= */}
 
           {activeMenu === "permissions" &&
@@ -759,39 +951,6 @@ function AdminDashboardPage({
 
               </div>
             )}
-
-
-          {/* =================================================
-              CONVERSATIONS
-          ================================================= */}
-
-          {activeMenu === "conversations" && (
-            <div>
-              Conversations
-            </div>
-          )}
-
-
-          {/* =================================================
-              MESSAGES
-          ================================================= */}
-
-          {activeMenu === "messages" && (
-            <div>
-              Messages
-            </div>
-          )}
-
-
-          {/* =================================================
-              CLEANUP
-          ================================================= */}
-
-          {activeMenu === "cleanup" && (
-            <div>
-              Cleanup
-            </div>
-          )}
 
         </section>
 
