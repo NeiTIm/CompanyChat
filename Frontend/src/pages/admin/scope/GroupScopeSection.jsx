@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   createGroupScope,
@@ -10,6 +15,8 @@ import {
 import CreateGroupScopeModal from "./group/CreateGroupScopeModal";
 import EditGroupScopeModal from "./group/EditGroupScopeModal";
 import GroupScopeDetailModal from "./group/GroupScopeDetailModal";
+import AssignGroupScopeUserModal from "./group/AssignGroupScopeUserModal";
+import AssignGroupScopeDepartmentModal from "./group/AssignGroupScopeDepartmentModal";
 
 /* =========================================================
    TOAST ICONS
@@ -127,7 +134,6 @@ function CloseIcon() {
   );
 }
 
-
 /* =========================================================
    DEFAULT TOAST TITLES
 ========================================================= */
@@ -138,7 +144,6 @@ const DEFAULT_TOAST_TITLES = {
   warning: "Cảnh báo",
   info: "Thông báo",
 };
-
 
 /* =========================================================
    GROUP SCOPE TOAST
@@ -171,7 +176,11 @@ function GroupScopeToast({
     return () => {
       clearTimeout(timer);
     };
-  }, [message, duration, onClose]);
+  }, [
+    message,
+    duration,
+    onClose,
+  ]);
 
   /* =========================================================
      NORMALIZE TYPE
@@ -250,7 +259,9 @@ function GroupScopeToast({
       <div className="admin-toast-content">
         <strong>
           {title ||
-            DEFAULT_TOAST_TITLES[normalizedType]}
+            DEFAULT_TOAST_TITLES[
+              normalizedType
+            ]}
         </strong>
 
         <span>
@@ -274,7 +285,6 @@ function GroupScopeToast({
   );
 }
 
-
 /* =========================================================
    GROUP SCOPE SECTION
 ========================================================= */
@@ -284,24 +294,37 @@ function GroupScopeSection() {
      STATE
   ========================================================= */
 
-  const [groupScopes, setGroupScopes] = useState([]);
+  const [groupScopes, setGroupScopes] =
+    useState([]);
 
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [updating, setUpdating] = useState(false);
+  const [search, setSearch] =
+    useState("");
 
-  const [error, setError] = useState("");
-  const [editError, setEditError] = useState("");
+  const [loading, setLoading] =
+    useState(true);
+
+  const [creating, setCreating] =
+    useState(false);
+
+  const [updating, setUpdating] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const [editError, setEditError] =
+    useState("");
 
   /* =========================================================
      TOAST STATE
   ========================================================= */
 
-  const [toast, setToast] = useState({
-    type: "info",
-    message: "",
-    title: "",
-  });
+  const [toast, setToast] =
+    useState({
+      type: "info",
+      message: "",
+      title: "",
+    });
 
   const showToast = (
     type,
@@ -327,73 +350,114 @@ function GroupScopeSection() {
      CREATE MODAL
   ========================================================= */
 
-  const [showCreateModal, setShowCreateModal] =
-    useState(false);
+  const [
+    showCreateModal,
+    setShowCreateModal,
+  ] = useState(false);
 
   /* =========================================================
      EDIT MODAL
   ========================================================= */
 
-  const [showEditModal, setShowEditModal] =
-    useState(false);
+  const [
+    showEditModal,
+    setShowEditModal,
+  ] = useState(false);
 
-  const [editingGroupScope, setEditingGroupScope] =
-    useState(null);
+  const [
+    editingGroupScope,
+    setEditingGroupScope,
+  ] = useState(null);
 
   /* =========================================================
      DETAIL MODAL
   ========================================================= */
 
-  const [showDetailModal, setShowDetailModal] =
-    useState(false);
+  const [
+    showDetailModal,
+    setShowDetailModal,
+  ] = useState(false);
 
-  const [detailGroupScopeId, setDetailGroupScopeId] =
-    useState(null);
+  const [
+    detailGroupScopeId,
+    setDetailGroupScopeId,
+  ] = useState(null);
+
+  /* =========================================================
+     ASSIGN GROUP SCOPE USER MODAL
+  ========================================================= */
+
+  const [
+    showGroupScopeUserModal,
+    setShowGroupScopeUserModal,
+  ] = useState(false);
+
+  const [
+    groupScopeUserTarget,
+    setGroupScopeUserTarget,
+  ] = useState(null);
+
+  /* =========================================================
+     ASSIGN GROUP SCOPE DEPARTMENT MODAL
+  ========================================================= */
+
+  const [
+    showGroupScopeDepartmentModal,
+    setShowGroupScopeDepartmentModal,
+  ] = useState(false);
+
+  const [
+    groupScopeDepartmentTarget,
+    setGroupScopeDepartmentTarget,
+  ] = useState(null);
 
   /* =========================================================
      LOAD GROUP SCOPES
   ========================================================= */
 
-  const loadGroupScopes = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
+  const loadGroupScopes =
+    useCallback(async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-      const response = await getGroupScopes();
+        const response =
+          await getGroupScopes();
 
-      /*
-       * Backend có thể trả:
-       * - array trực tiếp
-       * - { data: [...] }
-       */
+        /*
+         * Backend có thể trả:
+         * - array trực tiếp
+         * - { data: [...] }
+         */
 
-      const data = Array.isArray(response)
-        ? response
-        : response?.data ?? [];
+        const data =
+          Array.isArray(response)
+            ? response
+            : response?.data ?? [];
 
-      setGroupScopes(data);
-    } catch (err) {
-      console.error(
-        "Failed to load group scopes:",
-        err
-      );
+        setGroupScopes(data);
+      } catch (err) {
+        console.error(
+          "Failed to load group scopes:",
+          err
+        );
 
-      const errorMessage =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.response?.data?.title ||
-        "Không thể tải danh sách Group Scope.";
+        const errorMessage =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.response?.data?.title ||
+          "Không thể tải danh sách Group Scope.";
 
-      setError(errorMessage);
+        setError(errorMessage);
 
-      showToast(
-        "error",
-        errorMessage
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        showToast(
+          "error",
+          errorMessage
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, []);
 
   /* =========================================================
      INITIAL LOAD
@@ -402,6 +466,44 @@ function GroupScopeSection() {
   useEffect(() => {
     loadGroupScopes();
   }, [loadGroupScopes]);
+
+  /* =========================================================
+     FILTER GROUP SCOPES
+  ========================================================= */
+
+  const filteredGroupScopes =
+    useMemo(() => {
+      const keyword =
+        search
+          .trim()
+          .toLowerCase();
+
+      if (!keyword) {
+        return groupScopes;
+      }
+
+      return groupScopes.filter(
+        (group) => {
+          const name =
+            group?.name || "";
+
+          const description =
+            group?.description || "";
+
+          return (
+            name
+              .toLowerCase()
+              .includes(keyword) ||
+            description
+              .toLowerCase()
+              .includes(keyword)
+          );
+        }
+      );
+    }, [
+      groupScopes,
+      search,
+    ]);
 
   /* =========================================================
      OPEN CREATE MODAL
@@ -428,67 +530,74 @@ function GroupScopeSection() {
      CREATE GROUP SCOPE
   ========================================================= */
 
-  const handleCreateGroupScope = async ({
-    name,
-    description,
-  }) => {
-    try {
-      setCreating(true);
-      setError("");
+  const handleCreateGroupScope =
+    async ({
+      name,
+      description,
+    }) => {
+      try {
+        setCreating(true);
+        setError("");
 
-      await createGroupScope(
-        name,
-        description
-      );
+        await createGroupScope(
+          name,
+          description
+        );
 
-      /*
-       * Đóng modal sau khi API thành công.
-       */
+        /*
+         * Đóng modal sau khi API thành công.
+         */
 
-      setShowCreateModal(false);
+        setShowCreateModal(false);
 
-      /*
-       * Hiển thị Toast thành công.
-       */
+        /*
+         * Hiển thị Toast thành công.
+         */
 
-      showToast(
-        "success",
-        "Group Scope đã được tạo thành công."
-      );
+        showToast(
+          "success",
+          "Group Scope đã được tạo thành công."
+        );
 
-      /*
-       * Reload danh sách.
-       */
+        /*
+         * Reload danh sách.
+         */
 
-      await loadGroupScopes();
-    } catch (err) {
-      console.error(
-        "Failed to create group scope:",
-        err
-      );
+        await loadGroupScopes();
+      } catch (err) {
+        console.error(
+          "Failed to create group scope:",
+          err
+        );
 
-      /*
-       * Giữ modal mở khi API lỗi.
-       */
+        /*
+         * Giữ modal mở khi API lỗi.
+         */
 
-      setError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          err?.response?.data?.title ||
-          "Không thể tạo Group Scope."
-      );
-    } finally {
-      setCreating(false);
-    }
-  };
+        setError(
+          err?.response?.data?.message ||
+            err?.response?.data?.error ||
+            err?.response?.data?.title ||
+            "Không thể tạo Group Scope."
+        );
+      } finally {
+        setCreating(false);
+      }
+    };
 
   /* =========================================================
      OPEN EDIT MODAL
   ========================================================= */
 
-  const handleOpenEdit = (groupScope) => {
-    setEditingGroupScope(groupScope);
+  const handleOpenEdit = (
+    groupScope
+  ) => {
+    setEditingGroupScope(
+      groupScope
+    );
+
     setEditError("");
+
     setShowEditModal(true);
   };
 
@@ -510,81 +619,87 @@ function GroupScopeSection() {
      UPDATE GROUP SCOPE
   ========================================================= */
 
-  const handleUpdateGroupScope = async ({
-    id,
-    name,
-    description,
-  }) => {
-    if (!id) {
-      setEditError(
-        "Không xác định được Group Scope cần cập nhật."
-      );
+  const handleUpdateGroupScope =
+    async ({
+      id,
+      name,
+      description,
+    }) => {
+      if (!id) {
+        setEditError(
+          "Không xác định được Group Scope cần cập nhật."
+        );
 
-      return;
-    }
+        return;
+      }
 
-    try {
-      setUpdating(true);
-      setEditError("");
+      try {
+        setUpdating(true);
+        setEditError("");
 
-      await updateGroupScope(
-        id,
-        name,
-        description
-      );
+        await updateGroupScope(
+          id,
+          name,
+          description
+        );
 
-      /*
-       * Đóng modal sau khi cập nhật thành công.
-       */
+        /*
+         * Đóng modal sau khi cập nhật thành công.
+         */
 
-      setShowEditModal(false);
-      setEditingGroupScope(null);
+        setShowEditModal(false);
+        setEditingGroupScope(null);
 
-      /*
-       * Hiển thị Toast thành công.
-       */
+        /*
+         * Hiển thị Toast thành công.
+         */
 
-      showToast(
-        "success",
-        "Group Scope đã được cập nhật thành công."
-      );
+        showToast(
+          "success",
+          "Group Scope đã được cập nhật thành công."
+        );
 
-      /*
-       * Reload danh sách.
-       */
+        /*
+         * Reload danh sách.
+         */
 
-      await loadGroupScopes();
-    } catch (err) {
-      console.error(
-        "Failed to update group scope:",
-        err
-      );
+        await loadGroupScopes();
+      } catch (err) {
+        console.error(
+          "Failed to update group scope:",
+          err
+        );
 
-      /*
-       * Giữ modal mở để người dùng sửa lại.
-       */
+        /*
+         * Giữ modal mở để người dùng sửa lại.
+         */
 
-      setEditError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          err?.response?.data?.title ||
-          "Không thể cập nhật Group Scope."
-      );
-    } finally {
-      setUpdating(false);
-    }
-  };
+        setEditError(
+          err?.response?.data?.message ||
+            err?.response?.data?.error ||
+            err?.response?.data?.title ||
+            "Không thể cập nhật Group Scope."
+        );
+      } finally {
+        setUpdating(false);
+      }
+    };
 
   /* =========================================================
      OPEN DETAIL MODAL
   ========================================================= */
 
-  const handleOpenDetail = (groupScope) => {
+  const handleOpenDetail = (
+    groupScope
+  ) => {
     if (!groupScope?.id) {
       return;
     }
 
-    setDetailGroupScopeId(groupScope.id);
+    setDetailGroupScopeId(
+      groupScope.id
+    );
+
     setShowDetailModal(true);
   };
 
@@ -598,6 +713,77 @@ function GroupScopeSection() {
   };
 
   /* =========================================================
+     OPEN GROUP SCOPE USER MODAL
+  ========================================================= */
+
+  const handleOpenGroupScopeUsers = (
+    groupScope
+  ) => {
+    if (!groupScope?.id) {
+      return;
+    }
+
+    setGroupScopeUserTarget(
+      groupScope
+    );
+
+    setShowGroupScopeUserModal(
+      true
+    );
+  };
+
+  /* =========================================================
+     CLOSE GROUP SCOPE USER MODAL
+  ========================================================= */
+
+  const handleCloseGroupScopeUsers =
+    () => {
+      setShowGroupScopeUserModal(
+        false
+      );
+
+      setGroupScopeUserTarget(
+        null
+      );
+    };
+
+  /* =========================================================
+     OPEN GROUP SCOPE DEPARTMENT MODAL
+  ========================================================= */
+
+  const handleOpenGroupScopeDepartments =
+    (
+      groupScope
+    ) => {
+      if (!groupScope?.id) {
+        return;
+      }
+
+      setGroupScopeDepartmentTarget(
+        groupScope
+      );
+
+      setShowGroupScopeDepartmentModal(
+        true
+      );
+    };
+
+  /* =========================================================
+     CLOSE GROUP SCOPE DEPARTMENT MODAL
+  ========================================================= */
+
+  const handleCloseGroupScopeDepartments =
+    () => {
+      setShowGroupScopeDepartmentModal(
+        false
+      );
+
+      setGroupScopeDepartmentTarget(
+        null
+      );
+    };
+
+  /* =========================================================
      REFRESH
   ========================================================= */
 
@@ -607,12 +793,14 @@ function GroupScopeSection() {
 
   /* =========================================================
      DELETE
-     
+
      Chưa triển khai UI Delete ở bước này.
      Giữ service để chuẩn bị cho bước Delete sau.
   ========================================================= */
 
-  const handleDelete = async (scopeGroupId) => {
+  const handleDelete = async (
+    scopeGroupId
+  ) => {
     if (!scopeGroupId) {
       return;
     }
@@ -620,7 +808,9 @@ function GroupScopeSection() {
     try {
       setError("");
 
-      await deleteGroupScope(scopeGroupId);
+      await deleteGroupScope(
+        scopeGroupId
+      );
 
       showToast(
         "success",
@@ -656,27 +846,29 @@ function GroupScopeSection() {
   const totalGroupScopes =
     groupScopes.length;
 
-  const totalUsers = groupScopes.reduce(
-    (total, group) =>
-      total +
-      (group.userCount ??
-        group.usersCount ??
-        group.membersCount ??
-        group.users?.length ??
-        group.members?.length ??
-        0),
-    0
-  );
+  const totalUsers =
+    groupScopes.reduce(
+      (total, group) =>
+        total +
+        (group.userCount ??
+          group.usersCount ??
+          group.membersCount ??
+          group.users?.length ??
+          group.members?.length ??
+          0),
+      0
+    );
 
-  const totalDepartments = groupScopes.reduce(
-    (total, group) =>
-      total +
-      (group.departmentCount ??
-        group.departmentsCount ??
-        group.departments?.length ??
-        0),
-    0
-  );
+  const totalDepartments =
+    groupScopes.reduce(
+      (total, group) =>
+        total +
+        (group.departmentCount ??
+          group.departmentsCount ??
+          group.departments?.length ??
+          0),
+      0
+    );
 
   /* =========================================================
      RENDER
@@ -702,6 +894,7 @@ function GroupScopeSection() {
                   strokeWidth="1.8"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
 
@@ -718,7 +911,9 @@ function GroupScopeSection() {
               </div>
 
               <div>
-                <h2>Group Scope</h2>
+                <h2>
+                  Group Scope
+                </h2>
 
                 <p>
                   Quản lý các nhóm người dùng và
@@ -748,6 +943,7 @@ function GroupScopeSection() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <polyline points="23 4 23 10 17 10" />
 
@@ -775,6 +971,7 @@ function GroupScopeSection() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  aria-hidden="true"
                 >
                   <line
                     x1="12"
@@ -813,6 +1010,7 @@ function GroupScopeSection() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <circle
                   cx="12"
@@ -835,16 +1033,82 @@ function GroupScopeSection() {
                 />
               </svg>
 
-              <span>{error}</span>
+              <span>
+                {error}
+              </span>
             </div>
 
             <button
               type="button"
-              onClick={() => setError("")}
+              onClick={() =>
+                setError("")
+              }
               aria-label="Đóng thông báo lỗi"
             >
               ×
             </button>
+          </div>
+        )}
+
+        {/* =================================================
+            SEARCH
+        ================================================= */}
+
+        {groupScopes.length > 0 && (
+          <div className="group-scope-search">
+            <div className="group-scope-search-input-wrapper">
+              <svg
+                viewBox="0 0 24 24"
+                width="17"
+                height="17"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                />
+
+                <path d="m20 20-4-4" />
+              </svg>
+
+              <input
+                type="text"
+                value={search}
+                onChange={(event) =>
+                  setSearch(
+                    event.target.value
+                  )
+                }
+                placeholder="Tìm theo tên hoặc mô tả Group Scope..."
+                aria-label="Tìm kiếm Group Scope"
+              />
+
+              {search && (
+                <button
+                  type="button"
+                  className="group-scope-search-clear"
+                  onClick={() =>
+                    setSearch("")
+                  }
+                  aria-label="Xóa tìm kiếm"
+                  title="Xóa tìm kiếm"
+                >
+                  <CloseIcon />
+                </button>
+              )}
+            </div>
+
+            {search.trim() && (
+              <span className="group-scope-search-result">
+                {filteredGroupScopes.length} kết quả
+              </span>
+            )}
           </div>
         )}
 
@@ -864,6 +1128,7 @@ function GroupScopeSection() {
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <rect
                   x="3"
@@ -897,7 +1162,9 @@ function GroupScopeSection() {
             </div>
 
             <div>
-              <span>Tổng Group Scope</span>
+              <span>
+                Tổng Group Scope
+              </span>
 
               <strong>
                 {totalGroupScopes}
@@ -916,6 +1183,7 @@ function GroupScopeSection() {
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
 
@@ -932,7 +1200,9 @@ function GroupScopeSection() {
             </div>
 
             <div>
-              <span>Tổng Users</span>
+              <span>
+                Tổng Users
+              </span>
 
               <strong>
                 {totalUsers}
@@ -951,6 +1221,7 @@ function GroupScopeSection() {
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <path d="M3 21h18" />
 
@@ -965,7 +1236,9 @@ function GroupScopeSection() {
             </div>
 
             <div>
-              <span>Tổng Departments</span>
+              <span>
+                Tổng Departments
+              </span>
 
               <strong>
                 {totalDepartments}
@@ -986,7 +1259,8 @@ function GroupScopeSection() {
               Đang tải danh sách Group Scope...
             </p>
           </div>
-        ) : groupScopes.length === 0 ? (
+        ) : groupScopes.length ===
+          0 ? (
           <div className="group-scope-empty">
             <div className="group-scope-empty-icon">
               <svg
@@ -998,6 +1272,7 @@ function GroupScopeSection() {
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
 
@@ -1036,6 +1311,7 @@ function GroupScopeSection() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <line
                   x1="12"
@@ -1055,227 +1331,375 @@ function GroupScopeSection() {
               Tạo Group Scope
             </button>
           </div>
+        ) : filteredGroupScopes.length ===
+          0 ? (
+          <div className="group-scope-empty">
+            <div className="group-scope-empty-icon">
+              <svg
+                viewBox="0 0 24 24"
+                width="42"
+                height="42"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="11"
+                  cy="11"
+                  r="7"
+                />
+
+                <path d="m20 20-4-4" />
+              </svg>
+            </div>
+
+            <h3>
+              Không tìm thấy Group Scope
+            </h3>
+
+            <p>
+              Không có Group Scope nào phù hợp
+              với từ khóa "{search}".
+            </p>
+
+            <button
+              type="button"
+              className="group-scope-create-button"
+              onClick={() =>
+                setSearch("")
+              }
+            >
+              Xóa tìm kiếm
+            </button>
+          </div>
         ) : (
           <div className="group-scope-table-wrapper">
             <table className="group-scope-table">
               <thead>
                 <tr>
-                  <th>ID</th>
+                  <th>
+                    ID
+                  </th>
 
-                  <th>Group Scope</th>
+                  <th>
+                    Group Scope
+                  </th>
 
-                  <th>Mô tả</th>
+                  <th>
+                    Mô tả
+                  </th>
 
-                  <th>Users</th>
+                  <th>
+                    Users
+                  </th>
 
-                  <th>Departments</th>
+                  <th>
+                    Departments
+                  </th>
 
-                  <th>Actions</th>
+                  <th>
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
               <tbody>
-                {groupScopes.map((group) => {
-                  const userCount =
-                    group.userCount ??
-                    group.usersCount ??
-                    group.membersCount ??
-                    group.users?.length ??
-                    group.members?.length ??
-                    0;
+                {filteredGroupScopes.map(
+                  (group) => {
+                    const userCount =
+                      group.userCount ??
+                      group.usersCount ??
+                      group.membersCount ??
+                      group.users?.length ??
+                      group.members?.length ??
+                      0;
 
-                  const departmentCount =
-                    group.departmentCount ??
-                    group.departmentsCount ??
-                    group.departments?.length ??
-                    0;
+                    const departmentCount =
+                      group.departmentCount ??
+                      group.departmentsCount ??
+                      group.departments?.length ??
+                      0;
 
-                  return (
-                    <tr key={group.id}>
-                      {/* =================================================
-                          ID
-                      ================================================= */}
+                    return (
+                      <tr
+                        key={
+                          group.id
+                        }
+                      >
+                        {/* ===============================================
+                            ID
+                        =============================================== */}
 
-                      <td>
-                        <span className="group-scope-id">
-                          #{group.id}
-                        </span>
-                      </td>
+                        <td>
+                          <span className="group-scope-id">
+                            #{group.id}
+                          </span>
+                        </td>
 
-                      {/* =================================================
-                          GROUP SCOPE
-                      ================================================= */}
+                        {/* ===============================================
+                            GROUP SCOPE
+                        =============================================== */}
 
-                      <td>
-                        <div className="group-scope-name-cell">
-                          <div className="group-scope-row-icon">
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="18"
-                              height="18"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <td>
+                          <div className="group-scope-name-cell">
+                            <div className="group-scope-row-icon">
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="18"
+                                height="18"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                              >
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
 
-                              <circle
-                                cx="9"
-                                cy="7"
-                                r="4"
-                              />
+                                <circle
+                                  cx="9"
+                                  cy="7"
+                                  r="4"
+                                />
 
-                              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
 
-                              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                            </svg>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                              </svg>
+                            </div>
+
+                            <strong>
+                              {group.name ||
+                                "Unnamed Group Scope"}
+                            </strong>
                           </div>
+                        </td>
 
-                          <strong>
-                            {group.name ||
-                              "Unnamed Group Scope"}
-                          </strong>
-                        </div>
-                      </td>
+                        {/* ===============================================
+                            DESCRIPTION
+                        =============================================== */}
 
-                      {/* =================================================
-                          DESCRIPTION
-                      ================================================= */}
+                        <td>
+                          <span className="group-scope-description">
+                            {group.description ||
+                              "Không có mô tả"}
+                          </span>
+                        </td>
 
-                      <td>
-                        <span className="group-scope-description">
-                          {group.description ||
-                            "Không có mô tả"}
-                        </span>
-                      </td>
+                        {/* ===============================================
+                            USERS
+                        =============================================== */}
 
-                      {/* =================================================
-                          USERS
-                      ================================================= */}
+                        <td>
+                          <span className="group-scope-count">
+                            {userCount}
+                          </span>
+                        </td>
 
-                      <td>
-                        <span className="group-scope-count">
-                          {userCount}
-                        </span>
-                      </td>
+                        {/* ===============================================
+                            DEPARTMENTS
+                        =============================================== */}
 
-                      {/* =================================================
-                          DEPARTMENTS
-                      ================================================= */}
+                        <td>
+                          <span className="group-scope-count">
+                            {departmentCount}
+                          </span>
+                        </td>
 
-                      <td>
-                        <span className="group-scope-count">
-                          {departmentCount}
-                        </span>
-                      </td>
+                        {/* ===============================================
+                            ACTIONS
+                        =============================================== */}
 
-                      {/* =================================================
-                          ACTIONS
-                      ================================================= */}
+                        <td>
+                          <div className="group-scope-row-actions">
+                            {/* =============================================
+                                VIEW
+                            ============================================= */}
 
-                      <td>
-                        <div className="group-scope-row-actions">
-                          {/* =============================================
-                              VIEW
-                          ============================================= */}
-
-                          <button
-                            type="button"
-                            className="group-scope-action-button"
-                            title="Xem chi tiết"
-                            onClick={() =>
-                              handleOpenDetail(group)
-                            }
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="16"
-                              height="16"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                            <button
+                              type="button"
+                              className="group-scope-action-button"
+                              title="Xem chi tiết"
+                              onClick={() =>
+                                handleOpenDetail(
+                                  group
+                                )
+                              }
                             >
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="16"
+                                height="16"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                              >
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
 
-                              <circle
-                                cx="12"
-                                cy="12"
-                                r="3"
-                              />
-                            </svg>
-                          </button>
+                                <circle
+                                  cx="12"
+                                  cy="12"
+                                  r="3"
+                                />
+                              </svg>
+                            </button>
 
-                          {/* =============================================
-                              EDIT
-                          ============================================= */}
+                            {/* =============================================
+                                USERS
+                            ============================================= */}
 
-                          <button
-                            type="button"
-                            className="group-scope-action-button"
-                            title="Chỉnh sửa"
-                            onClick={() =>
-                              handleOpenEdit(group)
-                            }
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="16"
-                              height="16"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                            <button
+                              type="button"
+                              className="group-scope-action-button"
+                              title="Quản lý Users"
+                              onClick={() =>
+                                handleOpenGroupScopeUsers(
+                                  group
+                                )
+                              }
                             >
-                              <path d="M12 20h9" />
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="16"
+                                height="16"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                              >
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
 
-                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                            </svg>
-                          </button>
+                                <circle
+                                  cx="9"
+                                  cy="7"
+                                  r="4"
+                                />
 
-                          {/* =============================================
-                              DELETE
-                          ============================================= */}
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
 
-                          <button
-                            type="button"
-                            className="group-scope-action-button danger"
-                            title="Xóa"
-                            disabled
-                            onClick={() =>
-                              handleDelete(group.id)
-                            }
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="16"
-                              height="16"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                              </svg>
+                            </button>
+
+                            {/* =============================================
+                                DEPARTMENTS
+                            ============================================= */}
+
+                            <button
+                              type="button"
+                              className="group-scope-action-button"
+                              title="Quản lý Departments"
+                              onClick={() =>
+                                handleOpenGroupScopeDepartments(
+                                  group
+                                )
+                              }
                             >
-                              <polyline points="3 6 5 6 21 6" />
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="16"
+                                height="16"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                              >
+                                <path d="M3 21h18" />
 
-                              <path d="M19 6l-1 14H6L5 6" />
+                                <path d="M5 21V7l7-4 7 4v14" />
 
-                              <path d="M10 11v6" />
+                                <path d="M9 21v-6h6v6" />
 
-                              <path d="M14 11v6" />
+                                <path d="M9 10h.01" />
 
-                              <path d="M9 6V4h6v2" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                                <path d="M15 10h.01" />
+                              </svg>
+                            </button>
+
+                            {/* =============================================
+                                EDIT
+                            ============================================= */}
+
+                            <button
+                              type="button"
+                              className="group-scope-action-button"
+                              title="Chỉnh sửa"
+                              onClick={() =>
+                                handleOpenEdit(
+                                  group
+                                )
+                              }
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="16"
+                                height="16"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                              >
+                                <path d="M12 20h9" />
+
+                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                              </svg>
+                            </button>
+
+                            {/* =============================================
+                                DELETE
+                            ============================================= */}
+
+                            <button
+                              type="button"
+                              className="group-scope-action-button danger"
+                              title="Xóa"
+                              disabled
+                              onClick={() =>
+                                handleDelete(
+                                  group.id
+                                )
+                              }
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="16"
+                                height="16"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                              >
+                                <polyline points="3 6 5 6 21 6" />
+
+                                <path d="M19 6l-1 14H6L5 6" />
+
+                                <path d="M10 11v6" />
+
+                                <path d="M14 11v6" />
+
+                                <path d="M9 6V4h6v2" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                )}
               </tbody>
             </table>
           </div>
@@ -1291,7 +1715,9 @@ function GroupScopeSection() {
         loading={creating}
         error={error}
         onClose={handleCloseCreate}
-        onSubmit={handleCreateGroupScope}
+        onSubmit={
+          handleCreateGroupScope
+        }
       />
 
       {/* =====================================================
@@ -1300,11 +1726,15 @@ function GroupScopeSection() {
 
       <EditGroupScopeModal
         open={showEditModal}
-        groupScope={editingGroupScope}
+        groupScope={
+          editingGroupScope
+        }
         loading={updating}
         error={editError}
         onClose={handleCloseEdit}
-        onSubmit={handleUpdateGroupScope}
+        onSubmit={
+          handleUpdateGroupScope
+        }
       />
 
       {/* =====================================================
@@ -1313,8 +1743,56 @@ function GroupScopeSection() {
 
       <GroupScopeDetailModal
         open={showDetailModal}
-        groupScopeId={detailGroupScopeId}
-        onClose={handleCloseDetail}
+        groupScopeId={
+          detailGroupScopeId
+        }
+        onClose={
+          handleCloseDetail
+        }
+      />
+
+      {/* =====================================================
+          GROUP SCOPE USER MODAL
+      ===================================================== */}
+
+      <AssignGroupScopeUserModal
+        open={
+          showGroupScopeUserModal
+        }
+        groupScope={
+          groupScopeUserTarget
+        }
+        onClose={
+          handleCloseGroupScopeUsers
+        }
+        onSuccess={
+          loadGroupScopes
+        }
+        showToast={
+          showToast
+        }
+      />
+
+      {/* =====================================================
+          GROUP SCOPE DEPARTMENT MODAL
+      ===================================================== */}
+
+      <AssignGroupScopeDepartmentModal
+        open={
+          showGroupScopeDepartmentModal
+        }
+        groupScope={
+          groupScopeDepartmentTarget
+        }
+        onClose={
+          handleCloseGroupScopeDepartments
+        }
+        onSuccess={
+          loadGroupScopes
+        }
+        showToast={
+          showToast
+        }
       />
 
       {/* =====================================================
@@ -1325,7 +1803,9 @@ function GroupScopeSection() {
         type={toast.type}
         message={toast.message}
         title={toast.title}
-        onClose={closeToast}
+        onClose={
+          closeToast
+        }
       />
     </>
   );
