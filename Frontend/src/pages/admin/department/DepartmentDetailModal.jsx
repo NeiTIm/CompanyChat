@@ -9,6 +9,8 @@ import {
   getDepartmentActivity,
 } from "../../../services/admin/departmentService";
 
+import { hasPermission } from "../../../utils/permissionUtils";
+
 
 /* =========================================================
    ICONS
@@ -73,12 +75,15 @@ function UsersIcon() {
       aria-hidden="true"
     >
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+
       <circle
         cx="9"
         cy="7"
         r="4"
       />
+
       <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   );
@@ -124,6 +129,7 @@ function CalendarIcon() {
         height="17"
         rx="2"
       />
+
       <path d="M16 2v4" />
       <path d="M8 2v4" />
       <path d="M3 10h18" />
@@ -158,38 +164,23 @@ function RefreshIcon() {
    HELPERS
 ========================================================= */
 
-function formatDate(
-  value
-) {
+function formatDate(value) {
   if (!value) {
     return "—";
   }
 
-  const date =
-    new Date(value);
+  const date = new Date(value);
 
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return "—";
   }
 
-  return date.toLocaleDateString(
-    "vi-VN"
-  );
+  return date.toLocaleDateString("vi-VN");
 }
 
 
-function formatNumber(
-  value
-) {
-  return Number(
-    value || 0
-  ).toLocaleString(
-    "vi-VN"
-  );
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString("vi-VN");
 }
 
 
@@ -203,42 +194,58 @@ export default function DepartmentDetailModal({
 }) {
 
   /* =======================================================
+     PERMISSIONS
+  ======================================================= */
+
+  const canViewStatistics = hasPermission(
+    "Department.ViewStatistics"
+  );
+
+  const canManageMembers = hasPermission(
+    "Department.ManageMembers"
+  );
+
+
+  /* =======================================================
      DATA
   ======================================================= */
 
-  const [detail, setDetail] =
-    useState(
-      department || null
-    );
+  const [detail, setDetail] = useState(
+    department || null
+  );
 
-  const [statistics, setStatistics] =
-    useState(null);
+  const [statistics, setStatistics] = useState(null);
 
-  const [activity, setActivity] =
-    useState([]);
+  const [activity, setActivity] = useState([]);
+
+
+  /* =======================================================
+     OPTIONAL DATA ERROR
+  ======================================================= */
+
+  const [statisticsError, setStatisticsError] =
+    useState("");
+
+  const [activityError, setActivityError] =
+    useState("");
 
 
   /* =======================================================
      STATE
   ======================================================= */
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [refreshing, setRefreshing] =
-    useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
 
 
   /* =======================================================
      LOAD DATA
   ======================================================= */
 
-  async function loadDetail(
-    showLoading = true
-  ) {
+  async function loadDetail(showLoading = true) {
 
     if (!department?.id) {
       return;
@@ -255,65 +262,170 @@ export default function DepartmentDetailModal({
 
       setError("");
 
+      setStatisticsError("");
 
-      const [
-        departmentData,
-        statisticsData,
-        activityData,
-      ] = await Promise.all([
-        getDepartment(
+      setActivityError("");
+
+
+      /* =============================================
+         1. DEPARTMENT DETAIL
+
+         Đây là API bắt buộc.
+
+         Nếu API này lỗi thì mới xem là
+         không thể tải Detail.
+      ============================================= */
+
+      const departmentData =
+        await getDepartment(
           department.id
-        ),
-
-        getDepartmentStatistics(
-          department.id
-        ),
-
-        getDepartmentActivity(
-          department.id,
-          30
-        ),
-      ]);
+        );
 
 
       setDetail(
         departmentData
       );
 
-      setStatistics(
-        statisticsData
-      );
 
+      /* =============================================
+         2. STATISTICS / ACTIVITY
+
+         Chỉ gọi nếu có:
+         Department.ViewStatistics
+      ============================================= */
+
+      if (!canViewStatistics) {
+
+        setStatistics(null);
+
+        setActivity([]);
+
+        return;
+      }
+
+
+      /* =============================================
+         3. LOAD OPTIONAL DATA
+
+         Dùng Promise.allSettled thay vì Promise.all.
+
+         Một API lỗi không làm API còn lại
+         và Detail bị chết.
+      ============================================= */
+
+      const results =
+        await Promise.allSettled([
+          getDepartmentStatistics(
+            department.id
+          ),
+
+          getDepartmentActivity(
+            department.id,
+            30
+          ),
+        ]);
+
+
+      /* =============================================
+         STATISTICS
+      ============================================= */
+
+      const statisticsResult =
+        results[0];
 
       if (
-        Array.isArray(
-          activityData
-        )
+        statisticsResult.status ===
+        "fulfilled"
       ) {
 
-        setActivity(
-          activityData
-        );
-
-      } else if (
-        Array.isArray(
-          activityData?.items
-        )
-      ) {
-
-        setActivity(
-          activityData.items
+        setStatistics(
+          statisticsResult.value
         );
 
       } else {
 
-        setActivity(
-          []
+        console.error(
+          "Không thể tải thống kê phòng ban:",
+          statisticsResult.reason
         );
 
+        setStatistics(null);
+
+        setStatisticsError(
+          statisticsResult.reason
+            ?.response
+            ?.data
+            ?.message ||
+          "Không thể tải dữ liệu thống kê."
+        );
+      }
+
+
+      /* =============================================
+         ACTIVITY
+      ============================================= */
+
+      const activityResult =
+        results[1];
+
+      if (
+        activityResult.status ===
+        "fulfilled"
+      ) {
+
+        const activityData =
+          activityResult.value;
+
+
+        if (
+          Array.isArray(
+            activityData
+          )
+        ) {
+
+          setActivity(
+            activityData
+          );
+
+        } else if (
+          Array.isArray(
+            activityData?.items
+          )
+        ) {
+
+          setActivity(
+            activityData.items
+          );
+
+        } else {
+
+          setActivity([]);
+
+        }
+
+      } else {
+
+        console.error(
+          "Không thể tải hoạt động phòng ban:",
+          activityResult.reason
+        );
+
+        setActivity([]);
+
+        setActivityError(
+          activityResult.reason
+            ?.response
+            ?.data
+            ?.message ||
+          "Không thể tải dữ liệu hoạt động."
+        );
       }
 
     } catch (error) {
+
+      /* =============================================
+         CHỈ GET DEPARTMENT LỖI MỚI VÀO ĐÂY
+      ============================================= */
 
       console.error(
         "Không thể tải chi tiết phòng ban:",
@@ -323,12 +435,13 @@ export default function DepartmentDetailModal({
 
       setError(
         error?.response?.data?.message ||
-          "Không thể tải thông tin phòng ban."
+        "Không thể tải thông tin phòng ban."
       );
 
     } finally {
 
       setLoading(false);
+
       setRefreshing(false);
 
     }
@@ -342,12 +455,11 @@ export default function DepartmentDetailModal({
 
   useEffect(() => {
 
-    loadDetail(
-      true
-    );
+    loadDetail(true);
 
   }, [
     department?.id,
+    canViewStatistics,
   ]);
 
 
@@ -356,11 +468,13 @@ export default function DepartmentDetailModal({
   ======================================================= */
 
   function handleClose() {
+
     if (refreshing) {
       return;
     }
 
     onClose?.();
+
   }
 
 
@@ -438,8 +552,10 @@ export default function DepartmentDetailModal({
 
                 <span
                   className={`admin-user-status ${
-                    detail?.isActive ??
-                    department.isActive
+                    (
+                      detail?.isActive ??
+                      department.isActive
+                    )
                       ? "active"
                       : "inactive"
                   }`}
@@ -447,8 +563,10 @@ export default function DepartmentDetailModal({
 
                   <span className="admin-status-dot" />
 
-                  {detail?.isActive ??
-                  department.isActive
+                  {(
+                    detail?.isActive ??
+                    department.isActive
+                  )
                     ? "Hoạt động"
                     : "Bị khóa"}
 
@@ -482,6 +600,7 @@ export default function DepartmentDetailModal({
                 refreshing
               }
             >
+
               <RefreshIcon />
 
               <span>
@@ -489,6 +608,7 @@ export default function DepartmentDetailModal({
                   ? "Đang tải..."
                   : "Làm mới"}
               </span>
+
             </button>
 
 
@@ -503,7 +623,9 @@ export default function DepartmentDetailModal({
               }
               aria-label="Đóng"
             >
+
               <CloseIcon />
+
             </button>
 
           </div>
@@ -671,251 +793,307 @@ export default function DepartmentDetailModal({
                   STATISTICS
               ========================================= */}
 
-              <section className="admin-department-detail-section">
+              {canViewStatistics && (
 
-                <div className="admin-department-detail-section-header">
+                <section className="admin-department-detail-section">
 
-                  <div>
-
-                    <h3>
-                      Thống kê
-                    </h3>
-
-                    <p>
-                      Tổng quan hoạt động của phòng ban
-                    </p>
-
-                  </div>
-
-                </div>
-
-
-                <div className="admin-department-statistics-grid">
-
-                  <div className="admin-department-stat-card">
-
-                    <div className="admin-department-stat-icon">
-                      <UsersIcon />
-                    </div>
+                  <div className="admin-department-detail-section-header">
 
                     <div>
 
-                      <span>
-                        Thành viên
-                      </span>
+                      <h3>
+                        Thống kê
+                      </h3>
 
-                      <strong>
-                        {formatNumber(
-                          statistics?.userCount ??
-                            detail?.userCount
-                        )}
-                      </strong>
+                      <p>
+                        Tổng quan hoạt động của phòng ban
+                      </p>
 
                     </div>
 
                   </div>
 
 
-                  <div className="admin-department-stat-card">
+                  {statisticsError ? (
 
-                    <div className="admin-department-stat-icon">
-                      <ActivityIcon />
-                    </div>
+                    <div className="admin-department-detail-error">
 
-                    <div>
-
-                      <span>
-                        Tin nhắn
-                      </span>
+                      <div className="admin-error-icon">
+                        !
+                      </div>
 
                       <strong>
-                        {formatNumber(
-                          statistics?.messageCount
-                        )}
+                        Không thể tải thống kê
                       </strong>
 
-                    </div>
-
-                  </div>
-
-
-                  <div className="admin-department-stat-card">
-
-                    <div className="admin-department-stat-icon">
-                      <ActivityIcon />
-                    </div>
-
-                    <div>
-
-                      <span>
-                        Người hoạt động
-                      </span>
-
-                      <strong>
-                        {formatNumber(
-                          statistics?.activeUsers
-                        )}
-                      </strong>
+                      <p>
+                        {statisticsError}
+                      </p>
 
                     </div>
 
-                  </div>
+                  ) : (
+
+                    <div className="admin-department-statistics-grid">
+
+                      {/* MEMBERS */}
+
+                      <div className="admin-department-stat-card">
+
+                        <div className="admin-department-stat-icon">
+                          <UsersIcon />
+                        </div>
+
+                        <div>
+
+                          <span>
+                            Thành viên
+                          </span>
+
+                          <strong>
+                            {formatNumber(
+                              statistics?.userCount ??
+                              detail?.userCount
+                            )}
+                          </strong>
+
+                        </div>
+
+                      </div>
 
 
-                  <div className="admin-department-stat-card">
+                      {/* MESSAGES */}
 
-                    <div className="admin-department-stat-icon">
-                      <CalendarIcon />
+                      <div className="admin-department-stat-card">
+
+                        <div className="admin-department-stat-icon">
+                          <ActivityIcon />
+                        </div>
+
+                        <div>
+
+                          <span>
+                            Tin nhắn
+                          </span>
+
+                          <strong>
+                            {formatNumber(
+                              statistics?.messageCount
+                            )}
+                          </strong>
+
+                        </div>
+
+                      </div>
+
+
+                      {/* ACTIVE USERS */}
+
+                      <div className="admin-department-stat-card">
+
+                        <div className="admin-department-stat-icon">
+                          <ActivityIcon />
+                        </div>
+
+                        <div>
+
+                          <span>
+                            Người hoạt động
+                          </span>
+
+                          <strong>
+                            {formatNumber(
+                              statistics?.activeUsers
+                            )}
+                          </strong>
+
+                        </div>
+
+                      </div>
+
+
+                      {/* ACTIVITY PERIOD */}
+
+                      <div className="admin-department-stat-card">
+
+                        <div className="admin-department-stat-icon">
+                          <CalendarIcon />
+                        </div>
+
+                        <div>
+
+                          <span>
+                            Hoạt động
+                          </span>
+
+                          <strong>
+                            30 ngày
+                          </strong>
+
+                        </div>
+
+                      </div>
+
                     </div>
 
-                    <div>
+                  )}
 
-                      <span>
-                        Hoạt động
-                      </span>
+                </section>
 
-                      <strong>
-                        30 ngày
-                      </strong>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-              </section>
+              )}
 
 
               {/* =========================================
                   ACTIVITY
               ========================================= */}
 
-              <section className="admin-department-detail-section">
+              {canViewStatistics && (
 
-                <div className="admin-department-detail-section-header">
+                <section className="admin-department-detail-section">
 
-                  <div>
+                  <div className="admin-department-detail-section-header">
 
-                    <h3>
-                      Hoạt động gần đây
-                    </h3>
+                    <div>
 
-                    <p>
-                      Dữ liệu hoạt động trong 30 ngày gần nhất
-                    </p>
+                      <h3>
+                        Hoạt động gần đây
+                      </h3>
 
-                  </div>
+                      <p>
+                        Dữ liệu hoạt động trong 30 ngày gần nhất
+                      </p>
 
-                </div>
-
-
-                {activity.length === 0 ? (
-
-                  <div className="admin-department-activity-empty">
-
-                    <ActivityIcon />
-
-                    <span>
-                      Chưa có dữ liệu hoạt động.
-                    </span>
+                    </div>
 
                   </div>
 
-                ) : (
 
-                  <div className="admin-department-activity-list">
+                  {activityError ? (
 
-                    {activity.map(
-                      (
-                        item,
-                        index
-                      ) => {
+                    <div className="admin-department-detail-error">
 
-                        const date =
-                          item.date ||
-                          item.day ||
-                          item.createdAt;
+                      <div className="admin-error-icon">
+                        !
+                      </div>
 
-                        const messageCount =
-                          item.messageCount ??
-                          item.messages ??
-                          0;
+                      <strong>
+                        Không thể tải hoạt động
+                      </strong>
 
-                        const activeUsers =
-                          item.activeUsers ??
-                          item.userCount ??
-                          item.users ??
-                          0;
+                      <p>
+                        {activityError}
+                      </p>
+
+                    </div>
+
+                  ) : activity.length === 0 ? (
+
+                    <div className="admin-department-activity-empty">
+
+                      <ActivityIcon />
+
+                      <span>
+                        Chưa có dữ liệu hoạt động.
+                      </span>
+
+                    </div>
+
+                  ) : (
+
+                    <div className="admin-department-activity-list">
+
+                      {activity.map(
+                        (
+                          item,
+                          index
+                        ) => {
+
+                          const date =
+                            item.date ||
+                            item.day ||
+                            item.createdAt;
+
+                          const messageCount =
+                            item.messageCount ??
+                            item.messages ??
+                            0;
+
+                          const activeUsers =
+                            item.activeUsers ??
+                            item.userCount ??
+                            item.users ??
+                            0;
 
 
-                        return (
-                          <div
-                            key={
-                              item.id ??
-                              date ??
-                              index
-                            }
-                            className="admin-department-activity-row"
-                          >
+                          return (
+                            <div
+                              key={
+                                item.id ??
+                                date ??
+                                index
+                              }
+                              className="admin-department-activity-row"
+                            >
 
-                            <div className="admin-department-activity-date">
+                              <div className="admin-department-activity-date">
 
-                              <CalendarIcon />
+                                <CalendarIcon />
 
-                              <span>
-                                {formatDate(
-                                  date
-                                )}
-                              </span>
+                                <span>
+                                  {formatDate(
+                                    date
+                                  )}
+                                </span>
+
+                              </div>
+
+
+                              <div className="admin-department-activity-value">
+
+                                <span>
+                                  Tin nhắn
+                                </span>
+
+                                <strong>
+                                  {formatNumber(
+                                    messageCount
+                                  )}
+                                </strong>
+
+                              </div>
+
+
+                              <div className="admin-department-activity-value">
+
+                                <span>
+                                  Người hoạt động
+                                </span>
+
+                                <strong>
+                                  {formatNumber(
+                                    activeUsers
+                                  )}
+                                </strong>
+
+                              </div>
 
                             </div>
+                          );
 
+                        }
+                      )}
 
-                            <div className="admin-department-activity-value">
+                    </div>
 
-                              <span>
-                                Tin nhắn
-                              </span>
+                  )}
 
-                              <strong>
-                                {formatNumber(
-                                  messageCount
-                                )}
-                              </strong>
+                </section>
 
-                            </div>
-
-
-                            <div className="admin-department-activity-value">
-
-                              <span>
-                                Người hoạt động
-                              </span>
-
-                              <strong>
-                                {formatNumber(
-                                  activeUsers
-                                )}
-                              </strong>
-
-                            </div>
-
-                          </div>
-                        );
-
-                      }
-                    )}
-
-                  </div>
-
-                )}
-
-              </section>
+              )}
 
 
               {/* =========================================
-                  MEMBERS PLACEHOLDER
+                  MEMBERS
               ========================================= */}
 
               <section className="admin-department-detail-section">
@@ -929,7 +1107,9 @@ export default function DepartmentDetailModal({
                     </h3>
 
                     <p>
-                      Quản lý thành viên của phòng ban
+                      {canManageMembers
+                        ? "Quản lý thành viên của phòng ban"
+                        : "Thông tin thành viên của phòng ban"}
                     </p>
 
                   </div>
@@ -939,7 +1119,7 @@ export default function DepartmentDetailModal({
 
                     {formatNumber(
                       detail?.userCount ??
-                        department.userCount
+                      department.userCount
                     )}
 
                     {" "}thành viên
@@ -954,13 +1134,15 @@ export default function DepartmentDetailModal({
                   <UsersIcon />
 
                   <strong>
-                    Quản lý thành viên
+                    {canManageMembers
+                      ? "Quản lý thành viên"
+                      : "Không có quyền quản lý thành viên"}
                   </strong>
 
                   <span>
-                    Danh sách thêm, xóa và phân quyền
-                    thành viên sẽ được thực hiện ở phần
-                    quản lý thành viên.
+                    {canManageMembers
+                      ? "Danh sách thêm, xóa và phân quyền thành viên sẽ được thực hiện ở phần quản lý thành viên."
+                      : "Bạn chỉ có quyền xem thông tin phòng ban."}
                   </span>
 
                 </div>

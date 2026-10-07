@@ -14,6 +14,9 @@ import DepartmentMembersModal from "./DepartmentMembersModal";
 import DepartmentDetailModal from "./DepartmentDetailModal";
 
 import Toast from "../../../components/common/Toast";
+import { hasPermission } from "../../../utils/permissionUtils";
+
+
 /* =========================================================
    ICONS
 ========================================================= */
@@ -276,12 +279,44 @@ function UsersIcon() {
 }
 
 
-
 /* =========================================================
    PAGE
 ========================================================= */
 
 export default function AdminDepartmentsPage() {
+
+  /* =======================================================
+     PERMISSIONS
+  ======================================================= */
+
+  const canView = hasPermission(
+    "Department.View"
+  );
+
+  const canCreate = hasPermission(
+    "Department.Create"
+  );
+
+  const canUpdate = hasPermission(
+    "Department.Update"
+  );
+
+  const canEnable = hasPermission(
+    "Department.Enable"
+  );
+
+  const canDisable = hasPermission(
+    "Department.Disable"
+  );
+
+  const canManageMembers = hasPermission(
+    "Department.ManageMembers"
+  );
+
+  const canViewStatistics = hasPermission(
+    "Department.ViewStatistics"
+  );
+
 
   /* =======================================================
      DATA
@@ -374,17 +409,17 @@ export default function AdminDepartmentsPage() {
   ======================================================= */
 
   function showToast(
-  type,
-  message,
-  duration = 3000
-) {
-  setToast({
-    id: Date.now(),
     type,
     message,
-    duration,
-  });
-}
+    duration = 3000
+  ) {
+    setToast({
+      id: Date.now(),
+      type,
+      message,
+      duration,
+    });
+  }
 
 
   /* =======================================================
@@ -405,6 +440,11 @@ export default function AdminDepartmentsPage() {
     customSearch = search,
     customIsActive = isActive
   ) {
+    if (!canView) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
@@ -451,6 +491,7 @@ export default function AdminDepartmentsPage() {
           1
         )
       );
+
     } catch (error) {
       console.error(
         "Không thể tải danh sách phòng ban:",
@@ -467,6 +508,7 @@ export default function AdminDepartmentsPage() {
         "error",
         message
       );
+
     } finally {
       setLoading(false);
     }
@@ -478,6 +520,11 @@ export default function AdminDepartmentsPage() {
   ======================================================= */
 
   useEffect(() => {
+    if (!canView) {
+      setLoading(false);
+      return;
+    }
+
     loadDepartments(
       page,
       search,
@@ -486,6 +533,7 @@ export default function AdminDepartmentsPage() {
   }, [
     page,
     isActive,
+    canView,
   ]);
 
 
@@ -498,6 +546,10 @@ export default function AdminDepartmentsPage() {
   ) {
     event.preventDefault();
 
+    if (!canView) {
+      return;
+    }
+
     setPage(1);
 
     loadDepartments(
@@ -509,6 +561,10 @@ export default function AdminDepartmentsPage() {
 
 
   function handleClearSearch() {
+    if (!canView) {
+      return;
+    }
+
     setSearch("");
 
     setPage(1);
@@ -528,6 +584,10 @@ export default function AdminDepartmentsPage() {
   function handleStatusChange(
     event
   ) {
+    if (!canView) {
+      return;
+    }
+
     setIsActive(
       event.target.value
     );
@@ -541,6 +601,10 @@ export default function AdminDepartmentsPage() {
   ======================================================= */
 
   function handleRefresh() {
+    if (!canView) {
+      return;
+    }
+
     loadDepartments(
       page,
       search,
@@ -554,6 +618,10 @@ export default function AdminDepartmentsPage() {
   ======================================================= */
 
   function handleCreate() {
+    if (!canCreate) {
+      return;
+    }
+
     setSelectedDepartment(
       null
     );
@@ -571,6 +639,10 @@ export default function AdminDepartmentsPage() {
   function handleEdit(
     department
   ) {
+    if (!canUpdate) {
+      return;
+    }
+
     setSelectedDepartment(
       department
     );
@@ -588,6 +660,10 @@ export default function AdminDepartmentsPage() {
   function handleMembers(
     department
   ) {
+    if (!canManageMembers) {
+      return;
+    }
+
     setSelectedDepartment(
       department
     );
@@ -605,6 +681,10 @@ export default function AdminDepartmentsPage() {
   function handleView(
     department
   ) {
+    if (!canView) {
+      return;
+    }
+
     setSelectedDepartment(
       department
     );
@@ -624,6 +704,15 @@ export default function AdminDepartmentsPage() {
   ) {
     const nextActive =
       !department.isActive;
+
+    const canChangeStatus =
+      nextActive
+        ? canEnable
+        : canDisable;
+
+    if (!canChangeStatus) {
+      return;
+    }
 
     const actionText =
       nextActive
@@ -662,6 +751,7 @@ export default function AdminDepartmentsPage() {
               department.id,
               nextActive
             );
+
 
             /* =============================================
                UPDATE TABLE
@@ -965,6 +1055,35 @@ export default function AdminDepartmentsPage() {
 
 
   /* =======================================================
+     NO VIEW PERMISSION
+  ======================================================= */
+
+  if (!canView) {
+    return (
+      <div className="admin-departments-page">
+
+        <div className="admin-departments-empty">
+
+          <div className="admin-empty-icon">
+            <BuildingIcon />
+          </div>
+
+          <strong>
+            Không có quyền truy cập
+          </strong>
+
+          <span>
+            Bạn không có quyền xem danh sách phòng ban.
+          </span>
+
+        </div>
+
+      </div>
+    );
+  }
+
+
+  /* =======================================================
      RENDER
   ======================================================= */
 
@@ -976,14 +1095,15 @@ export default function AdminDepartmentsPage() {
       ================================================= */}
 
       {toast && (
-  <Toast
-    key={toast.id}
-    type={toast.type}
-    message={toast.message}
-    duration={toast.duration}
-    onClose={closeToast}
-  />
-)}
+        <Toast
+          key={toast.id}
+          type={toast.type}
+          message={toast.message}
+          duration={toast.duration}
+          onClose={closeToast}
+        />
+      )}
+
 
       {/* =================================================
           PAGE HEADER
@@ -1041,21 +1161,27 @@ export default function AdminDepartmentsPage() {
           </button>
 
 
-          <button
-            type="button"
-            className="admin-create-button"
-            onClick={
-              handleCreate
-            }
-          >
+          {/* =============================================
+              CREATE
+          ============================================= */}
 
-            <PlusIcon />
+          {canCreate && (
+            <button
+              type="button"
+              className="admin-create-button"
+              onClick={
+                handleCreate
+              }
+            >
 
-            <span>
-              Thêm phòng ban
-            </span>
+              <PlusIcon />
 
-          </button>
+              <span>
+                Thêm phòng ban
+              </span>
+
+            </button>
+          )}
 
         </div>
 
@@ -1444,107 +1570,119 @@ export default function AdminDepartmentsPage() {
 
                           {/* VIEW */}
 
-                          <button
-                            type="button"
-                            className="action-view"
-                            onClick={() =>
-                              handleView(
-                                department
-                              )
-                            }
-                            title="Xem phòng ban"
-                          >
+                          {canView && (
+                            <button
+                              type="button"
+                              className="action-view"
+                              onClick={() =>
+                                handleView(
+                                  department
+                                )
+                              }
+                              title="Xem phòng ban"
+                            >
 
-                            <EyeIcon />
+                              <EyeIcon />
 
-                            <span>
-                              Xem
-                            </span>
+                              <span>
+                                Xem
+                              </span>
 
-                          </button>
+                            </button>
+                          )}
 
 
                           {/* MEMBERS */}
 
-                          <button
-                            type="button"
-                            className="action-members"
-                            onClick={() =>
-                              handleMembers(
-                                department
-                              )
-                            }
-                            title="Quản lý thành viên"
-                          >
+                          {canManageMembers && (
+                            <button
+                              type="button"
+                              className="action-members"
+                              onClick={() =>
+                                handleMembers(
+                                  department
+                                )
+                              }
+                              title="Quản lý thành viên"
+                            >
 
-                            <UsersIcon />
+                              <UsersIcon />
 
-                            <span>
-                              Thành viên
-                            </span>
+                              <span>
+                                Thành viên
+                              </span>
 
-                          </button>
+                            </button>
+                          )}
 
 
                           {/* EDIT */}
 
-                          <button
-                            type="button"
-                            className="action-edit"
-                            onClick={() =>
-                              handleEdit(
-                                department
-                              )
-                            }
-                            title="Chỉnh sửa phòng ban"
-                          >
+                          {canUpdate && (
+                            <button
+                              type="button"
+                              className="action-edit"
+                              onClick={() =>
+                                handleEdit(
+                                  department
+                                )
+                              }
+                              title="Chỉnh sửa phòng ban"
+                            >
 
-                            <EditIcon />
+                              <EditIcon />
 
-                            <span>
-                              Sửa
-                            </span>
+                              <span>
+                                Sửa
+                              </span>
 
-                          </button>
+                            </button>
+                          )}
 
 
-                          {/* ACTIVE */}
+                          {/* ACTIVE / INACTIVE */}
 
-                          <button
-                            type="button"
-                            className={`action-active ${
-                              department.isActive
-                                ? "lock"
-                                : "unlock"
-                            }`}
-                            onClick={() =>
-                              handleToggleActive(
-                                department
-                              )
-                            }
-                            disabled={
-                              actionLoading
-                            }
-                            title={
-                              department.isActive
-                                ? "Khóa phòng ban"
-                                : "Mở phòng ban"
-                            }
-                          >
+                          {(
+                            department.isActive
+                              ? canDisable
+                              : canEnable
+                          ) && (
+                            <button
+                              type="button"
+                              className={`action-active ${
+                                department.isActive
+                                  ? "lock"
+                                  : "unlock"
+                              }`}
+                              onClick={() =>
+                                handleToggleActive(
+                                  department
+                                )
+                              }
+                              disabled={
+                                actionLoading
+                              }
+                              title={
+                                department.isActive
+                                  ? "Khóa phòng ban"
+                                  : "Mở phòng ban"
+                              }
+                            >
 
-                            {department.isActive ? (
-                              <LockIcon />
-                            ) : (
-                              <UnlockIcon />
-                            )}
+                              {department.isActive ? (
+                                <LockIcon />
+                              ) : (
+                                <UnlockIcon />
+                              )}
 
-                            <span>
-                              {department.isActive
-                                ? "Khóa"
-                                : "Mở"}
-                            </span>
+                              <span>
+                                {department.isActive
+                                  ? "Khóa"
+                                  : "Mở"}
+                              </span>
 
-                          </button>
+                            </button>
+                          )}
 
                         </div>
 

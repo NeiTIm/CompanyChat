@@ -1,7 +1,10 @@
-using CompanyChat.Api.Authorization;
+using System.Security.Claims;
+
 using CompanyChat.Api.Data;
 using CompanyChat.Api.DTOs.Department;
 using CompanyChat.Api.Models;
+using CompanyChat.Api.Services.Authorization;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,15 +13,19 @@ namespace CompanyChat.Api.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/departments")]
-[Authorize(Policy = Policies.ManageUsers)]
 public class DepartmentController(
-    AppDbContext db) : ControllerBase
+    AppDbContext db,
+    PermissionService permissionService) : ControllerBase
 {
     /* =========================================================
        GET DEPARTMENTS
+
+       Permission:
+       Department.View
     ========================================================= */
 
     [HttpGet]
+    [Authorize(Policy = "Permission:Department.View")]
     public async Task<IActionResult> GetDepartments(
         [FromQuery] string? search = null,
         [FromQuery] bool? isActive = null,
@@ -71,11 +78,10 @@ public class DepartmentController(
             ))
             .ToListAsync();
 
-        var totalPages =
-            Math.Max(
-                (int)Math.Ceiling(
-                    total / (double)pageSize),
-                1);
+        var totalPages = Math.Max(
+            (int)Math.Ceiling(
+                total / (double)pageSize),
+            1);
 
         return Ok(new
         {
@@ -90,9 +96,13 @@ public class DepartmentController(
 
     /* =========================================================
        GET DEPARTMENT DETAIL
+
+       Permission:
+       Department.View
     ========================================================= */
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = "Permission:Department.View")]
     public async Task<IActionResult> GetDepartment(
         int id)
     {
@@ -131,13 +141,17 @@ public class DepartmentController(
 
     /* =========================================================
        CREATE DEPARTMENT
+
+       Permission:
+       Department.Create
     ========================================================= */
 
     [HttpPost]
+    [Authorize(Policy = "Permission:Department.Create")]
     public async Task<IActionResult> CreateDepartment(
         [FromBody] CreateDepartmentDto dto)
     {
-        var name = dto.Name.Trim();
+        var name = dto.Name?.Trim();
 
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -194,9 +208,13 @@ public class DepartmentController(
 
     /* =========================================================
        UPDATE DEPARTMENT
+
+       Permission:
+       Department.Update
     ========================================================= */
 
     [HttpPut("{id:int}")]
+    [Authorize(Policy = "Permission:Department.Update")]
     public async Task<IActionResult> UpdateDepartment(
         int id,
         [FromBody] UpdateDepartmentDto dto)
@@ -213,7 +231,7 @@ public class DepartmentController(
             });
         }
 
-        var name = dto.Name.Trim();
+        var name = dto.Name?.Trim();
 
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -260,6 +278,15 @@ public class DepartmentController(
 
     /* =========================================================
        UPDATE STATUS
+
+       Permission:
+       Department.Enable / Department.Disable
+
+       Enable:
+       Department.Enable
+
+       Disable:
+       Department.Disable
     ========================================================= */
 
     [HttpPatch("{id:int}/active")]
@@ -267,6 +294,21 @@ public class DepartmentController(
         int id,
         [FromBody] UpdateDepartmentStatusDto dto)
     {
+        var requiredPermission =
+            dto.IsActive
+                ? "Department.Enable"
+                : "Department.Disable";
+
+        var authorized =
+            await permissionService.HasPermissionAsync(
+                GetCurrentUserId(),
+                requiredPermission);
+
+        if (!authorized)
+        {
+            return Forbid();
+        }
+
         var department = await db.Departments
             .FirstOrDefaultAsync(x =>
                 x.Id == id);
@@ -297,9 +339,13 @@ public class DepartmentController(
 
     /* =========================================================
        GET MEMBERS
+
+       Permission:
+       Department.View
     ========================================================= */
 
     [HttpGet("{id:int}/members")]
+    [Authorize(Policy = "Permission:Department.View")]
     public async Task<IActionResult> GetMembers(
         int id,
         [FromQuery] string? search = null,
@@ -363,11 +409,10 @@ public class DepartmentController(
             ))
             .ToListAsync();
 
-        var totalPages =
-            Math.Max(
-                (int)Math.Ceiling(
-                    total / (double)pageSize),
-                1);
+        var totalPages = Math.Max(
+            (int)Math.Ceiling(
+                total / (double)pageSize),
+            1);
 
         return Ok(new
         {
@@ -382,9 +427,13 @@ public class DepartmentController(
 
     /* =========================================================
        GET AVAILABLE MEMBERS
+
+       Permission:
+       Department.ManageMembers
     ========================================================= */
 
     [HttpGet("{id:int}/available-members")]
+    [Authorize(Policy = "Permission:Department.ManageMembers")]
     public async Task<IActionResult> GetAvailableMembers(
         int id,
         [FromQuery] string? search = null,
@@ -446,11 +495,10 @@ public class DepartmentController(
             ))
             .ToListAsync();
 
-        var totalPages =
-            Math.Max(
-                (int)Math.Ceiling(
-                    total / (double)pageSize),
-                1);
+        var totalPages = Math.Max(
+            (int)Math.Ceiling(
+                total / (double)pageSize),
+            1);
 
         return Ok(new
         {
@@ -465,9 +513,13 @@ public class DepartmentController(
 
     /* =========================================================
        ADD MEMBER
+
+       Permission:
+       Department.ManageMembers
     ========================================================= */
 
     [HttpPost("{id:int}/members")]
+    [Authorize(Policy = "Permission:Department.ManageMembers")]
     public async Task<IActionResult> AddMember(
         int id,
         [FromBody] DepartmentMemberRequestDto dto)
@@ -564,17 +616,12 @@ public class DepartmentController(
     /* =========================================================
        REMOVE MEMBER
 
-       PRIMARY:
-       DepartmentId = null
-
-       ADDITIONAL:
-       Remove UserDepartment
-
-       Nếu dữ liệu cũ vô tình có cả Primary + UserDepartment
-       cùng department thì xóa luôn UserDepartment dư.
+       Permission:
+       Department.ManageMembers
     ========================================================= */
 
     [HttpDelete("{id:int}/members/{userId:int}")]
+    [Authorize(Policy = "Permission:Department.ManageMembers")]
     public async Task<IActionResult> RemoveMember(
         int id,
         int userId)
@@ -623,21 +670,10 @@ public class DepartmentController(
             });
         }
 
-
-        /* =====================================================
-           PRIMARY DEPARTMENT
-        ===================================================== */
-
         if (isPrimary)
         {
             user.DepartmentId = null;
         }
-
-
-        /* =====================================================
-           ADDITIONAL DEPARTMENT
-           hoặc duplicate dữ liệu cũ
-        ===================================================== */
 
         if (membership != null)
         {
@@ -662,9 +698,13 @@ public class DepartmentController(
 
     /* =========================================================
        BULK ADD MEMBERS
+
+       Permission:
+       Department.ManageMembers
     ========================================================= */
 
     [HttpPost("{id:int}/members/bulk")]
+    [Authorize(Policy = "Permission:Department.ManageMembers")]
     public async Task<IActionResult> BulkAddMembers(
         int id,
         [FromBody] DepartmentMembersRequestDto dto)
@@ -779,14 +819,12 @@ public class DepartmentController(
     /* =========================================================
        BULK REMOVE MEMBERS
 
-       PRIMARY:
-       DepartmentId = null
-
-       ADDITIONAL:
-       Remove UserDepartment
+       Permission:
+       Department.ManageMembers
     ========================================================= */
 
     [HttpDelete("{id:int}/members/bulk")]
+    [Authorize(Policy = "Permission:Department.ManageMembers")]
     public async Task<IActionResult> BulkRemoveMembers(
         int id,
         [FromBody] DepartmentMembersRequestDto dto)
@@ -847,11 +885,6 @@ public class DepartmentController(
         var additionalRemovedUserIds =
             new List<int>();
 
-
-        /* =====================================================
-           REMOVE PRIMARY
-        ===================================================== */
-
         foreach (var user in users)
         {
             if (user.DepartmentId == id)
@@ -862,11 +895,6 @@ public class DepartmentController(
                     user.Id);
             }
         }
-
-
-        /* =====================================================
-           REMOVE ADDITIONAL
-        ===================================================== */
 
         foreach (var membership
             in additionalMemberships)
@@ -902,9 +930,13 @@ public class DepartmentController(
 
     /* =========================================================
        STATISTICS
+
+       Permission:
+       Department.ViewStatistics
     ========================================================= */
 
     [HttpGet("{id:int}/statistics")]
+    [Authorize(Policy = "Permission:Department.ViewStatistics")]
     public async Task<IActionResult> GetStatistics(
         int id)
     {
@@ -982,10 +1014,14 @@ public class DepartmentController(
 
 
     /* =========================================================
-       ACTIVITY
-    ========================================================= */
+    ACTIVITY
+
+    Permission:
+    Department.ViewStatistics
+ ========================================================= */
 
     [HttpGet("{id:int}/activity")]
+    [Authorize(Policy = "Permission:Department.ViewStatistics")]
     public async Task<IActionResult> GetActivity(
         int id,
         [FromQuery] int days = 30)
@@ -1010,7 +1046,15 @@ public class DepartmentController(
             DateTime.UtcNow.Date
                 .AddDays(-(days - 1));
 
-        var rows =
+        /*
+           IMPORTANT:
+           Không GroupBy(m.SentAt.Date) trực tiếp trong EF Core.
+
+           Chỉ lấy dữ liệu cần thiết từ SQL Server,
+           sau đó GroupBy ở C# để tránh lỗi LINQ translation.
+        */
+
+        var messages =
             await db.Messages
                 .AsNoTracking()
                 .Where(m =>
@@ -1018,8 +1062,16 @@ public class DepartmentController(
                     m.Conversation.DepartmentId == id &&
                     !m.IsDeleted &&
                     m.SentAt >= fromDate)
-                .GroupBy(m =>
-                    m.SentAt.Date)
+                .Select(m => new
+                {
+                    m.SentAt,
+                    m.SenderId
+                })
+                .ToListAsync();
+
+        var rows =
+            messages
+                .GroupBy(x => x.SentAt.Date)
                 .Select(g =>
                     new DepartmentActivityDto(
                         g.Key,
@@ -1030,7 +1082,7 @@ public class DepartmentController(
                          .Count()))
                 .OrderBy(x =>
                     x.Date)
-                .ToListAsync();
+                .ToList();
 
         return Ok(rows);
     }
@@ -1054,5 +1106,23 @@ public class DepartmentController(
                         ud.DepartmentId ==
                             departmentId)
                 ));
+    }
+
+
+    /* =========================================================
+       CURRENT USER ID
+    ========================================================= */
+
+    private int GetCurrentUserId()
+    {
+        var claim =
+            User.FindFirst(
+                ClaimTypes.NameIdentifier);
+
+        return int.TryParse(
+            claim?.Value,
+            out var userId)
+            ? userId
+            : 0;
     }
 }
