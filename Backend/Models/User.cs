@@ -18,16 +18,21 @@ public class User
     public int? DepartmentId { get; set; }
 
     public Department? Department { get; set; }
+
     public ICollection<UserDepartment> UserDepartments { get; set; } = [];
+
     public ICollection<UserManagedDepartment> UserManagedDepartments { get; set; } = [];
+
     // =========================
     // STATUS
     // =========================
 
     public bool IsActive { get; set; } = true;
+
     public bool IsDeleted { get; set; } = false;
 
     public DateTime? DeletedAt { get; set; }
+
     public bool IsOnline { get; set; }
 
     public DateTime? LastSeen { get; set; }
@@ -45,6 +50,16 @@ public class User
     } = [];
 
     public ICollection<Message> Messages
+    {
+        get;
+        set;
+    } = [];
+
+    // =========================
+    // GROUP SCOPE
+    // =========================
+
+    public ICollection<ScopeGroupMember> ScopeGroupMembers
     {
         get;
         set;

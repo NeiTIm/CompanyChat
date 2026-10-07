@@ -17,8 +17,16 @@ public class Conversation
     // Conversation thuộc Department nào.
     // Private/Group không bắt buộc phải có.
     public int? DepartmentId { get; set; }
+
     public Department? Department { get; set; }
 
+    // =========================
+    // RELATIONSHIPS
+    // =========================
+
     public ICollection<ConversationMember> Members { get; set; } = [];
+
     public ICollection<Message> Messages { get; set; } = [];
+
+    
 }

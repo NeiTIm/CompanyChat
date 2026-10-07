@@ -12,8 +12,25 @@ public class Department
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // =========================
+    // RELATIONSHIPS
+    // =========================
+
     public ICollection<User> Users { get; set; } = [];
+
     public ICollection<UserDepartment> UserDepartments { get; set; } = [];
+
     public ICollection<Conversation> Conversations { get; set; } = [];
+
     public ICollection<UserManagedDepartment> UserManagedDepartments { get; set; } = [];
+
+    // =========================
+    // GROUP SCOPE
+    // =========================
+
+    public ICollection<ScopeGroupDepartment> ScopeGroupDepartments
+    {
+        get;
+        set;
+    } = [];
 }

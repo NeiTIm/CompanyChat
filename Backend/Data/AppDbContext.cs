@@ -6,6 +6,10 @@ namespace CompanyChat.Api.Data;
 public class AppDbContext(DbContextOptions<AppDbContext> options)
     : DbContext(options)
 {
+    // =====================================================
+    // DBSETS
+    // =====================================================
+
     public DbSet<User> Users => Set<User>();
 
     public DbSet<Department> Departments => Set<Department>();
@@ -24,14 +28,38 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     }
 
     public DbSet<Notification> Notifications => Set<Notification>();
-    public DbSet<UserDepartment> UserDepartments { get; set; }
-    public DbSet<UserManagedDepartment> UserManagedDepartments { get; set; }
+
+    public DbSet<UserDepartment> UserDepartments
+    {
+        get;
+        set;
+    }
+
+    public DbSet<UserManagedDepartment> UserManagedDepartments
+    {
+        get;
+        set;
+    }
+
     public DbSet<Role> Roles => Set<Role>();
 
     public DbSet<Permission> Permissions => Set<Permission>();
 
     public DbSet<RolePermission> RolePermissions
         => Set<RolePermission>();
+
+    // =====================================================
+    // GROUP SCOPE
+    // =====================================================
+
+    public DbSet<ScopeGroup> ScopeGroups
+        => Set<ScopeGroup>();
+
+    public DbSet<ScopeGroupMember> ScopeGroupMembers
+        => Set<ScopeGroupMember>();
+
+    public DbSet<ScopeGroupDepartment> ScopeGroupDepartments
+        => Set<ScopeGroupDepartment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -60,11 +88,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             .WithMany(x => x.Users)
             .HasForeignKey(x => x.DepartmentId)
             .OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<Conversation>()
             .HasOne(x => x.Department)
             .WithMany(x => x.Conversations)
             .HasForeignKey(x => x.DepartmentId)
             .OnDelete(DeleteBehavior.Restrict);
+
         // =====================================================
         // CONVERSATION MEMBER
         // =====================================================
@@ -133,31 +163,36 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             .WithMany()
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Restrict);
-        // Notification thuộc về User
-        // Không cho xóa User nếu còn Notification
+
+        // =====================================================
+        // NOTIFICATION
+        // =====================================================
+
+        // Notification thuộc về User.
+        // Không cho xóa User nếu còn Notification.
         modelBuilder.Entity<Notification>()
             .HasOne(x => x.User)
             .WithMany()
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Notification liên quan đến Conversation
-        // Không tự động xóa Notification khi xóa Conversation
+        // Notification liên quan đến Conversation.
+        // Không tự động xóa Notification khi xóa Conversation.
         modelBuilder.Entity<Notification>()
             .HasOne(x => x.Conversation)
             .WithMany()
             .HasForeignKey(x => x.ConversationId)
             .OnDelete(DeleteBehavior.NoAction);
 
-        // Notification liên quan đến Message
-        // Không tự động xóa Notification khi xóa Message
+        // Notification liên quan đến Message.
+        // Không tự động xóa Notification khi xóa Message.
         modelBuilder.Entity<Notification>()
             .HasOne(x => x.Message)
             .WithMany()
             .HasForeignKey(x => x.MessageId)
             .OnDelete(DeleteBehavior.NoAction);
 
-        // Index giúp tìm Notification chưa đọc của User nhanh hơn
+        // Index giúp tìm Notification chưa đọc của User nhanh hơn.
         modelBuilder.Entity<Notification>()
             .HasIndex(x => new
             {
@@ -165,13 +200,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 x.IsRead
             });
 
-        // Index giúp lấy Notification mới nhất của User nhanh hơn
+        // Index giúp lấy Notification mới nhất của User nhanh hơn.
         modelBuilder.Entity<Notification>()
             .HasIndex(x => new
             {
                 x.UserId,
                 x.CreatedAt
             });
+
+        // =====================================================
+        // USER DEPARTMENT
+        // =====================================================
 
         modelBuilder.Entity<UserDepartment>()
             .HasKey(x => new
@@ -191,6 +230,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             .WithMany(x => x.UserDepartments)
             .HasForeignKey(x => x.DepartmentId)
             .OnDelete(DeleteBehavior.Restrict);
+
         // =====================================================
         // USER MANAGED DEPARTMENT
         // =====================================================
@@ -213,6 +253,76 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             .WithMany(x => x.UserManagedDepartments)
             .HasForeignKey(x => x.DepartmentId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // =====================================================
+        // GROUP SCOPE
+        // =====================================================
+
+        // -----------------------------------------------------
+        // SCOPE GROUP
+        // -----------------------------------------------------
+
+        // Tên Scope Group bắt buộc.
+        modelBuilder.Entity<ScopeGroup>()
+            .Property(x => x.Name)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        // Mô tả Scope Group không bắt buộc.
+        modelBuilder.Entity<ScopeGroup>()
+            .Property(x => x.Description)
+            .HasMaxLength(500);
+
+        // -----------------------------------------------------
+        // SCOPE GROUP MEMBER
+        // -----------------------------------------------------
+
+        // Một User chỉ xuất hiện một lần
+        // trong cùng một ScopeGroup.
+        modelBuilder.Entity<ScopeGroupMember>()
+            .HasKey(x => new
+            {
+                x.ScopeGroupId,
+                x.UserId
+            });
+
+        modelBuilder.Entity<ScopeGroupMember>()
+            .HasOne(x => x.ScopeGroup)
+            .WithMany(x => x.Members)
+            .HasForeignKey(x => x.ScopeGroupId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ScopeGroupMember>()
+            .HasOne(x => x.User)
+            .WithMany(x => x.ScopeGroupMembers)
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // -----------------------------------------------------
+        // SCOPE GROUP DEPARTMENT
+        // -----------------------------------------------------
+
+        // Một Department chỉ xuất hiện một lần
+        // trong cùng một ScopeGroup.
+        modelBuilder.Entity<ScopeGroupDepartment>()
+            .HasKey(x => new
+            {
+                x.ScopeGroupId,
+                x.DepartmentId
+            });
+
+        modelBuilder.Entity<ScopeGroupDepartment>()
+            .HasOne(x => x.ScopeGroup)
+            .WithMany(x => x.Departments)
+            .HasForeignKey(x => x.ScopeGroupId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ScopeGroupDepartment>()
+            .HasOne(x => x.Department)
+            .WithMany(x => x.ScopeGroupDepartments)
+            .HasForeignKey(x => x.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // =====================================================
         // ROLE
         // =====================================================
@@ -221,7 +331,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             .HasIndex(x => x.Name)
             .IsUnique();
 
-
         // =====================================================
         // PERMISSION
         // =====================================================
@@ -229,7 +338,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<Permission>()
             .HasIndex(x => x.Code)
             .IsUnique();
-
 
         // =====================================================
         // ROLE PERMISSION
@@ -253,6 +361,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             .WithMany(x => x.RolePermissions)
             .HasForeignKey(x => x.PermissionId)
             .OnDelete(DeleteBehavior.Cascade);
-
     }
 }

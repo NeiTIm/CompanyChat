@@ -4,6 +4,7 @@ using CompanyChat.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CompanyChat.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007134639_AddGroupScope")]
+    partial class AddGroupScope
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -330,17 +333,13 @@ namespace CompanyChat.Api.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ConversationId")
+                        .IsUnique();
 
                     b.ToTable("ScopeGroups");
                 });
@@ -585,6 +584,17 @@ namespace CompanyChat.Api.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("CompanyChat.Api.Models.ScopeGroup", b =>
+                {
+                    b.HasOne("CompanyChat.Api.Models.Conversation", "Conversation")
+                        .WithOne("ScopeGroup")
+                        .HasForeignKey("CompanyChat.Api.Models.ScopeGroup", "ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+                });
+
             modelBuilder.Entity("CompanyChat.Api.Models.ScopeGroupDepartment", b =>
                 {
                     b.HasOne("CompanyChat.Api.Models.Department", "Department")
@@ -676,6 +686,8 @@ namespace CompanyChat.Api.Migrations
                     b.Navigation("Members");
 
                     b.Navigation("Messages");
+
+                    b.Navigation("ScopeGroup");
                 });
 
             modelBuilder.Entity("CompanyChat.Api.Models.Department", b =>
