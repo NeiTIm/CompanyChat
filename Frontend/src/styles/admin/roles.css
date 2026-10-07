@@ -158,6 +158,13 @@
   cursor: not-allowed;
 }
 
+.admin-roles-refresh-button:focus-visible,
+.admin-roles-create-button:focus-visible {
+  outline: none;
+
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
 
 /* =========================================================
    TOOLBAR
@@ -186,8 +193,8 @@
   display: flex;
   align-items: center;
 
-  flex: 1;
   min-width: 0;
+  flex: 1;
 
   gap: 9px;
 
@@ -285,6 +292,10 @@
   line-height: 1;
 
   cursor: pointer;
+
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .admin-roles-search-clear:hover {
@@ -316,13 +327,20 @@
 
   transition:
     background-color 0.18s ease,
-    border-color 0.18s ease;
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .admin-roles-search-button:hover:not(:disabled) {
   border-color: #1d4ed8;
 
   background: #1d4ed8;
+}
+
+.admin-roles-search-button:focus-visible {
+  outline: none;
+
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .admin-roles-search-button:disabled {
@@ -391,7 +409,7 @@
 
   gap: 20px;
 
-  padding: 15px 16px;
+  padding: 14px 16px;
 
   border-bottom: 1px solid #eef2f7;
 
@@ -404,14 +422,16 @@
 
   min-width: 0;
 
-  gap: 28px;
+  gap: 26px;
 }
 
 .admin-roles-summary-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
 
-  gap: 8px;
+  gap: 7px;
+
+  white-space: nowrap;
 }
 
 .admin-roles-summary-label {
@@ -426,6 +446,7 @@
 
   font-size: 14px;
   font-weight: 700;
+  line-height: 1;
 }
 
 .admin-roles-summary-right {
@@ -434,6 +455,9 @@
   color: #64748b;
 
   font-size: 12px;
+  line-height: 1.5;
+
+  white-space: nowrap;
 }
 
 .admin-roles-summary-right strong {
@@ -477,6 +501,10 @@
   background: #cbd5e1;
 
   border-radius: 999px;
+}
+
+.admin-roles-table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 
@@ -581,12 +609,15 @@
 }
 
 .admin-role-name {
+  overflow: hidden;
+
   color: #0f172a;
 
   font-size: 14px;
   font-weight: 700;
   line-height: 1.35;
 
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -723,7 +754,8 @@
     background-color 0.16s ease,
     border-color 0.16s ease,
     color 0.16s ease,
-    transform 0.16s ease;
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .admin-role-action-button:hover:not(:disabled) {
@@ -736,6 +768,12 @@
 
 .admin-role-action-button:active:not(:disabled) {
   transform: translateY(0);
+}
+
+.admin-role-action-button:focus-visible {
+  outline: none;
+
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .admin-role-action-button:disabled {
@@ -871,12 +909,19 @@
   color: #64748b;
 
   font-size: 12px;
+  line-height: 1.5;
+
+  white-space: nowrap;
 }
 
 .admin-roles-pagination-info strong {
   color: #334155;
 
   font-weight: 700;
+}
+
+.admin-roles-pagination-info span {
+  color: #94a3b8;
 }
 
 .admin-roles-pagination-controls {
@@ -907,7 +952,8 @@
   transition:
     background-color 0.16s ease,
     border-color 0.16s ease,
-    color 0.16s ease;
+    color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .admin-roles-pagination-button {
@@ -930,6 +976,17 @@
   border-color: #cbd5e1;
 
   background: #f8fafc;
+
+  color: #0f172a;
+}
+
+.admin-roles-pagination-button:focus-visible,
+.admin-roles-page-number:focus-visible {
+  outline: none;
+
+  border-color: #93c5fd;
+
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .admin-roles-pagination-button:disabled,
@@ -944,6 +1001,12 @@
 
   background: #2563eb;
   color: #ffffff;
+}
+
+.admin-roles-page-number.active:hover {
+  border-color: #1d4ed8;
+
+  background: #1d4ed8;
 }
 
 .admin-roles-page-numbers {
@@ -1099,7 +1162,7 @@
 .admin-role-modal-close:focus-visible {
   outline: none;
 
-  border-color: #94a3b8;
+  border-color: #93c5fd;
 
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
@@ -1867,13 +1930,20 @@
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
-    color 0.15s ease;
+    color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .admin-role-permission-select-all:hover:not(:disabled) {
   border-color: #93c5fd;
 
   background: #dbeafe;
+}
+
+.admin-role-permission-select-all:focus-visible {
+  outline: none;
+
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .admin-role-permission-select-all:disabled {
@@ -2046,7 +2116,8 @@
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
-    color 0.15s ease;
+    color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .admin-role-permission-module-toggle:hover:not(:disabled) {
@@ -2065,7 +2136,14 @@
 .admin-role-permission-module-toggle.partial {
   border-color: #bfdbfe;
 
+  background: #f8fbff;
   color: #2563eb;
+}
+
+.admin-role-permission-module-toggle:focus-visible {
+  outline: none;
+
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .admin-role-permission-module-toggle:disabled {
@@ -2096,8 +2174,10 @@
   font-weight: 700;
 }
 
-.admin-role-permission-module-toggle.selected .admin-role-checkbox,
-.admin-role-permission-module-toggle.partial .admin-role-checkbox {
+.admin-role-permission-module-toggle.selected
+.admin-role-checkbox,
+.admin-role-permission-module-toggle.partial
+.admin-role-checkbox {
   border-color: #2563eb;
 
   background: #2563eb;
@@ -2163,7 +2243,9 @@
 }
 
 
-/* Native checkbox hidden */
+/* =========================================================
+   NATIVE CHECKBOX
+========================================================= */
 
 .admin-role-permission-item input {
   position: absolute;
@@ -2349,6 +2431,10 @@
     gap: 9px;
   }
 
+  .admin-roles-summary-right {
+    white-space: normal;
+  }
+
   .admin-roles-pagination {
     align-items: stretch;
 
@@ -2500,6 +2586,22 @@
   .admin-roles-pagination-controls {
     flex-wrap: wrap;
   }
+
+  .admin-roles-summary {
+    padding: 13px 14px;
+  }
+
+  .admin-roles-pagination {
+    padding: 12px 14px;
+  }
+
+  .admin-roles-pagination-controls {
+    gap: 4px;
+  }
+
+  .admin-roles-pagination-button {
+    padding: 0 8px;
+  }
 }
 
 
@@ -2512,6 +2614,8 @@
   .admin-roles-refresh-button,
   .admin-roles-create-button,
   .admin-roles-search-input,
+  .admin-roles-search-clear,
+  .admin-roles-search-button,
   .admin-roles-filter-select,
   .admin-role-action-button,
   .admin-roles-page-number,

@@ -25,7 +25,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<UserDepartment> UserDepartments { get; set; }
-
+    public DbSet<UserManagedDepartment> UserManagedDepartments { get; set; }
     public DbSet<Role> Roles => Set<Role>();
 
     public DbSet<Permission> Permissions => Set<Permission>();
@@ -189,6 +189,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<UserDepartment>()
             .HasOne(x => x.Department)
             .WithMany(x => x.UserDepartments)
+            .HasForeignKey(x => x.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+        // =====================================================
+        // USER MANAGED DEPARTMENT
+        // =====================================================
+
+        modelBuilder.Entity<UserManagedDepartment>()
+            .HasKey(x => new
+            {
+                x.UserId,
+                x.DepartmentId
+            });
+
+        modelBuilder.Entity<UserManagedDepartment>()
+            .HasOne(x => x.User)
+            .WithMany(x => x.UserManagedDepartments)
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserManagedDepartment>()
+            .HasOne(x => x.Department)
+            .WithMany(x => x.UserManagedDepartments)
             .HasForeignKey(x => x.DepartmentId)
             .OnDelete(DeleteBehavior.Restrict);
         // =====================================================

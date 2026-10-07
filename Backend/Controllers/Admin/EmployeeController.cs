@@ -5,6 +5,7 @@ using CompanyChat.Api.Data;
 using CompanyChat.Api.DTOs.User;
 using CompanyChat.Api.Models;
 using CompanyChat.Api.Services;
+using CompanyChat.Api.Services.Authorization;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +17,8 @@ namespace CompanyChat.Api.Controllers.Admin;
 [Route("api/admin/employees")]
 public class EmployeeController(
     AppDbContext db,
-    ConnectionManager connections) : ControllerBase
+    ConnectionManager connections,
+    DepartmentScopeService departmentScopeService) : ControllerBase
 {
     // =========================================================
     // GET: /api/admin/employees
@@ -25,6 +27,11 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.View
+    //
+    // Scope:
+    // - Admin: Global
+    // - Other users: Employee must belong to at least one
+    //   Department within user's managed Scope.
     //
     // Supports:
     // - Search FullName / Username / Email
@@ -43,27 +50,29 @@ public class EmployeeController(
         [FromQuery] string? role,
         [FromQuery] bool? isActive,
         [FromQuery] bool? isDeleted,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        int page = 1,
+        int pageSize = 20)
     {
         // =====================================================
         // Validate pagination
         // =====================================================
 
-        if (page < 1)
-        {
-            page = 1;
-        }
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
 
-        if (pageSize < 1)
-        {
-            pageSize = 20;
-        }
+        // =====================================================
+        // Check current user's Scope
+        // =====================================================
 
-        if (pageSize > 100)
-        {
-            pageSize = 100;
-        }
+        var isAdmin =
+            await departmentScopeService
+                .IsAdminAsync(User);
+
+        var managedDepartmentIds =
+            isAdmin
+                ? []
+                : await departmentScopeService
+                    .GetManagedDepartmentIdsAsync(User);
 
         // =====================================================
         // Base query
@@ -72,6 +81,50 @@ public class EmployeeController(
         var query = db.Users
             .AsNoTracking()
             .AsQueryable();
+
+        // =====================================================
+        // Scope filtering
+        //
+        // Admin:
+        //     Global visibility.
+        //
+        // Non-admin:
+        //     Employee must belong to at least one
+        //     managed Department.
+        //
+        // Primary Department:
+        //     User.DepartmentId
+        //
+        // Additional Departments:
+        //     UserDepartments
+        // =====================================================
+
+        if (!isAdmin)
+        {
+            if (managedDepartmentIds.Count == 0)
+            {
+                return Ok(new
+                {
+                    items = Array.Empty<UserDto>(),
+                    page,
+                    pageSize,
+                    total = 0,
+                    totalPages = 0
+                });
+            }
+
+            query = query.Where(x =>
+                (
+                    x.DepartmentId.HasValue &&
+                    managedDepartmentIds.Contains(
+                        x.DepartmentId.Value)
+                )
+                ||
+                x.UserDepartments.Any(ud =>
+                    managedDepartmentIds.Contains(
+                        ud.DepartmentId))
+            );
+        }
 
         // =====================================================
         // Filter Deleted
@@ -85,11 +138,13 @@ public class EmployeeController(
 
         if (isDeleted == true)
         {
-            query = query.Where(x => x.IsDeleted);
+            query = query.Where(x =>
+                x.IsDeleted);
         }
         else
         {
-            query = query.Where(x => !x.IsDeleted);
+            query = query.Where(x =>
+                !x.IsDeleted);
         }
 
         // =====================================================
@@ -113,7 +168,8 @@ public class EmployeeController(
         if (departmentId.HasValue)
         {
             query = query.Where(x =>
-                x.DepartmentId == departmentId.Value);
+                x.DepartmentId ==
+                    departmentId.Value);
         }
 
         // =====================================================
@@ -142,33 +198,38 @@ public class EmployeeController(
         // Total
         // =====================================================
 
-        var total = await query.CountAsync();
+        var total =
+            await query.CountAsync();
 
-        var totalPages = (int)Math.Ceiling(
-            total / (double)pageSize);
+        var totalPages =
+            total == 0
+                ? 0
+                : (int)Math.Ceiling(
+                    total / (double)pageSize);
 
         // =====================================================
         // Pagination
         // =====================================================
 
-        var employees = await query
-            .OrderBy(x => x.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(x => new UserDto(
-                x.Id,
-                x.Username,
-                x.FullName,
-                x.Email,
-                x.Role,
-                x.IsOnline,
-                x.LastSeen,
-                x.IsActive,
-                x.DepartmentId,
-                x.Department != null
-                    ? x.Department.Name
-                    : null))
-            .ToListAsync();
+        var employees =
+            await query
+                .OrderBy(x => x.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(x => new UserDto(
+                    x.Id,
+                    x.Username,
+                    x.FullName,
+                    x.Email,
+                    x.Role,
+                    x.IsOnline,
+                    x.LastSeen,
+                    x.IsActive,
+                    x.DepartmentId,
+                    x.Department != null
+                        ? x.Department.Name
+                        : null))
+                .ToListAsync();
 
         // =====================================================
         // Response
@@ -192,6 +253,10 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.View
+    //
+    // Scope:
+    // - Admin: Global
+    // - Other users: Any Department
     // =========================================================
 
     [Authorize(Policy = "Permission:Employee.View")]
@@ -199,34 +264,75 @@ public class EmployeeController(
     public async Task<ActionResult<UserDto>> GetEmployee(
         int id)
     {
-        var employee = await db.Users
-            .AsNoTracking()
-            .Where(x =>
-                x.Id == id)
-            .Select(x => new UserDto(
-                x.Id,
-                x.Username,
-                x.FullName,
-                x.Email,
-                x.Role,
-                x.IsOnline,
-                x.LastSeen,
-                x.IsActive,
-                x.DepartmentId,
-                x.Department != null
-                    ? x.Department.Name
-                    : null))
-            .FirstOrDefaultAsync();
+        var employee =
+            await db.Users
+                .AsNoTracking()
+                .Where(x =>
+                    x.Id == id &&
+                    !x.IsDeleted)
+                .Select(x => new
+                {
+                    User = x,
+
+                    DepartmentIds =
+                        x.UserDepartments
+                            .Select(ud =>
+                                ud.DepartmentId)
+                            .ToList()
+                })
+                .FirstOrDefaultAsync();
 
         if (employee is null)
         {
             return NotFound(new
             {
-                message = "Không tìm thấy nhân viên."
+                message =
+                    "Không tìm thấy nhân viên."
             });
         }
 
-        return Ok(employee);
+        // =====================================================
+        // Build Department IDs
+        // =====================================================
+
+        var departmentIds =
+            GetEmployeeDepartmentIds(
+                employee.User,
+                employee.DepartmentIds);
+
+        // =====================================================
+        // Scope visibility
+        // =====================================================
+
+        var canView =
+            await CanViewEmployeeAsync(
+                departmentIds);
+
+        if (!canView)
+        {
+            return Forbid();
+        }
+
+        // =====================================================
+        // DTO
+        // =====================================================
+
+        var result =
+            new UserDto(
+                employee.User.Id,
+                employee.User.Username,
+                employee.User.FullName,
+                employee.User.Email,
+                employee.User.Role,
+                employee.User.IsOnline,
+                employee.User.LastSeen,
+                employee.User.IsActive,
+                employee.User.DepartmentId,
+                employee.User.Department != null
+                    ? employee.User.Department.Name
+                    : null);
+
+        return Ok(result);
     }
 
 
@@ -237,6 +343,13 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.Create
+    //
+    // Scope:
+    // - If Department is specified:
+    //   target Department must be in Scope.
+    //
+    // - No Department:
+    //   only global user can create unassigned employee.
     // =========================================================
 
     [Authorize(Policy = "Permission:Employee.Create")]
@@ -252,7 +365,8 @@ public class EmployeeController(
         {
             return BadRequest(new
             {
-                message = "Username không được để trống."
+                message =
+                    "Username không được để trống."
             });
         }
 
@@ -260,7 +374,8 @@ public class EmployeeController(
         {
             return BadRequest(new
             {
-                message = "Họ tên không được để trống."
+                message =
+                    "Họ tên không được để trống."
             });
         }
 
@@ -268,7 +383,8 @@ public class EmployeeController(
         {
             return BadRequest(new
             {
-                message = "Email không được để trống."
+                message =
+                    "Email không được để trống."
             });
         }
 
@@ -276,7 +392,8 @@ public class EmployeeController(
         {
             return BadRequest(new
             {
-                message = "Mật khẩu không được để trống."
+                message =
+                    "Mật khẩu không được để trống."
             });
         }
 
@@ -300,17 +417,13 @@ public class EmployeeController(
 
         // =====================================================
         // Validate Role
-        //
-        // Không còn hard-code:
-        // Admin / Employee
-        //
-        // Role phải tồn tại trong bảng Roles.
         // =====================================================
 
-        var roleExists = await db.Roles
-            .AsNoTracking()
-            .AnyAsync(x =>
-                x.Name == role);
+        var roleExists =
+            await db.Roles
+                .AsNoTracking()
+                .AnyAsync(x =>
+                    x.Name == role);
 
         if (!roleExists)
         {
@@ -325,15 +438,17 @@ public class EmployeeController(
         // Check username
         // =====================================================
 
-        var usernameExists = await db.Users
-            .AnyAsync(x =>
-                x.Username == username);
+        var usernameExists =
+            await db.Users
+                .AnyAsync(x =>
+                    x.Username == username);
 
         if (usernameExists)
         {
             return Conflict(new
             {
-                message = "Username đã tồn tại."
+                message =
+                    "Username đã tồn tại."
             });
         }
 
@@ -341,38 +456,83 @@ public class EmployeeController(
         // Check email
         // =====================================================
 
-        var emailExists = await db.Users
-            .AnyAsync(x =>
-                x.Email == email);
+        var emailExists =
+            await db.Users
+                .AnyAsync(x =>
+                    x.Email == email);
 
         if (emailExists)
         {
             return Conflict(new
             {
-                message = "Email đã tồn tại."
+                message =
+                    "Email đã tồn tại."
             });
         }
 
         // =====================================================
-        // Validate Department
+        // Validate Department + Scope
         // =====================================================
 
         if (request.DepartmentId.HasValue)
         {
-            var departmentExists =
-                await db.Departments
-                    .AnyAsync(x =>
-                        x.Id ==
-                            request.DepartmentId.Value &&
-                        x.IsActive);
+            var targetDepartmentId =
+                request.DepartmentId.Value;
 
-            if (!departmentExists)
+            var department =
+                await db.Departments
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x =>
+                        x.Id ==
+                            targetDepartmentId);
+
+            if (department is null)
             {
                 return BadRequest(new
                 {
                     message =
-                        "Department không tồn tại hoặc đang bị vô hiệu hóa."
+                        "Department không tồn tại."
                 });
+            }
+
+            if (!department.IsActive)
+            {
+                return BadRequest(new
+                {
+                    message =
+                        "Không thể gán nhân viên vào Department đang bị vô hiệu hóa."
+                });
+            }
+
+            var canManageDepartment =
+                await departmentScopeService
+                    .CanManageDepartmentAsync(
+                        User,
+                        targetDepartmentId);
+
+            if (!canManageDepartment)
+            {
+                return Forbid();
+            }
+        }
+        else
+        {
+            // =================================================
+            // Không có Department:
+            //
+            // Scoped user không được tạo employee
+            // không thuộc Scope nào.
+            //
+            // Admin/global user vẫn được phép.
+            // =================================================
+
+            var isAdmin =
+                await departmentScopeService
+                    .IsAdminAsync(User);
+
+            if (!isAdmin)
+            {
+                return Forbid();
             }
         }
 
@@ -427,17 +587,18 @@ public class EmployeeController(
         // Response DTO
         // =====================================================
 
-        var response = new UserDto(
-            user.Id,
-            user.Username,
-            user.FullName,
-            user.Email,
-            user.Role,
-            user.IsOnline,
-            user.LastSeen,
-            user.IsActive,
-            user.DepartmentId,
-            departmentName);
+        var response =
+            new UserDto(
+                user.Id,
+                user.Username,
+                user.FullName,
+                user.Email,
+                user.Role,
+                user.IsOnline,
+                user.LastSeen,
+                user.IsActive,
+                user.DepartmentId,
+                departmentName);
 
         return CreatedAtAction(
             nameof(GetEmployee),
@@ -456,6 +617,9 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.Update
+    //
+    // Scope:
+    // - All Departments of employee
     // =========================================================
 
     [Authorize(Policy = "Permission:Employee.Update")]
@@ -492,10 +656,11 @@ public class EmployeeController(
         // Find non-deleted employee
         // =====================================================
 
-        var employee = await db.Users
-            .FirstOrDefaultAsync(x =>
-                x.Id == id &&
-                !x.IsDeleted);
+        var employee =
+            await db.Users
+                .FirstOrDefaultAsync(x =>
+                    x.Id == id &&
+                    !x.IsDeleted);
 
         if (employee is null)
         {
@@ -506,6 +671,20 @@ public class EmployeeController(
             });
         }
 
+        // =====================================================
+        // Scope
+        //
+        // Update employee information is a mutation
+        // affecting the employee as a whole.
+        //
+        // Therefore require Scope over ALL departments.
+        // =====================================================
+
+        if (!await CanManageEmployeeAsync(employee))
+        {
+            return Forbid();
+        }
+
         var email =
             request.Email.Trim();
 
@@ -514,9 +693,10 @@ public class EmployeeController(
         // =====================================================
 
         var emailExists =
-            await db.Users.AnyAsync(x =>
-                x.Id != id &&
-                x.Email == email);
+            await db.Users
+                .AnyAsync(x =>
+                    x.Id != id &&
+                    x.Email == email);
 
         if (emailExists)
         {
@@ -544,7 +724,8 @@ public class EmployeeController(
             message =
                 "Cập nhật thông tin nhân viên thành công.",
 
-            userId = employee.Id
+            userId =
+                employee.Id
         });
     }
 
@@ -556,6 +737,9 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.Lock
+    //
+    // Scope:
+    // - All Departments of employee
     // =========================================================
 
     [Authorize(Policy = "Permission:Employee.Lock")]
@@ -577,18 +761,11 @@ public class EmployeeController(
         }
 
         // =====================================================
-        // Active state
-        // =====================================================
-
-        var active =
-            request.Active;
-
-        // =====================================================
         // Không cho tự disable chính mình
         // =====================================================
 
         if (id == currentUserId.Value &&
-            !active)
+            !request.Active)
         {
             return BadRequest(new
             {
@@ -601,10 +778,11 @@ public class EmployeeController(
         // Find non-deleted employee
         // =====================================================
 
-        var employee = await db.Users
-            .FirstOrDefaultAsync(x =>
-                x.Id == id &&
-                !x.IsDeleted);
+        var employee =
+            await db.Users
+                .FirstOrDefaultAsync(x =>
+                    x.Id == id &&
+                    !x.IsDeleted);
 
         if (employee is null)
         {
@@ -616,11 +794,20 @@ public class EmployeeController(
         }
 
         // =====================================================
+        // Scope
+        // =====================================================
+
+        if (!await CanManageEmployeeAsync(employee))
+        {
+            return Forbid();
+        }
+
+        // =====================================================
         // Update active state
         // =====================================================
 
         employee.IsActive =
-            active;
+            request.Active;
 
         await db.SaveChangesAsync();
 
@@ -630,7 +817,7 @@ public class EmployeeController(
         // Disconnect toàn bộ WebSocket.
         // =====================================================
 
-        if (!active)
+        if (!request.Active)
         {
             await connections
                 .DisconnectUserAsync(
@@ -645,7 +832,7 @@ public class EmployeeController(
 
         return Ok(new
         {
-            message = active
+            message = request.Active
                 ? "Đã mở khóa nhân viên."
                 : "Đã khóa nhân viên.",
 
@@ -668,6 +855,9 @@ public class EmployeeController(
     //
     // Permission:
     // - Role.Assign
+    //
+    // Scope:
+    // - All Departments of employee
     // =========================================================
 
     [Authorize(Policy = "Permission:Role.Assign")]
@@ -741,10 +931,11 @@ public class EmployeeController(
         // Find non-deleted employee
         // =====================================================
 
-        var employee = await db.Users
-            .FirstOrDefaultAsync(x =>
-                x.Id == id &&
-                !x.IsDeleted);
+        var employee =
+            await db.Users
+                .FirstOrDefaultAsync(x =>
+                    x.Id == id &&
+                    !x.IsDeleted);
 
         if (employee is null)
         {
@@ -753,6 +944,15 @@ public class EmployeeController(
                 message =
                     "Không tìm thấy nhân viên."
             });
+        }
+
+        // =====================================================
+        // Scope
+        // =====================================================
+
+        if (!await CanManageEmployeeAsync(employee))
+        {
+            return Forbid();
         }
 
         // =====================================================
@@ -786,8 +986,13 @@ public class EmployeeController(
     // Permission:
     // - Employee.AssignDepartment
     //
-    // DepartmentId trong User
-    // = Primary Department.
+    // Scope:
+    //
+    // Remove:
+    //     old Department
+    //
+    // Transfer:
+    //     old Department + new Department
     // =========================================================
 
     [Authorize(
@@ -801,10 +1006,11 @@ public class EmployeeController(
         // Find non-deleted employee
         // =====================================================
 
-        var employee = await db.Users
-            .FirstOrDefaultAsync(x =>
-                x.Id == id &&
-                !x.IsDeleted);
+        var employee =
+            await db.Users
+                .FirstOrDefaultAsync(x =>
+                    x.Id == id &&
+                    !x.IsDeleted);
 
         if (employee is null)
         {
@@ -817,17 +1023,30 @@ public class EmployeeController(
 
         // =====================================================
         // Remove Primary Department
-        //
-        // Nếu có stale additional membership
-        // cùng DepartmentId hiện tại thì remove luôn.
         // =====================================================
 
         if (departmentId is null)
         {
+            // -----------------------------------------------
+            // Employee must currently have a Department
+            // to require Scope.
+            // -----------------------------------------------
+
             if (employee.DepartmentId.HasValue)
             {
                 var oldPrimaryId =
                     employee.DepartmentId.Value;
+
+                var canManageOld =
+                    await departmentScopeService
+                        .CanManageDepartmentAsync(
+                            User,
+                            oldPrimaryId);
+
+                if (!canManageOld)
+                {
+                    return Forbid();
+                }
 
                 var staleAdditional =
                     await db.UserDepartments
@@ -841,6 +1060,23 @@ public class EmployeeController(
                 {
                     db.UserDepartments.Remove(
                         staleAdditional);
+                }
+            }
+            else
+            {
+                // -------------------------------------------
+                // Employee has no Department.
+                //
+                // Only global/Admin scope can mutate it.
+                // -------------------------------------------
+
+                var isAdmin =
+                    await departmentScopeService
+                        .IsAdminAsync(User);
+
+                if (!isAdmin)
+                {
+                    return Forbid();
                 }
             }
 
@@ -863,24 +1099,64 @@ public class EmployeeController(
         }
 
         // =====================================================
-        // Department phải tồn tại + active
+        // Department phải tồn tại
         // =====================================================
 
         var department =
             await db.Departments
-                .AsNoTracking()
                 .FirstOrDefaultAsync(x =>
                     x.Id ==
-                        departmentId.Value &&
-                    x.IsActive);
+                        departmentId.Value);
 
         if (department is null)
+        {
+            return NotFound(new
+            {
+                message =
+                    "Department not found."
+            });
+        }
+
+        // =====================================================
+        // Department must be active
+        // =====================================================
+
+        if (!department.IsActive)
         {
             return BadRequest(new
             {
                 message =
-                    "Department không tồn tại hoặc đang bị vô hiệu hóa."
+                    "Cannot assign an inactive department."
             });
+        }
+
+        // =====================================================
+        // Scope:
+        //
+        // Transfer:
+        //     old → new
+        //
+        // Must manage BOTH.
+        // =====================================================
+
+        var departmentIds =
+            new List<int>
+            {
+                department.Id
+            };
+
+        if (employee.DepartmentId.HasValue)
+        {
+            departmentIds.Add(
+                employee.DepartmentId.Value);
+        }
+
+        if (!await departmentScopeService
+                .CanManageAllDepartmentsAsync(
+                    User,
+                    departmentIds))
+        {
+            return Forbid();
         }
 
         // =====================================================
@@ -937,6 +1213,9 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.View
+    //
+    // Scope:
+    // - Any Department
     // =========================================================
 
     [Authorize(Policy = "Permission:Employee.View")]
@@ -948,11 +1227,12 @@ public class EmployeeController(
         // Find employee
         // =====================================================
 
-        var employee = await db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x =>
-                x.Id == id &&
-                !x.IsDeleted);
+        var employee =
+            await db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x =>
+                    x.Id == id &&
+                    !x.IsDeleted);
 
         if (employee is null)
         {
@@ -961,6 +1241,24 @@ public class EmployeeController(
                 message =
                     "Không tìm thấy nhân viên."
             });
+        }
+
+        // =====================================================
+        // Get Department IDs
+        // =====================================================
+
+        var departmentIds =
+            await GetEmployeeDepartmentIdsAsync(
+                employee);
+
+        // =====================================================
+        // Scope visibility
+        // =====================================================
+
+        if (!await CanViewEmployeeAsync(
+                departmentIds))
+        {
+            return Forbid();
         }
 
         // =====================================================
@@ -998,6 +1296,9 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.AssignDepartment
+    //
+    // Scope:
+    // - Target Department required
     // =========================================================
 
     [Authorize(
@@ -1028,10 +1329,11 @@ public class EmployeeController(
         // Find employee
         // =====================================================
 
-        var employee = await db.Users
-            .FirstOrDefaultAsync(x =>
-                x.Id == id &&
-                !x.IsDeleted);
+        var employee =
+            await db.Users
+                .FirstOrDefaultAsync(x =>
+                    x.Id == id &&
+                    !x.IsDeleted);
 
         if (employee is null)
         {
@@ -1040,6 +1342,21 @@ public class EmployeeController(
                 message =
                     "Không tìm thấy nhân viên."
             });
+        }
+
+        // =====================================================
+        // Scope target Department
+        // =====================================================
+
+        var canManageDepartment =
+            await departmentScopeService
+                .CanManageDepartmentAsync(
+                    User,
+                    departmentId);
+
+        if (!canManageDepartment)
+        {
+            return Forbid();
         }
 
         // =====================================================
@@ -1138,6 +1455,9 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.AssignDepartment
+    //
+    // Scope:
+    // - Target Department required
     // =========================================================
 
     [Authorize(
@@ -1153,10 +1473,11 @@ public class EmployeeController(
         // Find employee
         // =====================================================
 
-        var employee = await db.Users
-            .FirstOrDefaultAsync(x =>
-                x.Id == id &&
-                !x.IsDeleted);
+        var employee =
+            await db.Users
+                .FirstOrDefaultAsync(x =>
+                    x.Id == id &&
+                    !x.IsDeleted);
 
         if (employee is null)
         {
@@ -1168,8 +1489,8 @@ public class EmployeeController(
         }
 
         // =====================================================
-        // Không cho remove Primary Department
-        // bằng Additional Department endpoint.
+        // Cannot remove Primary Department
+        // through Additional Department endpoint.
         // =====================================================
 
         if (employee.DepartmentId ==
@@ -1203,6 +1524,21 @@ public class EmployeeController(
         }
 
         // =====================================================
+        // Scope target Department
+        // =====================================================
+
+        var canManageDepartment =
+            await departmentScopeService
+                .CanManageDepartmentAsync(
+                    User,
+                    departmentId);
+
+        if (!canManageDepartment)
+        {
+            return Forbid();
+        }
+
+        // =====================================================
         // Remove
         // =====================================================
 
@@ -1232,6 +1568,9 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.ResetPassword
+    //
+    // Scope:
+    // - All Departments of employee
     // =========================================================
 
     [Authorize(
@@ -1272,10 +1611,11 @@ public class EmployeeController(
         // Find non-deleted employee
         // =====================================================
 
-        var employee = await db.Users
-            .FirstOrDefaultAsync(x =>
-                x.Id == id &&
-                !x.IsDeleted);
+        var employee =
+            await db.Users
+                .FirstOrDefaultAsync(x =>
+                    x.Id == id &&
+                    !x.IsDeleted);
 
         if (employee is null)
         {
@@ -1284,6 +1624,15 @@ public class EmployeeController(
                 message =
                     "Không tìm thấy nhân viên."
             });
+        }
+
+        // =====================================================
+        // Scope
+        // =====================================================
+
+        if (!await CanManageEmployeeAsync(employee))
+        {
+            return Forbid();
         }
 
         // =====================================================
@@ -1315,6 +1664,9 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.Delete
+    //
+    // Scope:
+    // - All Departments of employee
     // =========================================================
 
     [Authorize(
@@ -1380,6 +1732,15 @@ public class EmployeeController(
         }
 
         // =====================================================
+        // Scope
+        // =====================================================
+
+        if (!await CanManageEmployeeAsync(employee))
+        {
+            return Forbid();
+        }
+
+        // =====================================================
         // Soft delete
         // =====================================================
 
@@ -1440,6 +1801,9 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.Restore
+    //
+    // Scope:
+    // - All Departments of employee
     // =========================================================
 
     [Authorize(
@@ -1461,6 +1825,18 @@ public class EmployeeController(
                 message =
                     "Không tìm thấy nhân viên đã bị xóa."
             });
+        }
+
+        // =====================================================
+        // Scope
+        //
+        // Restore employee vẫn giữ Department cũ.
+        // Vì vậy phải kiểm tra toàn bộ Scope cũ.
+        // =====================================================
+
+        if (!await CanManageEmployeeAsync(employee))
+        {
+            return Forbid();
         }
 
         employee.IsDeleted =
@@ -1502,6 +1878,10 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.AssignDepartment
+    //
+    // Scope:
+    // - Remove: old Department
+    // - Transfer: old + new Department
     // =========================================================
 
     [Authorize(
@@ -1538,6 +1918,17 @@ public class EmployeeController(
                 var oldPrimaryId =
                     user.DepartmentId.Value;
 
+                var canManageOld =
+                    await departmentScopeService
+                        .CanManageDepartmentAsync(
+                            User,
+                            oldPrimaryId);
+
+                if (!canManageOld)
+                {
+                    return Forbid();
+                }
+
                 var staleAdditional =
                     await db.UserDepartments
                         .FirstOrDefaultAsync(x =>
@@ -1550,6 +1941,17 @@ public class EmployeeController(
                 {
                     db.UserDepartments.Remove(
                         staleAdditional);
+                }
+            }
+            else
+            {
+                var isAdmin =
+                    await departmentScopeService
+                        .IsAdminAsync(User);
+
+                if (!isAdmin)
+                {
+                    return Forbid();
                 }
             }
 
@@ -1603,6 +2005,41 @@ public class EmployeeController(
         }
 
         // =====================================================
+        // Scope:
+        //
+        // Primary transfer:
+        //
+        //     A → B
+        //
+        // User must manage:
+        //
+        //     A + B
+        // =====================================================
+
+        var departmentIds =
+            new List<int>
+            {
+                department.Id
+            };
+
+        if (user.DepartmentId.HasValue)
+        {
+            departmentIds.Add(
+                user.DepartmentId.Value);
+        }
+
+        var canManageAll =
+            await departmentScopeService
+                .CanManageAllDepartmentsAsync(
+                    User,
+                    departmentIds);
+
+        if (!canManageAll)
+        {
+            return Forbid();
+        }
+
+        // =====================================================
         // Remove duplicate Additional Department
         // =====================================================
 
@@ -1650,6 +2087,9 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.AssignDepartment
+    //
+    // Scope:
+    // - Target Department
     // =========================================================
 
     [Authorize(
@@ -1704,6 +2144,21 @@ public class EmployeeController(
                 message =
                     "Cannot assign an inactive department."
             });
+        }
+
+        // =====================================================
+        // Scope target Department
+        // =====================================================
+
+        var canManageDepartment =
+            await departmentScopeService
+                .CanManageDepartmentAsync(
+                    User,
+                    departmentId);
+
+        if (!canManageDepartment)
+        {
+            return Forbid();
         }
 
         // =====================================================
@@ -1777,6 +2232,9 @@ public class EmployeeController(
     //
     // Permission:
     // - Employee.AssignDepartment
+    //
+    // Scope:
+    // - Target Department
     // =========================================================
 
     [Authorize(
@@ -1840,6 +2298,21 @@ public class EmployeeController(
         }
 
         // =====================================================
+        // Scope target Department
+        // =====================================================
+
+        var canManageDepartment =
+            await departmentScopeService
+                .CanManageDepartmentAsync(
+                    User,
+                    departmentId);
+
+        if (!canManageDepartment)
+        {
+            return Forbid();
+        }
+
+        // =====================================================
         // Remove
         // =====================================================
 
@@ -1861,7 +2334,85 @@ public class EmployeeController(
 
 
     // =========================================================
-    // Helper:
+    // PATCH:
+    // /api/admin/employees/{id}/reset-password
+    //
+    // Admin reset password
+    //
+    // Permission:
+    // - Employee.ResetPassword
+    //
+    // Scope:
+    // - All Departments of employee
+    // =========================================================
+
+
+
+
+    // =========================================================
+    // DELETE:
+    // /api/admin/employees/{id}
+    //
+    // Soft Delete
+    //
+    // Permission:
+    // - Employee.Delete
+    //
+    // Scope:
+    // - All Departments of employee
+    // =========================================================
+
+
+
+
+    // =========================================================
+    // PATCH:
+    // /api/admin/employees/{id}/restore
+    //
+    // Restore employee
+    //
+    // Permission:
+    // - Employee.Restore
+    //
+    // Scope:
+    // - All Departments of employee
+    // =========================================================
+
+    
+
+
+    // =========================================================
+    // GET:
+    // /api/admin/employees/roles
+    //
+    // Permission:
+    // - Employee.View
+    //
+    // Scope:
+    // Not required
+    // =========================================================
+
+    [Authorize(Policy = "Permission:Employee.View")]
+    [HttpGet("roles")]
+    public async Task<IActionResult> GetEmployeeRoles()
+    {
+        var roles =
+            await db.Roles
+                .AsNoTracking()
+                .OrderBy(x => x.Name)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.Name
+                })
+                .ToListAsync();
+
+        return Ok(roles);
+    }
+
+
+    // =========================================================
+    // HELPER:
     // Get current authenticated user ID
     // =========================================================
 
@@ -1879,5 +2430,182 @@ public class EmployeeController(
         }
 
         return id;
+    }
+
+
+    // =========================================================
+    // HELPER:
+    // Get employee Department IDs
+    //
+    // Result includes:
+    // - Primary Department
+    // - Additional Departments
+    //
+    // Duplicate IDs are removed.
+    // =========================================================
+
+    private async Task<List<int>>
+        GetEmployeeDepartmentIdsAsync(
+            User employee)
+    {
+        var additionalDepartmentIds =
+            await db.UserDepartments
+                .AsNoTracking()
+                .Where(x =>
+                    x.UserId ==
+                        employee.Id)
+                .Select(x =>
+                    x.DepartmentId)
+                .ToListAsync();
+
+        return GetEmployeeDepartmentIds(
+            employee,
+            additionalDepartmentIds);
+    }
+
+
+    // =========================================================
+    // HELPER:
+    // Build employee Department IDs
+    // =========================================================
+
+    private static List<int>
+        GetEmployeeDepartmentIds(
+            User employee,
+            IEnumerable<int> additionalDepartmentIds)
+    {
+        var departmentIds =
+            additionalDepartmentIds
+                .Where(x => x > 0)
+                .ToHashSet();
+
+        if (employee.DepartmentId.HasValue &&
+            employee.DepartmentId.Value > 0)
+        {
+            departmentIds.Add(
+                employee.DepartmentId.Value);
+        }
+
+        return departmentIds.ToList();
+    }
+
+
+    // =========================================================
+    // HELPER:
+    // CHECK EMPLOYEE VISIBILITY
+    //
+    // Visibility rule:
+    //
+    // Employee:
+    //     Primary = A
+    //     Additional = B
+    //
+    // User Scope:
+    //     A
+    //
+    // Result:
+    //     Can VIEW employee.
+    //
+    // Therefore:
+    //
+    // Visibility = ANY Department
+    // =========================================================
+
+    private async Task<bool>
+        CanViewEmployeeAsync(
+            IEnumerable<int> departmentIds)
+    {
+        var isAdmin =
+            await departmentScopeService
+                .IsAdminAsync(User);
+
+        if (isAdmin)
+        {
+            return true;
+        }
+
+        var ids =
+            departmentIds
+                .Where(x => x > 0)
+                .Distinct()
+                .ToList();
+
+        // -----------------------------------------------------
+        // Employee không thuộc Department nào.
+        //
+        // Scoped user không được xem.
+        // -----------------------------------------------------
+
+        if (ids.Count == 0)
+        {
+            return false;
+        }
+
+        return await departmentScopeService
+            .CanManageAnyDepartmentAsync(
+                User,
+                ids);
+    }
+
+
+    // =========================================================
+    // HELPER:
+    // CHECK EMPLOYEE MANAGEMENT SCOPE
+    //
+    // Mutation rule:
+    //
+    // Employee:
+    //     Primary = A
+    //     Additional = B
+    //
+    // User Scope:
+    //     A
+    //
+    // Result:
+    //     FALSE
+    //
+    // User must manage:
+    //     A + B
+    //
+    // Therefore:
+    //
+    // Mutation = ALL Departments
+    //
+    // Employee không có Department:
+    //     chỉ Admin/global scope được mutation.
+    // =========================================================
+
+    private async Task<bool>
+        CanManageEmployeeAsync(
+            User employee)
+    {
+        var isAdmin =
+            await departmentScopeService
+                .IsAdminAsync(User);
+
+        if (isAdmin)
+        {
+            return true;
+        }
+
+        var departmentIds =
+            await GetEmployeeDepartmentIdsAsync(
+                employee);
+
+        // -----------------------------------------------------
+        // Không có Department.
+        //
+        // Scoped user không được mutation.
+        // -----------------------------------------------------
+
+        if (departmentIds.Count == 0)
+        {
+            return false;
+        }
+
+        return await departmentScopeService
+            .CanManageAllDepartmentsAsync(
+                User,
+                departmentIds);
     }
 }

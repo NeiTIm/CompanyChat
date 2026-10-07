@@ -15,13 +15,21 @@ namespace CompanyChat.Api.Controllers.Admin;
 [Route("api/admin/departments")]
 public class DepartmentController(
     AppDbContext db,
-    PermissionService permissionService) : ControllerBase
+    PermissionService permissionService,
+    DepartmentScopeService departmentScopeService) : ControllerBase
 {
     /* =========================================================
        GET DEPARTMENTS
 
        Permission:
        Department.View
+
+       Scope:
+       Not required
+
+       Note:
+       Read-only Department list is global.
+       Scope is applied to mutation operations.
     ========================================================= */
 
     [HttpGet]
@@ -99,6 +107,9 @@ public class DepartmentController(
 
        Permission:
        Department.View
+
+       Scope:
+       Not required
     ========================================================= */
 
     [HttpGet("{id:int}")]
@@ -144,6 +155,13 @@ public class DepartmentController(
 
        Permission:
        Department.Create
+
+       Scope:
+       Not required
+
+       Note:
+       Creating a new Department is not restricted by
+       UserManagedDepartment scope.
     ========================================================= */
 
     [HttpPost]
@@ -211,6 +229,12 @@ public class DepartmentController(
 
        Permission:
        Department.Update
+
+       Scope:
+       Required
+
+       Permission = WHAT
+       Scope      = WHICH DEPARTMENT
     ========================================================= */
 
     [HttpPut("{id:int}")]
@@ -229,6 +253,17 @@ public class DepartmentController(
             {
                 message = "Department not found."
             });
+        }
+
+        var canManage =
+            await departmentScopeService
+                .CanManageDepartmentAsync(
+                    User,
+                    id);
+
+        if (!canManage)
+        {
+            return Forbid();
         }
 
         var name = dto.Name?.Trim();
@@ -277,16 +312,22 @@ public class DepartmentController(
 
 
     /* =========================================================
-       UPDATE STATUS
+       UPDATE DEPARTMENT STATUS
 
        Permission:
-       Department.Enable / Department.Disable
-
-       Enable:
        Department.Enable
-
-       Disable:
+       OR
        Department.Disable
+
+       Scope:
+       Required
+
+       Important:
+       Scope check does NOT require Department.IsActive.
+
+       Therefore a user who has Scope to a disabled
+       Department can still re-enable it, provided they
+       also have Department.Enable permission.
     ========================================================= */
 
     [HttpPatch("{id:int}/active")]
@@ -321,6 +362,17 @@ public class DepartmentController(
             });
         }
 
+        var canManage =
+            await departmentScopeService
+                .CanManageDepartmentAsync(
+                    User,
+                    id);
+
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
         department.IsActive = dto.IsActive;
 
         await db.SaveChangesAsync();
@@ -342,6 +394,12 @@ public class DepartmentController(
 
        Permission:
        Department.View
+
+       Scope:
+       Not required
+
+       Note:
+       Read-only member list is global.
     ========================================================= */
 
     [HttpGet("{id:int}/members")]
@@ -430,6 +488,11 @@ public class DepartmentController(
 
        Permission:
        Department.ManageMembers
+
+       Scope:
+       Required
+
+       Target Department must be within user's Scope.
     ========================================================= */
 
     [HttpGet("{id:int}/available-members")]
@@ -452,6 +515,30 @@ public class DepartmentController(
             return NotFound(new
             {
                 message = "Department not found."
+            });
+        }
+
+        var canManage =
+            await departmentScopeService
+                .CanManageDepartmentAsync(
+                    User,
+                    id);
+
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        var departmentIsActive =
+            await departmentScopeService
+                .IsActiveDepartmentAsync(id);
+
+        if (!departmentIsActive)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Cannot get available members for an inactive department."
             });
         }
 
@@ -516,6 +603,11 @@ public class DepartmentController(
 
        Permission:
        Department.ManageMembers
+
+       Scope:
+       Required
+
+       Target Department must be within user's Scope.
     ========================================================= */
 
     [HttpPost("{id:int}/members")]
@@ -536,6 +628,17 @@ public class DepartmentController(
             {
                 message = "Department not found."
             });
+        }
+
+        var canManage =
+            await departmentScopeService
+                .CanManageDepartmentAsync(
+                    User,
+                    id);
+
+        if (!canManage)
+        {
+            return Forbid();
         }
 
         if (!department.IsActive)
@@ -618,6 +721,11 @@ public class DepartmentController(
 
        Permission:
        Department.ManageMembers
+
+       Scope:
+       Required
+
+       Target Department must be within user's Scope.
     ========================================================= */
 
     [HttpDelete("{id:int}/members/{userId:int}")]
@@ -636,6 +744,17 @@ public class DepartmentController(
             {
                 message = "Department not found."
             });
+        }
+
+        var canManage =
+            await departmentScopeService
+                .CanManageDepartmentAsync(
+                    User,
+                    id);
+
+        if (!canManage)
+        {
+            return Forbid();
         }
 
         var user = await db.Users
@@ -673,9 +792,19 @@ public class DepartmentController(
         if (isPrimary)
         {
             user.DepartmentId = null;
-        }
 
-        if (membership != null)
+            /*
+             * Safety:
+             * Nếu có stale additional membership trùng với
+             * Primary Department thì loại bỏ luôn.
+             */
+            if (membership != null)
+            {
+                db.UserDepartments.Remove(
+                    membership);
+            }
+        }
+        else if (membership != null)
         {
             db.UserDepartments.Remove(
                 membership);
@@ -701,6 +830,11 @@ public class DepartmentController(
 
        Permission:
        Department.ManageMembers
+
+       Scope:
+       Required
+
+       Target Department must be within user's Scope.
     ========================================================= */
 
     [HttpPost("{id:int}/members/bulk")]
@@ -730,6 +864,17 @@ public class DepartmentController(
             {
                 message = "Department not found."
             });
+        }
+
+        var canManage =
+            await departmentScopeService
+                .CanManageDepartmentAsync(
+                    User,
+                    id);
+
+        if (!canManage)
+        {
+            return Forbid();
         }
 
         if (!department.IsActive)
@@ -821,6 +966,11 @@ public class DepartmentController(
 
        Permission:
        Department.ManageMembers
+
+       Scope:
+       Required
+
+       Target Department must be within user's Scope.
     ========================================================= */
 
     [HttpDelete("{id:int}/members/bulk")]
@@ -849,6 +999,17 @@ public class DepartmentController(
             {
                 message = "Department not found."
             });
+        }
+
+        var canManage =
+            await departmentScopeService
+                .CanManageDepartmentAsync(
+                    User,
+                    id);
+
+        if (!canManage)
+        {
+            return Forbid();
         }
 
         var userIds =
@@ -933,6 +1094,12 @@ public class DepartmentController(
 
        Permission:
        Department.ViewStatistics
+
+       Scope:
+       Not required
+
+       Note:
+       Read-only statistics are global.
     ========================================================= */
 
     [HttpGet("{id:int}/statistics")]
@@ -1014,11 +1181,17 @@ public class DepartmentController(
 
 
     /* =========================================================
-    ACTIVITY
+       ACTIVITY
 
-    Permission:
-    Department.ViewStatistics
- ========================================================= */
+       Permission:
+       Department.ViewStatistics
+
+       Scope:
+       Not required
+
+       Note:
+       Read-only activity is global.
+    ========================================================= */
 
     [HttpGet("{id:int}/activity")]
     [Authorize(Policy = "Permission:Department.ViewStatistics")]

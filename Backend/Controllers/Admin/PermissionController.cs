@@ -1,6 +1,6 @@
-using CompanyChat.Api.Authorization;
 using CompanyChat.Api.Data;
 using CompanyChat.Api.DTOs.Admin;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,13 +9,12 @@ namespace CompanyChat.Api.Controllers.Admin;
 
 [ApiController]
 [Route("api/admin/permissions")]
-[Authorize(Policy = Policies.ManageUsers)]
 public class PermissionController(AppDbContext db) : ControllerBase
 {
     // =========================================================
-    // 1. GET: api/admin/permissions
+    // GET: api/admin/permissions
     //
-    // Danh sách Permission
+    // Permission: Role.View
     //
     // Query:
     // ?search=employee
@@ -23,6 +22,7 @@ public class PermissionController(AppDbContext db) : ControllerBase
     // =========================================================
 
     [HttpGet]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetPermissions(
         [FromQuery] string? search = null,
         [FromQuery] string? module = null)
@@ -47,7 +47,7 @@ public class PermissionController(AppDbContext db) : ControllerBase
         }
 
         // -----------------------------------------------------
-        // Filter Module
+        // Module
         // -----------------------------------------------------
 
         if (!string.IsNullOrWhiteSpace(module))
@@ -72,12 +72,13 @@ public class PermissionController(AppDbContext db) : ControllerBase
     }
 
     // =========================================================
-    // 2. GET: api/admin/permissions/{id}
+    // GET: api/admin/permissions/{id}
     //
-    // Chi tiết Permission
+    // Permission: Role.View
     // =========================================================
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetPermission(int id)
     {
         var permission = await db.Permissions
@@ -104,12 +105,13 @@ public class PermissionController(AppDbContext db) : ControllerBase
     }
 
     // =========================================================
-    // 3. GET: api/admin/permissions/modules
+    // GET: api/admin/permissions/modules
     //
-    // Danh sách Module
+    // Permission: Role.View
     // =========================================================
 
     [HttpGet("modules")]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetModules()
     {
         var modules = await db.Permissions
@@ -123,13 +125,14 @@ public class PermissionController(AppDbContext db) : ControllerBase
     }
 
     // =========================================================
-    // 4. GET:
+    // GET:
     // api/admin/permissions/{id}/roles
     //
-    // Danh sách Role đang sở hữu Permission
+    // Permission: Role.View
     // =========================================================
 
     [HttpGet("{id:int}/roles")]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetPermissionRoles(int id)
     {
         var permission = await db.Permissions
@@ -167,15 +170,16 @@ public class PermissionController(AppDbContext db) : ControllerBase
                 permission.Description,
                 permission.Module
             ),
+
             roles
         });
     }
 
     // =========================================================
-    // 5. GET:
+    // GET:
     // api/admin/permissions/{id}/users
     //
-    // Danh sách User đang có Permission
+    // Permission: Role.View
     //
     // Query:
     // ?search=nguyen
@@ -184,6 +188,7 @@ public class PermissionController(AppDbContext db) : ControllerBase
     // =========================================================
 
     [HttpGet("{id:int}/users")]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetPermissionUsers(
         int id,
         [FromQuery] string? search = null,
@@ -204,6 +209,10 @@ public class PermissionController(AppDbContext db) : ControllerBase
         {
             pageSize = 100;
         }
+
+        // -----------------------------------------------------
+        // Permission
+        // -----------------------------------------------------
 
         var permission = await db.Permissions
             .AsNoTracking()
@@ -238,7 +247,7 @@ public class PermissionController(AppDbContext db) : ControllerBase
                 roleNamesQuery.Contains(x.Role));
 
         // -----------------------------------------------------
-        // Search User
+        // Search
         // -----------------------------------------------------
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -250,6 +259,14 @@ public class PermissionController(AppDbContext db) : ControllerBase
         }
 
         var total = await query.CountAsync();
+
+        var totalPages = (int)Math.Ceiling(
+            total / (double)pageSize);
+
+        if (totalPages > 0 && page > totalPages)
+        {
+            page = totalPages;
+        }
 
         var users = await query
             .OrderBy(x => x.FullName)
@@ -267,14 +284,12 @@ public class PermissionController(AppDbContext db) : ControllerBase
                 x.IsOnline,
                 x.LastSeen,
                 x.DepartmentId,
+
                 DepartmentName = x.Department != null
                     ? x.Department.Name
                     : null
             })
             .ToListAsync();
-
-        var totalPages = (int)Math.Ceiling(
-            total / (double)pageSize);
 
         return Ok(new
         {
@@ -296,13 +311,14 @@ public class PermissionController(AppDbContext db) : ControllerBase
     }
 
     // =========================================================
-    // 6. GET:
+    // GET:
     // api/admin/permissions/statistics
     //
-    // Thống kê Permission
+    // Permission: Role.View
     // =========================================================
 
     [HttpGet("statistics")]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetStatistics()
     {
         var totalPermissions = await db.Permissions
@@ -318,8 +334,8 @@ public class PermissionController(AppDbContext db) : ControllerBase
             .Distinct()
             .CountAsync();
 
-        var unusedPermissions = totalPermissions -
-                                assignedPermissions;
+        var unusedPermissions =
+            totalPermissions - assignedPermissions;
 
         var totalRoles = await db.Roles
             .CountAsync();
@@ -341,13 +357,14 @@ public class PermissionController(AppDbContext db) : ControllerBase
     }
 
     // =========================================================
-    // 7. GET:
+    // GET:
     // api/admin/permissions/by-module/{module}
     //
-    // Permission theo Module
+    // Permission: Role.View
     // =========================================================
 
     [HttpGet("by-module/{module}")]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetPermissionsByModule(
         string module)
     {
@@ -393,17 +410,22 @@ public class PermissionController(AppDbContext db) : ControllerBase
     }
 
     // =========================================================
-    // 8. GET:
+    // GET:
     // api/admin/permissions/check/{roleId}/{permissionId}
     //
-    // Kiểm tra Role có Permission hay chưa
+    // Permission: Role.View
     // =========================================================
 
     [HttpGet("check/{roleId:int}/{permissionId:int}")]
+    [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> CheckRolePermission(
         int roleId,
         int permissionId)
     {
+        // -----------------------------------------------------
+        // Role
+        // -----------------------------------------------------
+
         var role = await db.Roles
             .AsNoTracking()
             .FirstOrDefaultAsync(x =>
@@ -417,6 +439,10 @@ public class PermissionController(AppDbContext db) : ControllerBase
             });
         }
 
+        // -----------------------------------------------------
+        // Permission
+        // -----------------------------------------------------
+
         var permission = await db.Permissions
             .AsNoTracking()
             .FirstOrDefaultAsync(x =>
@@ -429,6 +455,10 @@ public class PermissionController(AppDbContext db) : ControllerBase
                 message = "Không tìm thấy permission."
             });
         }
+
+        // -----------------------------------------------------
+        // Check Mapping
+        // -----------------------------------------------------
 
         var assigned = await db.RolePermissions
             .AsNoTracking()

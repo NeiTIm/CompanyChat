@@ -10,6 +10,14 @@ export default function RolesPagination({
   onNext,
   onPageChange,
 }) {
+
+  /*
+   * Không hiển thị pagination nếu:
+   *
+   * - đang loading
+   * - không có dữ liệu
+   * - chỉ có 1 page
+   */
   if (
     loading ||
     !roles ||
@@ -30,10 +38,13 @@ export default function RolesPagination({
       <div className="admin-roles-pagination-info">
 
         Trang{" "}
+
         <strong>
           {page}
         </strong>
+
         {" / "}
+
         <strong>
           {totalPages}
         </strong>
@@ -52,17 +63,20 @@ export default function RolesPagination({
 
       <div className="admin-roles-pagination-controls">
 
+        {/* =================================================
+            PREVIOUS
+        ================================================= */}
+
         <button
           type="button"
-          onClick={
-            onPrevious
-          }
+          onClick={onPrevious}
           disabled={
             loading ||
             page <= 1
           }
           className="admin-roles-pagination-button"
         >
+
           <svg
             viewBox="0 0 24 24"
             width="17"
@@ -72,6 +86,7 @@ export default function RolesPagination({
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <path d="m15 18-6-6 6-6" />
           </svg>
@@ -79,8 +94,13 @@ export default function RolesPagination({
           <span>
             Trước
           </span>
+
         </button>
 
+
+        {/* =================================================
+            PAGE NUMBERS
+        ================================================= */}
 
         <div className="admin-roles-page-numbers">
 
@@ -102,7 +122,16 @@ export default function RolesPagination({
                   )
                 }
                 disabled={
-                  loading
+                  loading ||
+                  pageNumber === page
+                }
+                aria-current={
+                  pageNumber === page
+                    ? "page"
+                    : undefined
+                }
+                aria-label={
+                  `Trang ${pageNumber}`
                 }
               >
                 {pageNumber}
@@ -113,17 +142,20 @@ export default function RolesPagination({
         </div>
 
 
+        {/* =================================================
+            NEXT
+        ================================================= */}
+
         <button
           type="button"
-          onClick={
-            onNext
-          }
+          onClick={onNext}
           disabled={
             loading ||
             page >= totalPages
           }
           className="admin-roles-pagination-button"
         >
+
           <span>
             Sau
           </span>
@@ -137,9 +169,11 @@ export default function RolesPagination({
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <path d="m9 18 6-6-6-6" />
           </svg>
+
         </button>
 
       </div>

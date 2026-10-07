@@ -52,8 +52,8 @@ builder.Services.AddDbContext<AppDbContext>(
 builder.Services.AddScoped<JwtService>();
 
 builder.Services.AddScoped<PermissionService>();
-
-
+builder.Services.AddScoped<DepartmentScopeService>();
+builder.Services.AddScoped<ScopeService>();
 
 builder.Services.AddScoped<
     ConversationAccessService>();

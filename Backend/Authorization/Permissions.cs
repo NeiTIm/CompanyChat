@@ -123,7 +123,15 @@ public static class Permissions
     public const string AuditLogView =
         "AuditLog.View";
 
+    // =========================================================
+    // SCOPE
+    // =========================================================
 
+    public const string ScopeView =
+        "Scope.View";
+
+    public const string ScopeAssign =
+        "Scope.Assign";
     // =========================================================
     // SYSTEM
     // =========================================================

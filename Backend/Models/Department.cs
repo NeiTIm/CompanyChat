@@ -15,4 +15,5 @@ public class Department
     public ICollection<User> Users { get; set; } = [];
     public ICollection<UserDepartment> UserDepartments { get; set; } = [];
     public ICollection<Conversation> Conversations { get; set; } = [];
+    public ICollection<UserManagedDepartment> UserManagedDepartments { get; set; } = [];
 }

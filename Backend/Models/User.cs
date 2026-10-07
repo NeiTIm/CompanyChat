@@ -19,6 +19,7 @@ public class User
 
     public Department? Department { get; set; }
     public ICollection<UserDepartment> UserDepartments { get; set; } = [];
+    public ICollection<UserManagedDepartment> UserManagedDepartments { get; set; } = [];
     // =========================
     // STATUS
     // =========================

@@ -3,11 +3,26 @@ export default function RolesToolbar({
   onSearchChange,
   onSearchSubmit,
   onClearSearch,
+
   systemOnly,
   onSystemFilterChange,
+
+  roleName,
+  onRoleNameChange,
+  roles = [],
 }) {
   const hasSearch =
     Boolean(search?.trim());
+
+  const availableRoles =
+    Array.isArray(roles)
+      ? roles.filter(
+          (role) =>
+            role &&
+            typeof role.name === "string" &&
+            role.name.trim() !== ""
+        )
+      : [];
 
   return (
     <div className="admin-roles-toolbar">
@@ -40,9 +55,7 @@ export default function RolesToolbar({
               r="7"
             />
 
-            <path
-              d="m20 20-4-4"
-            />
+            <path d="m20 20-4-4" />
           </svg>
 
 
@@ -80,20 +93,23 @@ export default function RolesToolbar({
 
 
       {/* =================================================
-          FILTER
+          FILTERS
       ================================================= */}
 
       <div className="admin-roles-filters">
 
+        {/* =================================================
+            ROLE TYPE
+        ================================================= */}
+
         <select
           value={systemOnly}
-          onChange={
-            onSystemFilterChange
-          }
+          onChange={onSystemFilterChange}
           className="admin-roles-filter-select"
+          aria-label="Lọc loại Role"
         >
           <option value="">
-            Tất cả Role
+            Tất cả loại
           </option>
 
           <option value="true">
@@ -103,6 +119,37 @@ export default function RolesToolbar({
           <option value="false">
             Custom Role
           </option>
+
+        </select>
+
+
+        {/* =================================================
+            ROLE NAME
+        ================================================= */}
+
+        <select
+          value={roleName}
+          onChange={onRoleNameChange}
+          className="admin-roles-filter-select"
+          aria-label="Lọc theo Role"
+        >
+          <option value="">
+            Tất cả Role
+          </option>
+
+          {availableRoles.map(
+            (role) => (
+              <option
+                key={
+                  role.id ??
+                  role.name
+                }
+                value={role.name}
+              >
+                {role.name}
+              </option>
+            )
+          )}
 
         </select>
 

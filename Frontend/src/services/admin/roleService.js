@@ -5,7 +5,13 @@ import api from "../../api";
    GET /api/admin/roles
 ========================================================= */
 
-export async function getRoles({ search = "", systemOnly = null } = {}) {
+export async function getRoles({
+  search = "",
+  systemOnly = null,
+  roleName = "",
+  page = 1,
+  pageSize = 10,
+} = {}) {
   const params = new URLSearchParams();
 
   if (search?.trim()) {
@@ -16,11 +22,17 @@ export async function getRoles({ search = "", systemOnly = null } = {}) {
     params.append("systemOnly", String(systemOnly));
   }
 
+  if (roleName?.trim()) {
+    params.append("roleName", roleName.trim());
+  }
+
+  params.append("page", String(page));
+
+  params.append("pageSize", String(pageSize));
+
   const queryString = params.toString();
 
-  const response = await api.get(
-    `/admin/roles${queryString ? `?${queryString}` : ""}`,
-  );
+  const response = await api.get(`/admin/roles?${queryString}`);
 
   return response.data;
 }

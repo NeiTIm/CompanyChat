@@ -64,6 +64,9 @@ export default function AdminRolesPage() {
   const [roles, setRoles] =
     useState([]);
 
+  const [roleOptions, setRoleOptions] =
+    useState([]);
+
   const [selectedRole, setSelectedRole] =
     useState(null);
 
@@ -97,6 +100,7 @@ export default function AdminRolesPage() {
     type,
     message
   ) {
+
     setToast({
       type,
       message,
@@ -114,6 +118,9 @@ export default function AdminRolesPage() {
   const [systemOnly, setSystemOnly] =
     useState("");
 
+  const [roleName, setRoleName] =
+    useState("");
+
 
   /* =======================================================
      PAGINATION
@@ -124,6 +131,12 @@ export default function AdminRolesPage() {
 
   const [pageSize] =
     useState(10);
+
+  const [total, setTotal] =
+    useState(0);
+
+  const [totalPages, setTotalPages] =
+    useState(1);
 
 
   /* =======================================================
@@ -147,27 +160,115 @@ export default function AdminRolesPage() {
 
 
   /* =======================================================
+     LOAD ROLE OPTIONS
+     
+     Dùng riêng cho dropdown Role Name.
+     
+     Không dùng roles của page hiện tại vì đang
+     server-side pagination.
+  ======================================================= */
+
+  async function loadRoleOptions() {
+
+    if (!canView) {
+      setRoleOptions([]);
+      return;
+    }
+
+    try {
+
+      const data =
+        await getRoles({
+          search: "",
+          systemOnly: null,
+          roleName: "",
+          page: 1,
+          pageSize: 100,
+        });
+
+      const items =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data?.items)
+            ? data.items
+            : [];
+
+      const uniqueRoles = [
+        ...new Map(
+          items
+            .filter(
+              role =>
+                role &&
+                typeof role.name === "string" &&
+                role.name.trim() !== ""
+            )
+            .map(
+              role => [
+                role.name.trim(),
+                role,
+              ]
+            )
+        ).values(),
+      ];
+
+      uniqueRoles.sort(
+        (a, b) =>
+          a.name.localeCompare(
+            b.name,
+            "vi",
+            {
+              sensitivity: "base",
+            }
+          )
+      );
+
+      setRoleOptions(
+        uniqueRoles
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Không thể tải danh sách Role cho filter:",
+        error
+      );
+
+      setRoleOptions([]);
+    }
+  }
+
+
+  /* =======================================================
      LOAD ROLES
   ======================================================= */
 
   async function loadRoles(
     customSearch = search,
-    customSystemOnly = systemOnly
+    customSystemOnly = systemOnly,
+    customRoleName = roleName,
+    customPage = page
   ) {
 
     if (!canView) {
+
       setRoles([]);
+      setTotal(0);
+      setTotalPages(1);
       setLoading(false);
+
       return;
     }
+
 
     try {
 
       setLoading(true);
       setError("");
 
+
       const data =
         await getRoles({
+
           search:
             customSearch.trim(),
 
@@ -175,8 +276,28 @@ export default function AdminRolesPage() {
             customSystemOnly === ""
               ? null
               : customSystemOnly === "true",
+
+          roleName:
+            customRoleName.trim(),
+
+          page:
+            customPage,
+
+          pageSize,
         });
 
+
+      /* =================================================
+         BACKEND RESPONSE
+
+         {
+           items,
+           page,
+           pageSize,
+           total,
+           totalPages
+         }
+      ================================================= */
 
       const items =
         Array.isArray(data)
@@ -190,6 +311,40 @@ export default function AdminRolesPage() {
         items
       );
 
+
+      setTotal(
+        Number(
+          data?.total || 0
+        )
+      );
+
+
+      setTotalPages(
+        Math.max(
+          Number(
+            data?.totalPages || 1
+          ),
+          1
+        )
+      );
+
+
+      /* =================================================
+         BACKEND CÓ THỂ TỰ ĐIỀU CHỈNH PAGE
+      ================================================= */
+
+      if (
+        Number.isInteger(
+          data?.page
+        ) &&
+        data.page !== customPage
+      ) {
+
+        setPage(
+          data.page
+        );
+      }
+
     } catch (error) {
 
       console.error(
@@ -197,13 +352,16 @@ export default function AdminRolesPage() {
         error
       );
 
+
       const message =
         error?.response?.data?.message ||
         "Không thể tải danh sách role.";
 
+
       setError(
         message
       );
+
 
       showToast(
         "error",
@@ -212,8 +370,9 @@ export default function AdminRolesPage() {
 
     } finally {
 
-      setLoading(false);
-
+      setLoading(
+        false
+      );
     }
   }
 
@@ -224,7 +383,18 @@ export default function AdminRolesPage() {
 
   useEffect(() => {
 
-    loadRoles();
+    if (!canView) {
+      return;
+    }
+
+    loadRoles(
+      search,
+      systemOnly,
+      roleName,
+      page
+    );
+
+    loadRoleOptions();
 
   }, [
     canView,
@@ -251,24 +421,49 @@ export default function AdminRolesPage() {
 
     event.preventDefault();
 
-    setPage(1);
+
+    const nextPage =
+      1;
+
+
+    setPage(
+      nextPage
+    );
+
 
     loadRoles(
       search,
-      systemOnly
+      systemOnly,
+      roleName,
+      nextPage
     );
   }
 
 
   function handleClearSearch() {
 
-    setSearch("");
+    const nextSearch =
+      "";
 
-    setPage(1);
+    const nextPage =
+      1;
+
+
+    setSearch(
+      nextSearch
+    );
+
+
+    setPage(
+      nextPage
+    );
+
 
     loadRoles(
-      "",
-      systemOnly
+      nextSearch,
+      systemOnly,
+      roleName,
+      nextPage
     );
   }
 
@@ -284,15 +479,59 @@ export default function AdminRolesPage() {
     const value =
       event.target.value;
 
+    const nextPage =
+      1;
+
+
     setSystemOnly(
       value
     );
 
-    setPage(1);
+
+    setPage(
+      nextPage
+    );
+
 
     loadRoles(
       search,
+      value,
+      roleName,
+      nextPage
+    );
+  }
+
+
+  /* =======================================================
+     ROLE NAME FILTER
+  ======================================================= */
+
+  function handleRoleNameChange(
+    event
+  ) {
+
+    const value =
+      event.target.value;
+
+    const nextPage =
+      1;
+
+
+    setRoleName(
       value
+    );
+
+
+    setPage(
+      nextPage
+    );
+
+
+    loadRoles(
+      search,
+      systemOnly,
+      value,
+      nextPage
     );
   }
 
@@ -305,8 +544,12 @@ export default function AdminRolesPage() {
 
     loadRoles(
       search,
-      systemOnly
+      systemOnly,
+      roleName,
+      page
     );
+
+    loadRoleOptions();
   }
 
 
@@ -322,20 +565,24 @@ export default function AdminRolesPage() {
       return;
     }
 
+
     try {
 
       setDetailLoading(
         true
       );
 
+
       const role =
         await getRole(
           roleId
         );
 
+
       setSelectedRole(
         role
       );
+
 
       setShowDetailModal(
         true
@@ -348,6 +595,7 @@ export default function AdminRolesPage() {
         error
       );
 
+
       showToast(
         "error",
         error?.response?.data?.message ||
@@ -359,7 +607,6 @@ export default function AdminRolesPage() {
       setDetailLoading(
         false
       );
-
     }
   }
 
@@ -376,28 +623,29 @@ export default function AdminRolesPage() {
       return;
     }
 
+
     try {
 
       setDetailLoading(
         true
       );
 
+
       const role =
         await getRole(
           roleId
         );
 
+
       setSelectedRole(
         role
       );
 
-      /*
-       * Nếu đang mở Detail thì đóng Detail
-       * trước khi mở Edit.
-       */
+
       setShowDetailModal(
         false
       );
+
 
       setShowEditModal(
         true
@@ -410,6 +658,7 @@ export default function AdminRolesPage() {
         error
       );
 
+
       showToast(
         "error",
         error?.response?.data?.message ||
@@ -421,7 +670,6 @@ export default function AdminRolesPage() {
       setDetailLoading(
         false
       );
-
     }
   }
 
@@ -438,28 +686,29 @@ export default function AdminRolesPage() {
       return;
     }
 
+
     try {
 
       setDetailLoading(
         true
       );
 
+
       const role =
         await getRole(
           roleId
         );
 
+
       setSelectedRole(
         role
       );
 
-      /*
-       * Đóng Detail trước khi mở
-       * Permission Modal.
-       */
+
       setShowDetailModal(
         false
       );
+
 
       setShowPermissionModal(
         true
@@ -472,6 +721,7 @@ export default function AdminRolesPage() {
         error
       );
 
+
       showToast(
         "error",
         error?.response?.data?.message ||
@@ -483,7 +733,6 @@ export default function AdminRolesPage() {
       setDetailLoading(
         false
       );
-
     }
   }
 
@@ -569,22 +818,21 @@ export default function AdminRolesPage() {
               true
             );
 
+
             await deleteRole(
               role.id
             );
 
 
-            /*
-             * Reload từ backend thay vì
-             * chỉ filter local.
-             *
-             * An toàn hơn cho pagination,
-             * filter và tổng số role.
-             */
             await loadRoles(
               search,
-              systemOnly
+              systemOnly,
+              roleName,
+              page
             );
+
+
+            await loadRoleOptions();
 
 
             setSelectedRole(
@@ -595,9 +843,11 @@ export default function AdminRolesPage() {
                   : current
             );
 
+
             setConfirmModal(
               null
             );
+
 
             showToast(
               "success",
@@ -611,6 +861,7 @@ export default function AdminRolesPage() {
               error
             );
 
+
             showToast(
               "error",
               error?.response?.data?.message ||
@@ -622,7 +873,6 @@ export default function AdminRolesPage() {
             setActionLoading(
               false
             );
-
           }
         },
     });
@@ -639,12 +889,26 @@ export default function AdminRolesPage() {
       false
     );
 
-    setPage(1);
+
+    const nextPage =
+      1;
+
+
+    setPage(
+      nextPage
+    );
+
+
+    await loadRoleOptions();
+
 
     await loadRoles(
       search,
-      systemOnly
+      systemOnly,
+      roleName,
+      nextPage
     );
+
 
     showToast(
       "success",
@@ -664,22 +928,17 @@ export default function AdminRolesPage() {
     );
 
 
-    /*
-     * Reload toàn bộ danh sách.
-     *
-     * Quan trọng vì backend có thể cập nhật
-     * User.Role khi đổi tên Custom Role.
-     */
+    await loadRoleOptions();
+
+
     await loadRoles(
       search,
-      systemOnly
+      systemOnly,
+      roleName,
+      page
     );
 
 
-    /*
-     * Refresh selected role để Detail /
-     * Permission có dữ liệu mới nhất.
-     */
     if (
       selectedRole
     ) {
@@ -691,6 +950,7 @@ export default function AdminRolesPage() {
             selectedRole.id
           );
 
+
         setSelectedRole(
           refreshedRole
         );
@@ -701,7 +961,6 @@ export default function AdminRolesPage() {
           "Không thể refresh role:",
           error
         );
-
       }
     }
 
@@ -724,19 +983,14 @@ export default function AdminRolesPage() {
     );
 
 
-    /*
-     * PermissionCount trong danh sách Role
-     * cần được cập nhật lại từ backend.
-     */
     await loadRoles(
       search,
-      systemOnly
+      systemOnly,
+      roleName,
+      page
     );
 
 
-    /*
-     * Refresh selected role.
-     */
     if (
       selectedRole
     ) {
@@ -748,6 +1002,7 @@ export default function AdminRolesPage() {
             selectedRole.id
           );
 
+
         setSelectedRole(
           refreshedRole
         );
@@ -758,7 +1013,6 @@ export default function AdminRolesPage() {
           "Không thể refresh role:",
           error
         );
-
       }
     }
 
@@ -782,6 +1036,7 @@ export default function AdminRolesPage() {
       return;
     }
 
+
     setConfirmModal(
       null
     );
@@ -792,55 +1047,30 @@ export default function AdminRolesPage() {
      PAGINATION
   ======================================================= */
 
-  const total =
-    roles.length;
-
-
-  const totalPages =
-    Math.max(
-      Math.ceil(
-        total /
-          pageSize
-      ),
-      1
-    );
-
-
-  /*
-   * Nếu sau khi delete/filter,
-   * page hiện tại không còn tồn tại,
-   * đưa về page cuối hợp lệ.
-   */
-  useEffect(() => {
-
-    if (
-      page >
-      totalPages
-    ) {
-
-      setPage(
-        totalPages
-      );
-
-    }
-
-  }, [
-    page,
-    totalPages,
-  ]);
-
-
   function goToPreviousPage() {
 
     if (
+      loading ||
       page <= 1
     ) {
       return;
     }
 
+
+    const nextPage =
+      page - 1;
+
+
     setPage(
-      current =>
-        current - 1
+      nextPage
+    );
+
+
+    loadRoles(
+      search,
+      systemOnly,
+      roleName,
+      nextPage
     );
   }
 
@@ -848,15 +1078,27 @@ export default function AdminRolesPage() {
   function goToNextPage() {
 
     if (
-      page >=
-      totalPages
+      loading ||
+      page >= totalPages
     ) {
       return;
     }
 
+
+    const nextPage =
+      page + 1;
+
+
     setPage(
-      current =>
-        current + 1
+      nextPage
+    );
+
+
+    loadRoles(
+      search,
+      systemOnly,
+      roleName,
+      nextPage
     );
   }
 
@@ -866,13 +1108,24 @@ export default function AdminRolesPage() {
   ) {
 
     if (
+      loading ||
       nextPage < 1 ||
-      nextPage > totalPages
+      nextPage > totalPages ||
+      nextPage === page
     ) {
       return;
     }
 
+
     setPage(
+      nextPage
+    );
+
+
+    loadRoles(
+      search,
+      systemOnly,
+      roleName,
       nextPage
     );
   }
@@ -885,11 +1138,13 @@ export default function AdminRolesPage() {
     const maxVisible =
       5;
 
+
     let start =
       Math.max(
         page - 2,
         1
       );
+
 
     let end =
       Math.min(
@@ -935,23 +1190,6 @@ export default function AdminRolesPage() {
 
   const pageNumbers =
     getPageNumbers();
-
-
-  /* =======================================================
-     PAGINATED DATA
-  ======================================================= */
-
-  const startIndex =
-    (page - 1) *
-    pageSize;
-
-
-  const paginatedRoles =
-    roles.slice(
-      startIndex,
-      startIndex +
-        pageSize
-    );
 
 
   /* =======================================================
@@ -1007,6 +1245,7 @@ export default function AdminRolesPage() {
   ======================================================= */
 
   return (
+
     <div className="admin-roles-page">
 
       {/* =================================================
@@ -1014,6 +1253,7 @@ export default function AdminRolesPage() {
       ================================================= */}
 
       <RolesHeader
+
         loading={
           loading
         }
@@ -1028,6 +1268,7 @@ export default function AdminRolesPage() {
             return;
           }
 
+
           setShowCreateModal(
             true
           );
@@ -1037,6 +1278,7 @@ export default function AdminRolesPage() {
         canCreate={
           canCreate
         }
+
       />
 
 
@@ -1051,6 +1293,7 @@ export default function AdminRolesPage() {
         ================================================= */}
 
         <RolesToolbar
+
           search={
             search
           }
@@ -1074,6 +1317,19 @@ export default function AdminRolesPage() {
           onSystemFilterChange={
             handleSystemFilterChange
           }
+
+          roleName={
+            roleName
+          }
+
+          onRoleNameChange={
+            handleRoleNameChange
+          }
+
+          roles={
+            roleOptions
+          }
+
         />
 
 
@@ -1082,6 +1338,7 @@ export default function AdminRolesPage() {
         ================================================= */}
 
         <RolesSummary
+
           total={
             total
           }
@@ -1105,6 +1362,7 @@ export default function AdminRolesPage() {
           pageSize={
             pageSize
           }
+
         />
 
 
@@ -1113,6 +1371,7 @@ export default function AdminRolesPage() {
         ================================================= */}
 
         {error && (
+
           <div className="admin-users-error">
 
             <span className="admin-error-icon">
@@ -1133,6 +1392,7 @@ export default function AdminRolesPage() {
             </button>
 
           </div>
+
         )}
 
 
@@ -1141,8 +1401,9 @@ export default function AdminRolesPage() {
         ================================================= */}
 
         <RolesTable
+
           roles={
-            paginatedRoles
+            roles
           }
 
           loading={
@@ -1184,6 +1445,7 @@ export default function AdminRolesPage() {
           canAssign={
             canAssign
           }
+
         />
 
 
@@ -1192,12 +1454,13 @@ export default function AdminRolesPage() {
         ================================================= */}
 
         <RolesPagination
+
           loading={
             loading
           }
 
           roles={
-            paginatedRoles
+            roles
           }
 
           page={
@@ -1231,6 +1494,7 @@ export default function AdminRolesPage() {
           onPageChange={
             handlePageChange
           }
+
         />
 
       </section>
@@ -1241,6 +1505,7 @@ export default function AdminRolesPage() {
       ================================================= */}
 
       <CreateRoleModal
+
         open={
           showCreateModal
         }
@@ -1258,6 +1523,7 @@ export default function AdminRolesPage() {
         canCreate={
           canCreate
         }
+
       />
 
 
@@ -1266,6 +1532,7 @@ export default function AdminRolesPage() {
       ================================================= */}
 
       <EditRoleModal
+
         open={
           showEditModal
         }
@@ -1291,6 +1558,7 @@ export default function AdminRolesPage() {
         canUpdate={
           canUpdate
         }
+
       />
 
 
@@ -1299,6 +1567,7 @@ export default function AdminRolesPage() {
       ================================================= */}
 
       <RoleDetailModal
+
         open={
           showDetailModal
         }
@@ -1332,6 +1601,7 @@ export default function AdminRolesPage() {
         canAssign={
           canAssign
         }
+
       />
 
 
@@ -1340,6 +1610,7 @@ export default function AdminRolesPage() {
       ================================================= */}
 
       <RolePermissionModal
+
         open={
           showPermissionModal
         }
@@ -1361,6 +1632,7 @@ export default function AdminRolesPage() {
         canAssign={
           canAssign
         }
+
       />
 
 
@@ -1369,6 +1641,7 @@ export default function AdminRolesPage() {
       ================================================= */}
 
       {confirmModal && (
+
         <div className="admin-modal-overlay">
 
           <div className="admin-confirm-modal">
@@ -1421,10 +1694,12 @@ export default function AdminRolesPage() {
                   actionLoading
                 }
               >
+
                 {actionLoading
                   ? "Đang xử lý..."
                   : confirmModal.confirmText ||
                     "Xác nhận"}
+
               </button>
 
             </div>
@@ -1440,6 +1715,7 @@ export default function AdminRolesPage() {
       ================================================= */}
 
       {toast && (
+
         <div
           className={
             `admin-toast ${
@@ -1465,6 +1741,7 @@ export default function AdminRolesPage() {
           </button>
 
         </div>
+
       )}
 
     </div>

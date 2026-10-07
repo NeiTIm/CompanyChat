@@ -1,6 +1,7 @@
 using CompanyChat.Api.Data;
 using CompanyChat.Api.DTOs.Admin;
 using CompanyChat.Api.Models;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,7 @@ public class RoleController(AppDbContext db) : ControllerBase
 {
     // =========================================================
     // GET: api/admin/roles
+    //
     // Permission: Role.View
     // =========================================================
 
@@ -20,13 +22,36 @@ public class RoleController(AppDbContext db) : ControllerBase
     [Authorize(Policy = "Permission:Role.View")]
     public async Task<IActionResult> GetRoles(
         [FromQuery] string? search = null,
-        [FromQuery] bool? systemOnly = null)
+        [FromQuery] bool? systemOnly = null,
+        [FromQuery] string? roleName = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
     {
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        if (pageSize < 1)
+        {
+            pageSize = 10;
+        }
+
+        if (pageSize > 100)
+        {
+            pageSize = 100;
+        }
+
         search = search?.Trim();
+        roleName = roleName?.Trim();
 
         var query = db.Roles
             .AsNoTracking()
             .AsQueryable();
+
+        // -----------------------------------------------------
+        // Search
+        // -----------------------------------------------------
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -35,15 +60,49 @@ public class RoleController(AppDbContext db) : ControllerBase
                 x.Description.Contains(search));
         }
 
+        // -----------------------------------------------------
+        // System / Custom
+        // -----------------------------------------------------
+
         if (systemOnly.HasValue)
         {
             query = query.Where(x =>
                 x.IsSystemRole == systemOnly.Value);
         }
 
+        // -----------------------------------------------------
+        // Exact Role Name
+        // -----------------------------------------------------
+
+        if (!string.IsNullOrWhiteSpace(roleName))
+        {
+            query = query.Where(x =>
+                x.Name == roleName);
+        }
+
+        // -----------------------------------------------------
+        // Total
+        // -----------------------------------------------------
+
+        var total = await query.CountAsync();
+
+        var totalPages = (int)Math.Ceiling(
+            total / (double)pageSize);
+
+        if (totalPages > 0 && page > totalPages)
+        {
+            page = totalPages;
+        }
+
+        // -----------------------------------------------------
+        // Data
+        // -----------------------------------------------------
+
         var roles = await query
             .OrderByDescending(x => x.IsSystemRole)
             .ThenBy(x => x.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(x => new
             {
                 x.Id,
@@ -61,11 +120,19 @@ public class RoleController(AppDbContext db) : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(roles);
+        return Ok(new
+        {
+            items = roles,
+            page,
+            pageSize,
+            total,
+            totalPages
+        });
     }
 
     // =========================================================
     // GET: api/admin/roles/{id}
+    //
     // Permission: Role.View
     // =========================================================
 
@@ -117,6 +184,7 @@ public class RoleController(AppDbContext db) : ControllerBase
 
     // =========================================================
     // POST: api/admin/roles
+    //
     // Permission: Role.Create
     // =========================================================
 
@@ -127,6 +195,10 @@ public class RoleController(AppDbContext db) : ControllerBase
     {
         var name = request.Name?.Trim();
         var description = request.Description?.Trim() ?? "";
+
+        // -----------------------------------------------------
+        // Validate Name
+        // -----------------------------------------------------
 
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -144,6 +216,10 @@ public class RoleController(AppDbContext db) : ControllerBase
             });
         }
 
+        // -----------------------------------------------------
+        // Validate Description
+        // -----------------------------------------------------
+
         if (description.Length > 500)
         {
             return BadRequest(new
@@ -151,6 +227,10 @@ public class RoleController(AppDbContext db) : ControllerBase
                 message = "Mô tả role không được vượt quá 500 ký tự."
             });
         }
+
+        // -----------------------------------------------------
+        // Duplicate
+        // -----------------------------------------------------
 
         var exists = await db.Roles
             .AnyAsync(x => x.Name == name);
@@ -162,6 +242,10 @@ public class RoleController(AppDbContext db) : ControllerBase
                 message = "Role này đã tồn tại."
             });
         }
+
+        // -----------------------------------------------------
+        // Create
+        // -----------------------------------------------------
 
         var role = new Role
         {
@@ -190,6 +274,7 @@ public class RoleController(AppDbContext db) : ControllerBase
 
     // =========================================================
     // PUT: api/admin/roles/{id}
+    //
     // Permission: Role.Update
     // =========================================================
 
@@ -210,12 +295,12 @@ public class RoleController(AppDbContext db) : ControllerBase
             });
         }
 
-        // =====================================================
-        // Validate
-        // =====================================================
-
         var newName = request.Name?.Trim();
         var description = request.Description?.Trim() ?? "";
+
+        // -----------------------------------------------------
+        // Validate Name
+        // -----------------------------------------------------
 
         if (string.IsNullOrWhiteSpace(newName))
         {
@@ -233,6 +318,10 @@ public class RoleController(AppDbContext db) : ControllerBase
             });
         }
 
+        // -----------------------------------------------------
+        // Validate Description
+        // -----------------------------------------------------
+
         if (description.Length > 500)
         {
             return BadRequest(new
@@ -241,10 +330,11 @@ public class RoleController(AppDbContext db) : ControllerBase
             });
         }
 
-        // =====================================================
+        // -----------------------------------------------------
         // System Role
-        // Không cho đổi tên
-        // =====================================================
+        //
+        // Không cho đổi tên System Role.
+        // -----------------------------------------------------
 
         if (role.IsSystemRole &&
             !string.Equals(
@@ -258,9 +348,9 @@ public class RoleController(AppDbContext db) : ControllerBase
             });
         }
 
-        // =====================================================
-        // Kiểm tra tên trùng
-        // =====================================================
+        // -----------------------------------------------------
+        // Duplicate Name
+        // -----------------------------------------------------
 
         var duplicate = await db.Roles
             .AnyAsync(x =>
@@ -280,11 +370,12 @@ public class RoleController(AppDbContext db) : ControllerBase
         role.Name = newName;
         role.Description = description;
 
-        // =====================================================
-        // Custom Role đổi tên
+        // -----------------------------------------------------
+        // Custom Role Rename
         //
-        // User.Role đang lưu string nên phải đồng bộ.
-        // =====================================================
+        // User.Role đang lưu string.
+        // Vì vậy phải đồng bộ User.Role.
+        // -----------------------------------------------------
 
         if (!role.IsSystemRole &&
             !string.Equals(
@@ -309,6 +400,7 @@ public class RoleController(AppDbContext db) : ControllerBase
         return Ok(new
         {
             message = "Cập nhật role thành công.",
+
             role = new
             {
                 role.Id,
@@ -322,6 +414,7 @@ public class RoleController(AppDbContext db) : ControllerBase
 
     // =========================================================
     // DELETE: api/admin/roles/{id}
+    //
     // Permission: Role.Delete
     // =========================================================
 
@@ -340,9 +433,9 @@ public class RoleController(AppDbContext db) : ControllerBase
             });
         }
 
-        // =====================================================
-        // Không cho xóa System Role
-        // =====================================================
+        // -----------------------------------------------------
+        // System Role
+        // -----------------------------------------------------
 
         if (role.IsSystemRole)
         {
@@ -352,9 +445,9 @@ public class RoleController(AppDbContext db) : ControllerBase
             });
         }
 
-        // =====================================================
-        // Không cho xóa Role đang được sử dụng
-        // =====================================================
+        // -----------------------------------------------------
+        // Role đang được sử dụng
+        // -----------------------------------------------------
 
         var usersUsingRole = await db.Users
             .AnyAsync(x =>
@@ -370,10 +463,9 @@ public class RoleController(AppDbContext db) : ControllerBase
             });
         }
 
-        // =====================================================
-        // RolePermission sẽ được Cascade Delete
-        // theo AppDbContext hiện tại.
-        // =====================================================
+        // -----------------------------------------------------
+        // Delete
+        // -----------------------------------------------------
 
         db.Roles.Remove(role);
 
@@ -387,6 +479,7 @@ public class RoleController(AppDbContext db) : ControllerBase
 
     // =========================================================
     // GET: api/admin/roles/{id}/permissions
+    //
     // Permission: Role.View
     // =========================================================
 
@@ -424,6 +517,7 @@ public class RoleController(AppDbContext db) : ControllerBase
 
     // =========================================================
     // PUT: api/admin/roles/{id}/permissions
+    //
     // Permission: Role.Assign
     // =========================================================
 
@@ -449,9 +543,9 @@ public class RoleController(AppDbContext db) : ControllerBase
             .ToList()
             ?? [];
 
-        // =====================================================
-        // Kiểm tra Permission tồn tại
-        // =====================================================
+        // -----------------------------------------------------
+        // Validate Permission IDs
+        // -----------------------------------------------------
 
         var existingPermissionIds = await db.Permissions
             .Where(x => permissionIds.Contains(x.Id))
@@ -471,9 +565,9 @@ public class RoleController(AppDbContext db) : ControllerBase
             });
         }
 
-        // =====================================================
-        // Lấy mapping hiện tại
-        // =====================================================
+        // -----------------------------------------------------
+        // Existing mappings
+        // -----------------------------------------------------
 
         var currentMappings = await db.RolePermissions
             .Where(x => x.RoleId == id)
@@ -481,9 +575,9 @@ public class RoleController(AppDbContext db) : ControllerBase
 
         db.RolePermissions.RemoveRange(currentMappings);
 
-        // =====================================================
-        // Tạo mapping mới
-        // =====================================================
+        // -----------------------------------------------------
+        // New mappings
+        // -----------------------------------------------------
 
         var newMappings = existingPermissionIds
             .Select(permissionId => new RolePermission
@@ -521,6 +615,10 @@ public class RoleController(AppDbContext db) : ControllerBase
         int id,
         int permissionId)
     {
+        // -----------------------------------------------------
+        // Role
+        // -----------------------------------------------------
+
         var roleExists = await db.Roles
             .AnyAsync(x => x.Id == id);
 
@@ -531,6 +629,10 @@ public class RoleController(AppDbContext db) : ControllerBase
                 message = "Không tìm thấy role."
             });
         }
+
+        // -----------------------------------------------------
+        // Permission
+        // -----------------------------------------------------
 
         var permissionExists = await db.Permissions
             .AnyAsync(x => x.Id == permissionId);
@@ -543,6 +645,10 @@ public class RoleController(AppDbContext db) : ControllerBase
             });
         }
 
+        // -----------------------------------------------------
+        // Duplicate Mapping
+        // -----------------------------------------------------
+
         var mappingExists = await db.RolePermissions
             .AnyAsync(x =>
                 x.RoleId == id &&
@@ -552,7 +658,8 @@ public class RoleController(AppDbContext db) : ControllerBase
         {
             return Conflict(new
             {
-                message = "Permission này đã được gán cho role."
+                message =
+                    "Permission này đã được gán cho role."
             });
         }
 
@@ -616,7 +723,8 @@ public class RoleController(AppDbContext db) : ControllerBase
 
             return NotFound(new
             {
-                message = "Permission chưa được gán cho role."
+                message =
+                    "Permission chưa được gán cho role."
             });
         }
 
@@ -638,8 +746,7 @@ public class RoleController(AppDbContext db) : ControllerBase
     //
     // Permission: Role.Assign
     //
-    // Chỉ người có quyền Role.Assign mới được xem
-    // Permission Matrix.
+    // Dùng cho Permission Matrix.
     // =========================================================
 
     [HttpGet("{id:int}/available-permissions")]
@@ -708,6 +815,10 @@ public class RoleController(AppDbContext db) : ControllerBase
             pageSize = 100;
         }
 
+        // -----------------------------------------------------
+        // Role
+        // -----------------------------------------------------
+
         var role = await db.Roles
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id);
@@ -721,6 +832,10 @@ public class RoleController(AppDbContext db) : ControllerBase
         }
 
         search = search?.Trim();
+
+        // -----------------------------------------------------
+        // Users
+        // -----------------------------------------------------
 
         var query = db.Users
             .AsNoTracking()
@@ -737,6 +852,14 @@ public class RoleController(AppDbContext db) : ControllerBase
         }
 
         var total = await query.CountAsync();
+
+        var totalPages = (int)Math.Ceiling(
+            total / (double)pageSize);
+
+        if (totalPages > 0 && page > totalPages)
+        {
+            page = totalPages;
+        }
 
         var users = await query
             .OrderBy(x => x.FullName)
@@ -759,9 +882,6 @@ public class RoleController(AppDbContext db) : ControllerBase
                     : null
             })
             .ToListAsync();
-
-        var totalPages = (int)Math.Ceiling(
-            total / (double)pageSize);
 
         return Ok(new
         {
