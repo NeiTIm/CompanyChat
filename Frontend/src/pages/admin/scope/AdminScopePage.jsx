@@ -20,9 +20,13 @@ import ScopePagination from "./components/ScopePagination";
 import ScopeSummary from "./components/ScopeSummary";
 import ScopeTable from "./components/ScopeTable";
 import ScopeToolbar from "./components/ScopeToolbar";
+
 import Toast from "../../../components/common/Toast";
+
 import AssignDepartmentModal from "./AssignDepartmentModal";
 import ScopeUserModal from "./ScopeUserModal";
+
+import GroupScopeSection from "./GroupScopeSection";
 
 /* =========================================================
    HELPERS
@@ -46,17 +50,13 @@ const getUserRole = (user) =>
   user?.Role ??
   "—";
 
-const getDepartmentId = (
-  department,
-) =>
+const getDepartmentId = (department) =>
   department?.departmentId ??
   department?.DepartmentId ??
   department?.id ??
   department?.Id;
 
-const getDepartmentName = (
-  department,
-) =>
+const getDepartmentName = (department) =>
   department?.departmentName ??
   department?.DepartmentName ??
   department?.name ??
@@ -67,9 +67,7 @@ const getDepartmentName = (
    NORMALIZE PAGINATION RESPONSE
 ========================================================= */
 
-const normalizeUsersResponse = (
-  data,
-) => {
+const normalizeUsersResponse = (data) => {
   /* -------------------------------------------------------
      API trả về trực tiếp array
   ------------------------------------------------------- */
@@ -79,10 +77,8 @@ const normalizeUsersResponse = (
       items: data,
       total: data.length,
       page: 1,
-      pageSize:
-        data.length || 20,
-      totalPages:
-        data.length ? 1 : 0,
+      pageSize: data.length || 20,
+      totalPages: data.length ? 1 : 0,
     };
   }
 
@@ -126,11 +122,9 @@ const normalizeUsersResponse = (
     data?.PageSize ??
     20;
 
-  const calculatedTotalPages =
-    Math.ceil(
-      Number(total) /
-        Number(pageSize || 20),
-    );
+  const calculatedTotalPages = Math.ceil(
+    Number(total) / Number(pageSize || 20),
+  );
 
   const totalPages =
     data?.totalPages ??
@@ -138,21 +132,15 @@ const normalizeUsersResponse = (
     calculatedTotalPages;
 
   return {
-    items: Array.isArray(items)
-      ? items
-      : [],
+    items: Array.isArray(items) ? items : [],
 
-    total:
-      Number(total) || 0,
+    total: Number(total) || 0,
 
-    page:
-      Number(page) || 1,
+    page: Number(page) || 1,
 
-    pageSize:
-      Number(pageSize) || 20,
+    pageSize: Number(pageSize) || 20,
 
-    totalPages:
-      Number(totalPages) || 0,
+    totalPages: Number(totalPages) || 0,
   };
 };
 
@@ -160,9 +148,7 @@ const normalizeUsersResponse = (
    NORMALIZE USER SCOPE RESPONSE
 ========================================================= */
 
-const normalizeUserScope = (
-  data,
-) => {
+const normalizeUserScope = (data) => {
   if (!data) {
     return {
       user: null,
@@ -187,11 +173,7 @@ const normalizeUserScope = (
     data?.ManagedDepartmentIds ??
     [];
 
-  if (
-    !Array.isArray(
-      departmentIds,
-    )
-  ) {
+  if (!Array.isArray(departmentIds)) {
     departmentIds = [];
   }
 
@@ -204,14 +186,13 @@ const normalizeUserScope = (
     departmentIds.length === 0 &&
     Array.isArray(departments)
   ) {
-    departmentIds =
-      departments
-        .map(getDepartmentId)
-        .filter(
-          (id) =>
-            id !== null &&
-            id !== undefined,
-        );
+    departmentIds = departments
+      .map(getDepartmentId)
+      .filter(
+        (id) =>
+          id !== null &&
+          id !== undefined,
+      );
   }
 
   /* -------------------------------------------------------
@@ -236,15 +217,11 @@ const normalizeUserScope = (
       data?.User ??
       null,
 
-    departments:
-      Array.isArray(
-        departments,
-      )
-        ? departments
-        : [],
+    departments: Array.isArray(departments)
+      ? departments
+      : [],
 
-    departmentIds:
-      normalizedDepartmentIds,
+    departmentIds: normalizedDepartmentIds,
   };
 };
 
@@ -252,9 +229,7 @@ const normalizeUserScope = (
    NORMALIZE DEPARTMENT LIST
 ========================================================= */
 
-const normalizeDepartments = (
-  data,
-) => {
+const normalizeDepartments = (data) => {
   const rawDepartments =
     Array.isArray(data)
       ? data
@@ -266,11 +241,7 @@ const normalizeDepartments = (
         data?.Departments ??
         [];
 
-  if (
-    !Array.isArray(
-      rawDepartments,
-    )
-  ) {
+  if (!Array.isArray(rawDepartments)) {
     return [];
   }
 
@@ -284,17 +255,14 @@ const normalizeDepartments = (
         department?.id ??
         department?.Id;
 
-      const departmentId =
-        Number(rawId);
+      const departmentId = Number(rawId);
 
       /* ---------------------------------------------------
          Invalid ID
       --------------------------------------------------- */
 
       if (
-        !Number.isInteger(
-          departmentId,
-        ) ||
+        !Number.isInteger(departmentId) ||
         departmentId <= 0
       ) {
         return null;
@@ -304,17 +272,11 @@ const normalizeDepartments = (
          Duplicate ID
       --------------------------------------------------- */
 
-      if (
-        seenIds.has(
-          departmentId,
-        )
-      ) {
+      if (seenIds.has(departmentId)) {
         return null;
       }
 
-      seenIds.add(
-        departmentId,
-      );
+      seenIds.add(departmentId);
 
       return {
         departmentId,
@@ -339,9 +301,7 @@ const normalizeDepartments = (
    NORMALIZE STATISTICS
 ========================================================= */
 
-const normalizeStatistics = (
-  data,
-) => {
+const normalizeStatistics = (data) => {
   if (!data) {
     return {
       totalUsers: 0,
@@ -354,6 +314,7 @@ const normalizeStatistics = (
   return {
     /* -----------------------------------------------------
        TỔNG USER
+
        Phải là tổng tất cả User trong hệ thống.
        KHÔNG fallback sang totalUsersWithScope.
     ----------------------------------------------------- */
@@ -413,49 +374,44 @@ export default function AdminScopePage() {
      PERMISSIONS
   ======================================================= */
 
-  const canViewScope =
-    hasPermission(
-      "Scope.View",
-    );
+  const canViewScope = hasPermission("Scope.View");
 
-  const canAssignScope =
-    hasPermission(
-      "Scope.Assign",
-    );
+  const canAssignScope = hasPermission("Scope.Assign");
+
+  /* =======================================================
+     ACTIVE TAB
+  ======================================================= */
+
+  const [activeScopeTab, setActiveScopeTab] =
+    useState("direct");
 
   /* =======================================================
      USERS
   ======================================================= */
 
-  const [users, setUsers] =
-    useState([]);
+  const [users, setUsers] = useState([]);
 
   const [
     searchInput,
     setSearchInput,
   ] = useState("");
 
-  const [search, setSearch] =
-    useState("");
+  const [search, setSearch] = useState("");
 
-  const [page, setPage] =
-    useState(1);
+  const [page, setPage] = useState(1);
 
   const pageSize = 10;
 
-  const [total, setTotal] =
-    useState(0);
+  const [total, setTotal] = useState(0);
 
   const [
     totalPages,
     setTotalPages,
   ] = useState(0);
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
 
   /* =======================================================
      STATISTICS
@@ -498,11 +454,7 @@ export default function AdminScopePage() {
   /* =======================================================
      EDIT MODAL
   ======================================================= */
-const [toast, setToast] = useState({
-  type: "success",
-  message: "",
-  title: "",
-});
+
   const [
     selectedUser,
     setSelectedUser,
@@ -528,8 +480,7 @@ const [toast, setToast] = useState({
     setScopeLoading,
   ] = useState(false);
 
-  const [saving, setSaving] =
-    useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [
     scopeError,
@@ -537,100 +488,92 @@ const [toast, setToast] = useState({
   ] = useState("");
 
   /* =======================================================
+     TOAST
+  ======================================================= */
+
+  const [toast, setToast] = useState({
+    type: "success",
+    message: "",
+    title: "",
+  });
+
+  /* =======================================================
      LOAD USERS
   ======================================================= */
 
-  const loadUsers =
-    useCallback(
-      async ({
-        targetPage = 1,
-        targetSearch = "",
-      } = {}) => {
-        try {
-          setLoading(true);
-          setError("");
+  const loadUsers = useCallback(
+    async ({
+      targetPage = 1,
+      targetSearch = "",
+    } = {}) => {
+      try {
+        setLoading(true);
+        setError("");
 
-          const response =
-            await getScopeUsers({
-              search:
-                targetSearch,
-              page: targetPage,
-              pageSize,
-            });
+        const response = await getScopeUsers({
+          search: targetSearch,
+          page: targetPage,
+          pageSize,
+        });
 
-          const normalized =
-            normalizeUsersResponse(
-              response,
-            );
+        const normalized =
+          normalizeUsersResponse(response);
 
-          setUsers(
-            normalized.items,
-          );
+        setUsers(normalized.items);
 
-          setTotal(
-            normalized.total,
-          );
+        setTotal(normalized.total);
 
-          setTotalPages(
-            normalized.totalPages,
-          );
-        } catch (err) {
-          console.error(
-            "Failed to load scope users:",
-            err,
-          );
+        setTotalPages(
+          normalized.totalPages,
+        );
+      } catch (err) {
+        console.error(
+          "Failed to load scope users:",
+          err,
+        );
 
-          setUsers([]);
-          setTotal(0);
-          setTotalPages(0);
+        setUsers([]);
+        setTotal(0);
+        setTotalPages(0);
 
-          setError(
-            err?.response?.data
-              ?.message ||
-              err?.response?.data
-                ?.title ||
-              "Không thể tải danh sách Scope.",
-          );
-        } finally {
-          setLoading(false);
-        }
-      },
-      [],
-    );
+        setError(
+          err?.response?.data?.message ||
+            err?.response?.data?.title ||
+            "Không thể tải danh sách Scope.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   /* =======================================================
      LOAD STATISTICS
   ======================================================= */
 
-  const loadStatistics =
-    useCallback(
-      async () => {
-        try {
-          setStatisticsLoading(
-            true,
-          );
+  const loadStatistics = useCallback(
+    async () => {
+      try {
+        setStatisticsLoading(true);
 
-          const response =
-            await getScopeStatistics();
+        const response =
+          await getScopeStatistics();
 
-          setStatistics(
-            normalizeStatistics(
-              response,
-            ),
-          );
-        } catch (err) {
-          console.error(
-            "Failed to load scope statistics:",
-            err,
-          );
-        } finally {
-          setStatisticsLoading(
-            false,
-          );
-        }
-      },
-      [],
-    );
+        setStatistics(
+          normalizeStatistics(response),
+        );
+      } catch (err) {
+        console.error(
+          "Failed to load scope statistics:",
+          err,
+        );
+      } finally {
+        setStatisticsLoading(false);
+      }
+    },
+    [],
+  );
 
   /* =======================================================
      INITIAL / PAGE / SEARCH LOAD
@@ -671,13 +614,10 @@ const [toast, setToast] = useState({
      SEARCH SUBMIT
   ======================================================= */
 
-  const handleSearchSubmit = (
-    event,
-  ) => {
+  const handleSearchSubmit = (event) => {
     event.preventDefault();
 
-    const value =
-      searchInput.trim();
+    const value = searchInput.trim();
 
     setPage(1);
     setSearch(value);
@@ -687,9 +627,7 @@ const [toast, setToast] = useState({
      SEARCH INPUT
   ======================================================= */
 
-  const handleSearchChange = (
-    value,
-  ) => {
+  const handleSearchChange = (value) => {
     setSearchInput(value);
   };
 
@@ -707,97 +645,85 @@ const [toast, setToast] = useState({
      REFRESH
   ======================================================= */
 
-  const handleRefresh =
-    useCallback(
-      async () => {
-        if (!canViewScope) {
-          return;
-        }
+  const handleRefresh = useCallback(
+    async () => {
+      if (!canViewScope) {
+        return;
+      }
 
-        await Promise.all([
-          loadUsers({
-            targetPage: page,
-            targetSearch: search,
-          }),
+      await Promise.all([
+        loadUsers({
+          targetPage: page,
+          targetSearch: search,
+        }),
 
-          loadStatistics(),
-        ]);
-      },
-      [
-        canViewScope,
-        loadUsers,
-        loadStatistics,
-        page,
-        search,
-      ],
-    );
+        loadStatistics(),
+      ]);
+    },
+    [
+      canViewScope,
+      loadUsers,
+      loadStatistics,
+      page,
+      search,
+    ],
+  );
 
   /* =======================================================
      LOAD USER SCOPE
   ======================================================= */
 
-  const loadUserScope =
-    useCallback(
-      async (user) => {
-        const userId =
-          getUserId(user);
+  const loadUserScope = useCallback(
+    async (user) => {
+      const userId = getUserId(user);
 
-        if (!userId) {
-          return null;
-        }
+      if (!userId) {
+        return null;
+      }
 
-        const response =
-          await getUserScope(
-            userId,
-          );
+      const response =
+        await getUserScope(userId);
 
-        return normalizeUserScope(
-          response,
-        );
-      },
-      [],
-    );
+      return normalizeUserScope(response);
+    },
+    [],
+  );
 
   /* =======================================================
      OPEN VIEW MODAL
   ======================================================= */
 
-  const handleOpenView =
-    async (user) => {
-      const userId =
-        getUserId(user);
+  const handleOpenView = async (user) => {
+    const userId = getUserId(user);
 
-      if (!userId) {
-        return;
-      }
+    if (!userId) {
+      return;
+    }
 
-      try {
-        setViewingUser(user);
-        setViewingDepartments([]);
-        setViewLoading(true);
+    try {
+      setViewingUser(user);
 
-        const normalized =
-          await loadUserScope(
-            user,
-          );
+      setViewingDepartments([]);
 
-        setViewingDepartments(
-          normalized?.departments ??
-            [],
-        );
-      } catch (err) {
-        console.error(
-          "Failed to load scope details:",
-          err,
-        );
+      setViewLoading(true);
 
-        setViewingDepartments(
-          [],
-        );
-      } finally {
-        setViewLoading(false);
-      }
-    };
+      const normalized =
+        await loadUserScope(user);
+
+      setViewingDepartments(
+        normalized?.departments ?? [],
+      );
+    } catch (err) {
+      console.error(
+        "Failed to load scope details:",
+        err,
+      );
+
+      setViewingDepartments([]);
+    } finally {
+      setViewLoading(false);
+    }
+  };
 
   /* =======================================================
      CLOSE VIEW MODAL
@@ -809,6 +735,7 @@ const [toast, setToast] = useState({
     }
 
     setViewingUser(null);
+
     setViewingDepartments([]);
   };
 
@@ -816,118 +743,105 @@ const [toast, setToast] = useState({
      OPEN EDIT MODAL
   ======================================================= */
 
-  const handleOpenEdit =
-    async (user) => {
-      if (!canAssignScope) {
-        return;
-      }
+  const handleOpenEdit = async (user) => {
+    if (!canAssignScope) {
+      return;
+    }
 
-      const userId =
-        getUserId(user);
+    const userId = getUserId(user);
 
-      if (!userId) {
-        return;
-      }
+    if (!userId) {
+      return;
+    }
 
-      try {
-        setSelectedUser(user);
+    try {
+      setSelectedUser(user);
 
-        setScopeLoading(true);
-        setScopeError("");
+      setScopeLoading(true);
 
-        setAvailableDepartments(
-          [],
-        );
+      setScopeError("");
 
-        setSelectedDepartmentIds(
-          [],
-        );
+      setAvailableDepartments([]);
 
-        setOriginalDepartmentIds(
-          [],
-        );
+      setSelectedDepartmentIds([]);
 
-        /* -------------------------------------------------
-           LOAD ALL DEPARTMENTS + CURRENT SCOPE
-        ------------------------------------------------- */
+      setOriginalDepartmentIds([]);
 
-        const [
+      /* -------------------------------------------------
+         LOAD ALL DEPARTMENTS + CURRENT SCOPE
+      ------------------------------------------------- */
+
+      const [
+        departmentsResponse,
+        scopeResponse,
+      ] = await Promise.all([
+        getScopeDepartments({
+          page: 1,
+          pageSize: 100,
+        }),
+
+        getUserScope(userId),
+      ]);
+
+      /* -------------------------------------------------
+         NORMALIZE ALL DEPARTMENTS
+      ------------------------------------------------- */
+
+      const departments =
+        normalizeDepartments(
           departmentsResponse,
+        );
+
+      setAvailableDepartments(
+        departments,
+      );
+
+      /* -------------------------------------------------
+         NORMALIZE CURRENT USER SCOPE
+      ------------------------------------------------- */
+
+      const normalized =
+        normalizeUserScope(
           scopeResponse,
-        ] = await Promise.all([
-          getScopeDepartments({
-            page: 1,
-            pageSize: 100,
-          }),
-
-          getUserScope(
-            userId,
-          ),
-        ]);
-
-        /* -------------------------------------------------
-           NORMALIZE ALL DEPARTMENTS
-        ------------------------------------------------- */
-
-        const departments =
-          normalizeDepartments(
-            departmentsResponse,
-          );
-
-        setAvailableDepartments(
-          departments,
         );
 
-        /* -------------------------------------------------
-           NORMALIZE CURRENT USER SCOPE
-        ------------------------------------------------- */
+      const currentIds = [
+        ...new Set(
+          (
+            normalized?.departmentIds ??
+            []
+          )
+            .map(Number)
+            .filter(
+              (id) =>
+                Number.isInteger(id) &&
+                id > 0,
+            ),
+        ),
+      ];
 
-        const normalized =
-          normalizeUserScope(
-            scopeResponse,
-          );
+      setSelectedDepartmentIds(
+        currentIds,
+      );
 
-        const currentIds = [
-          ...new Set(
-            (
-              normalized?.departmentIds ??
-              []
-            )
-              .map(Number)
-              .filter(
-                (id) =>
-                  Number.isInteger(
-                    id,
-                  ) &&
-                  id > 0,
-              ),
-          ),
-        ];
+      setOriginalDepartmentIds(
+        currentIds,
+      );
+    } catch (err) {
+      console.error(
+        "Failed to load user scope:",
+        err,
+      );
 
-        setSelectedDepartmentIds(
-          currentIds,
-        );
-
-        setOriginalDepartmentIds(
-          currentIds,
-        );
-      } catch (err) {
-        console.error(
-          "Failed to load user scope:",
-          err,
-        );
-
-        setScopeError(
-          err?.response?.data
-            ?.message ||
-            err?.response?.data
-              ?.title ||
-            "Không thể tải thông tin Scope.",
-        );
-      } finally {
-        setScopeLoading(false);
-      }
-    };
+      setScopeError(
+        err?.response?.data?.message ||
+          err?.response?.data?.title ||
+          "Không thể tải thông tin Scope.",
+      );
+    } finally {
+      setScopeLoading(false);
+    }
+  };
 
   /* =======================================================
      CLOSE EDIT MODAL
@@ -940,246 +854,208 @@ const [toast, setToast] = useState({
 
     setSelectedUser(null);
 
-    setAvailableDepartments(
-      [],
-    );
+    setAvailableDepartments([]);
 
-    setSelectedDepartmentIds(
-      [],
-    );
+    setSelectedDepartmentIds([]);
 
-    setOriginalDepartmentIds(
-      [],
-    );
+    setOriginalDepartmentIds([]);
 
     setScopeError("");
   };
 
   /* =======================================================
-   SAVE
-======================================================= */
+     SAVE
+  ======================================================= */
 
-/* =======================================================
-   SAVE
-======================================================= */
+  const handleSave = async (
+    idsFromModal = null,
+  ) => {
+    if (!canAssignScope) {
+      return;
+    }
 
-const handleSave = async (
-  idsFromModal = null,
-) => {
-  if (!canAssignScope) {
-    return;
-  }
+    const userId =
+      getUserId(selectedUser);
 
-  const userId =
-    getUserId(
-      selectedUser,
-    );
+    if (!userId) {
+      return;
+    }
 
-  if (!userId) {
-    return;
-  }
+    try {
+      setSaving(true);
 
-  try {
-    setSaving(true);
-    setScopeError("");
+      setScopeError("");
 
-    /* -----------------------------------------------------
-       ƯU TIÊN IDS TỪ MODAL
-    ----------------------------------------------------- */
+      /* ---------------------------------------------------
+         ƯU TIÊN IDS TỪ MODAL
+      --------------------------------------------------- */
 
-    const sourceIds =
-      Array.isArray(idsFromModal)
-        ? idsFromModal
-        : selectedDepartmentIds;
+      const sourceIds =
+        Array.isArray(idsFromModal)
+          ? idsFromModal
+          : selectedDepartmentIds;
 
-    /* -----------------------------------------------------
-       NORMALIZE FINAL IDS
-    ----------------------------------------------------- */
+      /* ---------------------------------------------------
+         NORMALIZE FINAL IDS
+      --------------------------------------------------- */
 
-    const ids = [
-      ...new Set(
-        sourceIds
-          .map(Number)
-          .filter(
-            (id) =>
-              Number.isInteger(id) &&
-              id > 0,
-          ),
-      ),
-    ];
+      const ids = [
+        ...new Set(
+          sourceIds
+            .map(Number)
+            .filter(
+              (id) =>
+                Number.isInteger(id) &&
+                id > 0,
+            ),
+        ),
+      ];
 
-    console.log(
-      "[Scope] Saving:",
-      {
+      console.log(
+        "[Scope] Saving:",
+        {
+          userId,
+          departmentIds: ids,
+        },
+      );
+
+      /* ---------------------------------------------------
+         SAVE TO BACKEND
+      --------------------------------------------------- */
+
+      await replaceUserScopes(
         userId,
-        departmentIds: ids,
-      },
-    );
+        ids,
+      );
 
-    /* -----------------------------------------------------
-       SAVE TO BACKEND
-    ----------------------------------------------------- */
+      /* ---------------------------------------------------
+         UPDATE LOCAL STATE
+      --------------------------------------------------- */
 
-    await replaceUserScopes(
-      userId,
-      ids,
-    );
+      setOriginalDepartmentIds(ids);
 
-    /* -----------------------------------------------------
-       UPDATE LOCAL STATE
-    ----------------------------------------------------- */
+      setSelectedDepartmentIds(ids);
 
-    setOriginalDepartmentIds(
-      ids,
-    );
+      /* ---------------------------------------------------
+         REFRESH DATA
+      --------------------------------------------------- */
 
-    setSelectedDepartmentIds(
-      ids,
-    );
+      await Promise.all([
+        loadUsers({
+          targetPage: page,
+          targetSearch: search,
+        }),
 
-    /* -----------------------------------------------------
-       REFRESH DATA
-    ----------------------------------------------------- */
+        loadStatistics(),
+      ]);
 
-    await Promise.all([
-      loadUsers({
-        targetPage: page,
-        targetSearch: search,
-      }),
+      /* ---------------------------------------------------
+         SUCCESS TOAST
+      --------------------------------------------------- */
 
-      loadStatistics(),
-    ]);
+      setToast({
+        type: "success",
+        title: "Cập nhật thành công",
+        message:
+          `Đã cập nhật Scope cho ${getUserName(
+            selectedUser,
+          )}.`,
+      });
 
-    /* -----------------------------------------------------
-       SUCCESS TOAST
-    ----------------------------------------------------- */
+      /* ---------------------------------------------------
+         CLOSE MODAL
+      --------------------------------------------------- */
 
-    setToast({
-      type: "success",
-      title: "Cập nhật thành công",
-      message:
-        `Đã cập nhật Scope cho ${getUserName(
-          selectedUser,
-        )}.`,
-    });
+      setSelectedUser(null);
 
-    /* -----------------------------------------------------
-       CLOSE MODAL
-    ----------------------------------------------------- */
+      setAvailableDepartments([]);
 
-    setSelectedUser(null);
+      setSelectedDepartmentIds([]);
 
-    setAvailableDepartments(
-      [],
-    );
+      setOriginalDepartmentIds([]);
 
-    setSelectedDepartmentIds(
-      [],
-    );
+      setScopeError("");
+    } catch (err) {
+      console.error(
+        "Failed to save user scope:",
+        err,
+      );
 
-    setOriginalDepartmentIds(
-      [],
-    );
+      console.error(
+        "[Scope] Save error response:",
+        err?.response?.data,
+      );
 
-    setScopeError("");
-  } catch (err) {
-    console.error(
-      "Failed to save user scope:",
-      err,
-    );
+      const errorMessage =
+        err?.response?.data?.message ||
+        err?.response?.data?.title ||
+        "Không thể cập nhật Scope. Vui lòng thử lại.";
 
-    console.error(
-      "[Scope] Save error response:",
-      err?.response?.data,
-    );
+      setScopeError(errorMessage);
 
-    const errorMessage =
-      err?.response?.data
-        ?.message ||
-      err?.response?.data
-        ?.title ||
-      "Không thể cập nhật Scope. Vui lòng thử lại.";
+      /* ---------------------------------------------------
+         ERROR TOAST
+      --------------------------------------------------- */
 
-    setScopeError(
-      errorMessage,
-    );
-
-    /* -----------------------------------------------------
-       ERROR TOAST
-    ----------------------------------------------------- */
-
-    setToast({
-      type: "error",
-      title: "Cập nhật Scope thất bại",
-      message: errorMessage,
-    });
-  } finally {
-    setSaving(false);
-  }
-};
+      setToast({
+        type: "error",
+        title: "Cập nhật Scope thất bại",
+        message: errorMessage,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   /* =======================================================
      PAGINATION
   ======================================================= */
 
-  const handlePageChange =
-    (nextPage) => {
-      const target =
-        Number(nextPage);
+  const handlePageChange = (nextPage) => {
+    const target = Number(nextPage);
 
-      if (
-        !Number.isInteger(
-          target,
-        ) ||
-        target < 1
-      ) {
-        return;
-      }
+    if (
+      !Number.isInteger(target) ||
+      target < 1
+    ) {
+      return;
+    }
 
-      if (
-        totalPages > 0 &&
-        target > totalPages
-      ) {
-        return;
-      }
+    if (
+      totalPages > 0 &&
+      target > totalPages
+    ) {
+      return;
+    }
 
-      setPage(target);
-    };
+    setPage(target);
+  };
 
   /* =======================================================
      CHECK CHANGES
   ======================================================= */
 
-  const hasChanges =
-    useMemo(() => {
-      const a = [
-        ...originalDepartmentIds,
-      ].sort(
-        (x, y) => x - y,
-      );
+  const hasChanges = useMemo(() => {
+    const a = [
+      ...originalDepartmentIds,
+    ].sort((x, y) => x - y);
 
-      const b = [
-        ...selectedDepartmentIds,
-      ].sort(
-        (x, y) => x - y,
-      );
+    const b = [
+      ...selectedDepartmentIds,
+    ].sort((x, y) => x - y);
 
-      if (
-        a.length !==
-        b.length
-      ) {
-        return true;
-      }
+    if (a.length !== b.length) {
+      return true;
+    }
 
-      return a.some(
-        (value, index) =>
-          value !==
-          b[index],
-      );
-    }, [
-      originalDepartmentIds,
-      selectedDepartmentIds,
-    ]);
+    return a.some(
+      (value, index) =>
+        value !== b[index],
+    );
+  }, [
+    originalDepartmentIds,
+    selectedDepartmentIds,
+  ]);
 
   /* =======================================================
      SELECTED COUNT
@@ -1196,8 +1072,7 @@ const handleSave = async (
     return (
       <div className="admin-scope-page">
         <div className="admin-scope-alert error">
-          Bạn không có quyền xem
-          Scope.
+          Bạn không có quyền xem Scope.
         </div>
       </div>
     );
@@ -1209,6 +1084,7 @@ const handleSave = async (
 
   return (
     <div className="admin-scope-page">
+
       {/* =================================================
           HEADER
       ================================================= */}
@@ -1216,9 +1092,7 @@ const handleSave = async (
       <ScopeHeader
         title="Scope Management"
         description="Quản lý phạm vi Department mà từng người dùng được phép quản lý."
-        onRefresh={
-          handleRefresh
-        }
+        onRefresh={handleRefresh}
         loading={
           loading ||
           statisticsLoading
@@ -1226,154 +1100,270 @@ const handleSave = async (
       />
 
       {/* =================================================
-          SUMMARY
+          SCOPE TABS
       ================================================= */}
 
-      <ScopeSummary
-  totalUsers={statistics.totalUsers}
-  usersWithScope={statistics.usersWithScope}
-  totalScopes={statistics.totalScopes}
-  totalDepartments={statistics.totalDepartments}
-  page={page}
-  pageSize={pageSize}
-  total={total}
-/>
+      <div className="scope-tabs">
+
+        {/* ===============================================
+            DIRECT SCOPE TAB
+        =============================================== */}
+
+        <button
+          type="button"
+          className={`scope-tab ${
+            activeScopeTab === "direct"
+              ? "active"
+              : ""
+          }`}
+          onClick={() =>
+            setActiveScopeTab("direct")
+          }
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle
+              cx="9"
+              cy="7"
+              r="4"
+            />
+
+            <path d="M3 21v-2a6 6 0 0 1 12 0v2" />
+
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+
+            <path d="M21 21v-2a6 6 0 0 0-4.5-5.8" />
+          </svg>
+
+          <span>
+            Direct Scope
+          </span>
+        </button>
+
+        {/* ===============================================
+            GROUP SCOPE TAB
+        =============================================== */}
+
+        <button
+          type="button"
+          className={`scope-tab ${
+            activeScopeTab === "group"
+              ? "active"
+              : ""
+          }`}
+          onClick={() =>
+            setActiveScopeTab("group")
+          }
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle
+              cx="9"
+              cy="7"
+              r="4"
+            />
+
+            <path d="M3 21v-2a6 6 0 0 1 12 0v2" />
+
+            <circle
+              cx="17"
+              cy="8"
+              r="3"
+            />
+
+            <path d="M21 21v-2a4 4 0 0 0-4-4" />
+          </svg>
+
+          <span>
+            Group Scope
+          </span>
+        </button>
+      </div>
 
       {/* =================================================
-          TOOLBAR
+          DIRECT SCOPE
       ================================================= */}
 
-      <ScopeToolbar
-        search={searchInput}
-        onSearchChange={
-          handleSearchChange
-        }
-        onSearchSubmit={
-          handleSearchSubmit
-        }
-        onClearSearch={
-          handleClearSearch
-        }
-        pageSize={pageSize}
-        onPageSizeChange={() => {}}
-        onRefresh={
-          handleRefresh
-        }
-        loading={loading}
-      />
+      {activeScopeTab === "direct" && (
+        <>
+          {/* =============================================
+              SUMMARY
+          ============================================= */}
 
-      {/* =================================================
-          ERROR
-      ================================================= */}
-
-      {error && (
-        <div className="admin-scope-alert error">
-          {error}
-        </div>
-      )}
-
-      {/* =================================================
-          TABLE
-      ================================================= */}
-
-      <ScopeTable
-        users={users}
-        loading={loading}
-        canAssignScope={
-          canAssignScope
-        }
-        onView={
-          handleOpenView
-        }
-        onEdit={
-          handleOpenEdit
-        }
-      />
-
-      {/* =================================================
-          PAGINATION
-      ================================================= */}
-
-      {!loading &&
-        users.length > 0 && (
-          <ScopePagination
+          <ScopeSummary
+            totalUsers={
+              statistics.totalUsers
+            }
+            usersWithScope={
+              statistics.usersWithScope
+            }
+            totalScopes={
+              statistics.totalScopes
+            }
+            totalDepartments={
+              statistics.totalDepartments
+            }
             page={page}
             pageSize={pageSize}
-            totalCount={total}
-            onPageChange={
-              handlePageChange
+            total={total}
+          />
+
+          {/* =============================================
+              TOOLBAR
+          ============================================= */}
+
+          <ScopeToolbar
+            search={searchInput}
+            onSearchChange={
+              handleSearchChange
+            }
+            onSearchSubmit={
+              handleSearchSubmit
+            }
+            onClearSearch={
+              handleClearSearch
+            }
+            pageSize={pageSize}
+            onPageSizeChange={() => {}}
+            onRefresh={
+              handleRefresh
             }
             loading={loading}
           />
-        )}
 
-      {/* =================================================
-          VIEW USER SCOPE MODAL
-      ================================================= */}
+          {/* =============================================
+              ERROR
+          ============================================= */}
 
-      <ScopeUserModal
-        open={Boolean(
-          viewingUser,
-        )}
-        user={viewingUser}
-        departments={
-          viewingDepartments
-        }
-        loading={viewLoading}
-        onClose={
-          handleCloseView
-        }
-      />
-
-      {/* =================================================
-          EDIT / ASSIGN SCOPE MODAL
-      ================================================= */}
-
-      {canAssignScope && (
-        <AssignDepartmentModal
-          open={Boolean(
-            selectedUser,
+          {error && (
+            <div className="admin-scope-alert error">
+              {error}
+            </div>
           )}
-          user={selectedUser}
-          departments={
-            availableDepartments
-          }
-          currentDepartmentIds={
-            selectedDepartmentIds
-          }
-          loading={scopeLoading}
-          saving={saving}
-          onClose={
-            handleCloseEdit
-          }
-          onSave={
-            handleSave
-          }
-        />
+
+          {/* =============================================
+              TABLE
+          ============================================= */}
+
+          <ScopeTable
+            users={users}
+            loading={loading}
+            canAssignScope={
+              canAssignScope
+            }
+            onView={
+              handleOpenView
+            }
+            onEdit={
+              handleOpenEdit
+            }
+          />
+
+          {/* =============================================
+              PAGINATION
+          ============================================= */}
+
+          {!loading &&
+            users.length > 0 && (
+              <ScopePagination
+                page={page}
+                pageSize={pageSize}
+                totalCount={total}
+                onPageChange={
+                  handlePageChange
+                }
+                loading={loading}
+              />
+            )}
+
+          {/* =============================================
+              VIEW USER SCOPE MODAL
+          ============================================= */}
+
+          <ScopeUserModal
+            open={Boolean(
+              viewingUser,
+            )}
+            user={viewingUser}
+            departments={
+              viewingDepartments
+            }
+            loading={viewLoading}
+            onClose={
+              handleCloseView
+            }
+          />
+
+          {/* =============================================
+              EDIT / ASSIGN SCOPE MODAL
+          ============================================= */}
+
+          {canAssignScope && (
+            <AssignDepartmentModal
+              open={Boolean(
+                selectedUser,
+              )}
+              user={selectedUser}
+              departments={
+                availableDepartments
+              }
+              currentDepartmentIds={
+                selectedDepartmentIds
+              }
+              loading={scopeLoading}
+              saving={saving}
+              onClose={
+                handleCloseEdit
+              }
+              onSave={
+                handleSave
+              }
+            />
+          )}
+        </>
       )}
 
       {/* =================================================
-          EDIT ERROR
+          GROUP SCOPE
       ================================================= */}
 
-      
-              {/* =================================================
-                        TOAST
-                    ================================================= */}
+      {activeScopeTab === "group" && (
+        <GroupScopeSection />
+      )}
 
-                    <Toast
-                        type={toast.type}
-                        title={toast.title}
-                        message={toast.message}
-                        duration={3000}
-                        onClose={() =>
-                        setToast({
-                            type: "success",
-                            title: "",
-                            message: "",
-                        })
-                        }
-                    />
+      {/* =================================================
+          TOAST
+      ================================================= */}
+
+      <Toast
+        type={toast.type}
+        title={toast.title}
+        message={toast.message}
+        duration={3000}
+        onClose={() =>
+          setToast({
+            type: "success",
+            title: "",
+            message: "",
+          })
+        }
+      />
     </div>
   );
 }

@@ -14,12 +14,9 @@ public class GroupScopeService
     }
 
     // =====================================================
-    // SCOPE GROUP
+    // GROUP SCOPE
     // =====================================================
 
-    /// <summary>
-    /// Lấy tất cả Scope Group.
-    /// </summary>
     public async Task<List<ScopeGroup>> GetAllAsync()
     {
         return await _db.ScopeGroups
@@ -28,13 +25,10 @@ public class GroupScopeService
                 .ThenInclude(x => x.User)
             .Include(x => x.Departments)
                 .ThenInclude(x => x.Department)
-            .OrderBy(x => x.Name)
+            .OrderBy(x => x.Id)
             .ToListAsync();
     }
 
-    /// <summary>
-    /// Lấy ScopeGroup theo Id.
-    /// </summary>
     public async Task<ScopeGroup?> GetByIdAsync(
         int scopeGroupId)
     {
@@ -48,9 +42,6 @@ public class GroupScopeService
                 x.Id == scopeGroupId);
     }
 
-    /// <summary>
-    /// Kiểm tra ScopeGroup có tồn tại hay không.
-    /// </summary>
     public async Task<bool> ExistsAsync(
         int scopeGroupId)
     {
@@ -59,32 +50,13 @@ public class GroupScopeService
                 x.Id == scopeGroupId);
     }
 
-    /// <summary>
-    /// Tạo ScopeGroup mới.
-    /// </summary>
-    public async Task<ScopeGroup?> CreateAsync(
+    public async Task<ScopeGroup> CreateAsync(
         string name,
         string? description)
     {
-        name = name.Trim();
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return null;
-        }
-
-        var exists = await _db.ScopeGroups
-            .AnyAsync(x =>
-                x.Name == name);
-
-        if (exists)
-        {
-            return null;
-        }
-
         var scopeGroup = new ScopeGroup
         {
-            Name = name,
+            Name = name.Trim(),
             Description = description?.Trim() ?? ""
         };
 
@@ -95,59 +67,37 @@ public class GroupScopeService
         return scopeGroup;
     }
 
-    /// <summary>
-    /// Cập nhật thông tin ScopeGroup.
-    /// </summary>
     public async Task<bool> UpdateAsync(
         int scopeGroupId,
         string name,
         string? description)
     {
-        name = name.Trim();
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return false;
-        }
-
-        var scopeGroup = await _db.ScopeGroups
-            .FirstOrDefaultAsync(x =>
-                x.Id == scopeGroupId);
+        var scopeGroup =
+            await _db.ScopeGroups
+                .FirstOrDefaultAsync(x =>
+                    x.Id == scopeGroupId);
 
         if (scopeGroup == null)
         {
             return false;
         }
 
-        var duplicateName = await _db.ScopeGroups
-            .AnyAsync(x =>
-                x.Id != scopeGroupId &&
-                x.Name == name);
-
-        if (duplicateName)
-        {
-            return false;
-        }
-
-        scopeGroup.Name = name;
-        scopeGroup.Description = description?.Trim() ?? "";
+        scopeGroup.Name = name.Trim();
+        scopeGroup.Description =
+            description?.Trim() ?? "";
 
         await _db.SaveChangesAsync();
 
         return true;
     }
 
-    /// <summary>
-    /// Xóa ScopeGroup.
-    /// Các ScopeGroupMember và ScopeGroupDepartment
-    /// sẽ được xóa theo Cascade.
-    /// </summary>
     public async Task<bool> DeleteAsync(
         int scopeGroupId)
     {
-        var scopeGroup = await _db.ScopeGroups
-            .FirstOrDefaultAsync(x =>
-                x.Id == scopeGroupId);
+        var scopeGroup =
+            await _db.ScopeGroups
+                .FirstOrDefaultAsync(x =>
+                    x.Id == scopeGroupId);
 
         if (scopeGroup == null)
         {
@@ -165,10 +115,18 @@ public class GroupScopeService
     // DIRECT USER SCOPE
     // =====================================================
 
-    /// <summary>
-    /// Kiểm tra User đã được cấp Direct Scope
-    /// trong ScopeGroup hay chưa.
-    /// </summary>
+    public async Task<List<int>> GetDirectUserIdsAsync(
+        int scopeGroupId)
+    {
+        return await _db.ScopeGroupMembers
+            .AsNoTracking()
+            .Where(x =>
+                x.ScopeGroupId == scopeGroupId)
+            .Select(x => x.UserId)
+            .OrderBy(x => x)
+            .ToListAsync();
+    }
+
     public async Task<bool> HasUserScopeAsync(
         int scopeGroupId,
         int userId)
@@ -179,37 +137,37 @@ public class GroupScopeService
                 x.UserId == userId);
     }
 
-    /// <summary>
-    /// Cấp Direct Scope cho User.
-    /// </summary>
     public async Task<bool> AssignUserAsync(
         int scopeGroupId,
         int userId)
     {
-        var scopeGroupExists = await _db.ScopeGroups
-            .AnyAsync(x =>
-                x.Id == scopeGroupId);
+        var scopeGroupExists =
+            await _db.ScopeGroups
+                .AnyAsync(x =>
+                    x.Id == scopeGroupId);
 
         if (!scopeGroupExists)
         {
             return false;
         }
 
-        var userExists = await _db.Users
-            .AnyAsync(x =>
-                x.Id == userId &&
-                !x.IsDeleted &&
-                x.IsActive);
+        var userExists =
+            await _db.Users
+                .AnyAsync(x =>
+                    x.Id == userId &&
+                    !x.IsDeleted &&
+                    x.IsActive);
 
         if (!userExists)
         {
             return false;
         }
 
-        var exists = await _db.ScopeGroupMembers
-            .AnyAsync(x =>
-                x.ScopeGroupId == scopeGroupId &&
-                x.UserId == userId);
+        var exists =
+            await _db.ScopeGroupMembers
+                .AnyAsync(x =>
+                    x.ScopeGroupId == scopeGroupId &&
+                    x.UserId == userId);
 
         if (exists)
         {
@@ -228,24 +186,22 @@ public class GroupScopeService
         return true;
     }
 
-    /// <summary>
-    /// Xóa Direct Scope của User.
-    /// </summary>
     public async Task<bool> RemoveUserAsync(
         int scopeGroupId,
         int userId)
     {
-        var scope = await _db.ScopeGroupMembers
-            .FirstOrDefaultAsync(x =>
-                x.ScopeGroupId == scopeGroupId &&
-                x.UserId == userId);
+        var member =
+            await _db.ScopeGroupMembers
+                .FirstOrDefaultAsync(x =>
+                    x.ScopeGroupId == scopeGroupId &&
+                    x.UserId == userId);
 
-        if (scope == null)
+        if (member == null)
         {
             return false;
         }
 
-        _db.ScopeGroupMembers.Remove(scope);
+        _db.ScopeGroupMembers.Remove(member);
 
         await _db.SaveChangesAsync();
 
@@ -253,13 +209,42 @@ public class GroupScopeService
     }
 
     // =====================================================
+    // DIRECT USERS - DETAIL
+    // =====================================================
+
+    public async Task<List<ScopeGroupUserDto>> GetDirectUsersAsync(
+        int scopeGroupId)
+    {
+        return await _db.ScopeGroupMembers
+            .AsNoTracking()
+            .Where(x =>
+                x.ScopeGroupId == scopeGroupId)
+            .Select(x => new ScopeGroupUserDto
+            {
+                Id = x.UserId,
+                FullName = x.User.FullName,
+                Email = x.User.Email
+            })
+            .OrderBy(x => x.FullName)
+            .ToListAsync();
+    }
+
+    // =====================================================
     // DEPARTMENT SCOPE
     // =====================================================
 
-    /// <summary>
-    /// Kiểm tra Department đã được cấp Scope
-    /// trong ScopeGroup hay chưa.
-    /// </summary>
+    public async Task<List<int>> GetDepartmentIdsAsync(
+        int scopeGroupId)
+    {
+        return await _db.ScopeGroupDepartments
+            .AsNoTracking()
+            .Where(x =>
+                x.ScopeGroupId == scopeGroupId)
+            .Select(x => x.DepartmentId)
+            .OrderBy(x => x)
+            .ToListAsync();
+    }
+
     public async Task<bool> HasDepartmentScopeAsync(
         int scopeGroupId,
         int departmentId)
@@ -270,35 +255,35 @@ public class GroupScopeService
                 x.DepartmentId == departmentId);
     }
 
-    /// <summary>
-    /// Cấp Scope cho Department.
-    /// </summary>
     public async Task<bool> AssignDepartmentAsync(
         int scopeGroupId,
         int departmentId)
     {
-        var scopeGroupExists = await _db.ScopeGroups
-            .AnyAsync(x =>
-                x.Id == scopeGroupId);
+        var scopeGroupExists =
+            await _db.ScopeGroups
+                .AnyAsync(x =>
+                    x.Id == scopeGroupId);
 
         if (!scopeGroupExists)
         {
             return false;
         }
 
-        var departmentExists = await _db.Departments
-            .AnyAsync(x =>
-                x.Id == departmentId);
+        var departmentExists =
+            await _db.Departments
+                .AnyAsync(x =>
+                    x.Id == departmentId);
 
         if (!departmentExists)
         {
             return false;
         }
 
-        var exists = await _db.ScopeGroupDepartments
-            .AnyAsync(x =>
-                x.ScopeGroupId == scopeGroupId &&
-                x.DepartmentId == departmentId);
+        var exists =
+            await _db.ScopeGroupDepartments
+                .AnyAsync(x =>
+                    x.ScopeGroupId == scopeGroupId &&
+                    x.DepartmentId == departmentId);
 
         if (exists)
         {
@@ -317,17 +302,15 @@ public class GroupScopeService
         return true;
     }
 
-    /// <summary>
-    /// Xóa Scope của Department.
-    /// </summary>
     public async Task<bool> RemoveDepartmentAsync(
         int scopeGroupId,
         int departmentId)
     {
-        var scope = await _db.ScopeGroupDepartments
-            .FirstOrDefaultAsync(x =>
-                x.ScopeGroupId == scopeGroupId &&
-                x.DepartmentId == departmentId);
+        var scope =
+            await _db.ScopeGroupDepartments
+                .FirstOrDefaultAsync(x =>
+                    x.ScopeGroupId == scopeGroupId &&
+                    x.DepartmentId == departmentId);
 
         if (scope == null)
         {
@@ -342,32 +325,39 @@ public class GroupScopeService
     }
 
     // =====================================================
-    // EFFECTIVE GROUP SCOPE
+    // DEPARTMENTS - DETAIL
     // =====================================================
 
-    /// <summary>
-    /// Kiểm tra User có Effective Scope
-    /// trong ScopeGroup hay không.
-    ///
-    /// Effective Scope gồm:
-    /// 1. Direct User Scope
-    /// 2. Inherited Department Scope
-    ///
-    /// Admin được bypass toàn bộ Scope.
-    /// </summary>
-    public async Task<bool> HasEffectiveScopeAsync(
-        int userId,
+    public async Task<List<ScopeGroupDepartmentDto>> GetDepartmentsAsync(
         int scopeGroupId)
     {
-        // -------------------------------------------------
-        // USER
-        // -------------------------------------------------
+        return await _db.ScopeGroupDepartments
+            .AsNoTracking()
+            .Where(x =>
+                x.ScopeGroupId == scopeGroupId)
+            .Select(x => new ScopeGroupDepartmentDto
+            {
+                Id = x.DepartmentId,
+                Name = x.Department.Name
+            })
+            .OrderBy(x => x.Name)
+            .ToListAsync();
+    }
 
-        var user = await _db.Users
-            .FirstOrDefaultAsync(x =>
-                x.Id == userId &&
-                !x.IsDeleted &&
-                x.IsActive);
+    // =====================================================
+    // EFFECTIVE SCOPE
+    // =====================================================
+
+    public async Task<bool> HasEffectiveScopeAsync(
+        int scopeGroupId,
+        int userId)
+    {
+        var user =
+            await _db.Users
+                .FirstOrDefaultAsync(x =>
+                    x.Id == userId &&
+                    !x.IsDeleted &&
+                    x.IsActive);
 
         if (user == null)
         {
@@ -375,7 +365,7 @@ public class GroupScopeService
         }
 
         // -------------------------------------------------
-        // ADMIN
+        // ADMIN BYPASS
         // -------------------------------------------------
 
         if (user.Role == "Admin")
@@ -384,26 +374,14 @@ public class GroupScopeService
         }
 
         // -------------------------------------------------
-        // SCOPE GROUP
+        // DIRECT USER SCOPE
         // -------------------------------------------------
 
-        var scopeGroupExists = await _db.ScopeGroups
-            .AnyAsync(x =>
-                x.Id == scopeGroupId);
-
-        if (!scopeGroupExists)
-        {
-            return false;
-        }
-
-        // -------------------------------------------------
-        // 1. DIRECT USER SCOPE
-        // -------------------------------------------------
-
-        var hasDirectScope = await _db.ScopeGroupMembers
-            .AnyAsync(x =>
-                x.ScopeGroupId == scopeGroupId &&
-                x.UserId == userId);
+        var hasDirectScope =
+            await _db.ScopeGroupMembers
+                .AnyAsync(x =>
+                    x.ScopeGroupId == scopeGroupId &&
+                    x.UserId == userId);
 
         if (hasDirectScope)
         {
@@ -411,15 +389,16 @@ public class GroupScopeService
         }
 
         // -------------------------------------------------
-        // 2. INHERITED DEPARTMENT SCOPE
+        // USER DEPARTMENTS
         // -------------------------------------------------
 
-        var userDepartmentIds = await _db.UserDepartments
-            .Where(x =>
-                x.UserId == userId)
-            .Select(x =>
-                x.DepartmentId)
-            .ToListAsync();
+        var userDepartmentIds =
+            await _db.UserDepartments
+                .Where(x =>
+                    x.UserId == userId)
+                .Select(x =>
+                    x.DepartmentId)
+                .ToListAsync();
 
         // Primary Department
         if (user.DepartmentId.HasValue)
@@ -428,39 +407,38 @@ public class GroupScopeService
                 user.DepartmentId.Value);
         }
 
-        userDepartmentIds = userDepartmentIds
-            .Distinct()
-            .ToList();
+        userDepartmentIds =
+            userDepartmentIds
+                .Distinct()
+                .ToList();
 
         if (userDepartmentIds.Count == 0)
         {
             return false;
         }
 
+        // -------------------------------------------------
+        // INHERITED DEPARTMENT SCOPE
+        // -------------------------------------------------
+
         return await _db.ScopeGroupDepartments
             .AnyAsync(x =>
                 x.ScopeGroupId == scopeGroupId &&
-                userDepartmentIds.Contains(x.DepartmentId));
+                userDepartmentIds.Contains(
+                    x.DepartmentId));
     }
 
     // =====================================================
-    // EFFECTIVE SCOPE USERS
+    // EFFECTIVE USERS
     // =====================================================
 
-    /// <summary>
-    /// Lấy danh sách User có Effective Scope
-    /// trong ScopeGroup.
-    ///
-    /// Bao gồm:
-    /// - User được cấp trực tiếp.
-    /// - User thuộc Department được cấp Scope.
-    /// </summary>
     public async Task<List<int>> GetEffectiveUserIdsAsync(
         int scopeGroupId)
     {
-        var scopeGroupExists = await _db.ScopeGroups
-            .AnyAsync(x =>
-                x.Id == scopeGroupId);
+        var scopeGroupExists =
+            await _db.ScopeGroups
+                .AnyAsync(x =>
+                    x.Id == scopeGroupId);
 
         if (!scopeGroupExists)
         {
@@ -471,29 +449,33 @@ public class GroupScopeService
         // DIRECT USERS
         // -------------------------------------------------
 
-        var directUserIds = await _db.ScopeGroupMembers
-            .Where(x =>
-                x.ScopeGroupId == scopeGroupId)
-            .Select(x =>
-                x.UserId)
-            .ToListAsync();
+        var directUserIds =
+            await _db.ScopeGroupMembers
+                .AsNoTracking()
+                .Where(x =>
+                    x.ScopeGroupId == scopeGroupId)
+                .Select(x =>
+                    x.UserId)
+                .ToListAsync();
 
         // -------------------------------------------------
         // SCOPED DEPARTMENTS
         // -------------------------------------------------
 
-        var departmentIds = await _db.ScopeGroupDepartments
-            .Where(x =>
-                x.ScopeGroupId == scopeGroupId)
-            .Select(x =>
-                x.DepartmentId)
-            .ToListAsync();
+        var departmentIds =
+            await _db.ScopeGroupDepartments
+                .AsNoTracking()
+                .Where(x =>
+                    x.ScopeGroupId == scopeGroupId)
+                .Select(x =>
+                    x.DepartmentId)
+                .ToListAsync();
 
-        // Không có Department Scope.
         if (departmentIds.Count == 0)
         {
             return directUserIds
                 .Distinct()
+                .OrderBy(x => x)
                 .ToList();
         }
 
@@ -501,64 +483,51 @@ public class GroupScopeService
         // USERS IN SCOPED DEPARTMENTS
         // -------------------------------------------------
 
-        var departmentUserIds = await _db.Users
-            .Where(x =>
-                !x.IsDeleted &&
-                x.IsActive &&
-                (
+        var departmentUserIds =
+            await _db.Users
+                .AsNoTracking()
+                .Where(x =>
+                    !x.IsDeleted &&
+                    x.IsActive &&
                     (
-                        x.DepartmentId.HasValue &&
-                        departmentIds.Contains(
-                            x.DepartmentId.Value)
-                    )
-                    ||
-                    x.UserDepartments.Any(ud =>
-                        departmentIds.Contains(
-                            ud.DepartmentId))
-                ))
-            .Select(x =>
-                x.Id)
-            .ToListAsync();
+                        (
+                            x.DepartmentId.HasValue &&
+                            departmentIds.Contains(
+                                x.DepartmentId.Value)
+                        )
+                        ||
+                        x.UserDepartments.Any(ud =>
+                            departmentIds.Contains(
+                                ud.DepartmentId))
+                    ))
+                .Select(x =>
+                    x.Id)
+                .ToListAsync();
 
         return directUserIds
             .Concat(departmentUserIds)
             .Distinct()
+            .OrderBy(x => x)
             .ToList();
     }
+}
 
-    // =====================================================
-    // GET DIRECT USERS
-    // =====================================================
+// =========================================================
+// DTOs
+// =========================================================
 
-    /// <summary>
-    /// Lấy danh sách User được cấp Direct Scope.
-    /// </summary>
-    public async Task<List<int>> GetDirectUserIdsAsync(
-        int scopeGroupId)
-    {
-        return await _db.ScopeGroupMembers
-            .Where(x =>
-                x.ScopeGroupId == scopeGroupId)
-            .Select(x =>
-                x.UserId)
-            .ToListAsync();
-    }
+public class ScopeGroupUserDto
+{
+    public int Id { get; set; }
 
-    // =====================================================
-    // GET SCOPED DEPARTMENTS
-    // =====================================================
+    public string? FullName { get; set; }
 
-    /// <summary>
-    /// Lấy danh sách Department được cấp Scope.
-    /// </summary>
-    public async Task<List<int>> GetDepartmentIdsAsync(
-        int scopeGroupId)
-    {
-        return await _db.ScopeGroupDepartments
-            .Where(x =>
-                x.ScopeGroupId == scopeGroupId)
-            .Select(x =>
-                x.DepartmentId)
-            .ToListAsync();
-    }
+    public string? Email { get; set; }
+}
+
+public class ScopeGroupDepartmentDto
+{
+    public int Id { get; set; }
+
+    public string? Name { get; set; }
 }

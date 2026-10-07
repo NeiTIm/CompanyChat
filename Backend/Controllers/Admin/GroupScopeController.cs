@@ -18,39 +18,72 @@ public class GroupScopeController : ControllerBase
     }
 
     // =====================================================
-    // GET ALL SCOPE GROUPS
+    // GROUP SCOPE
     // =====================================================
 
-    /// <summary>
-    /// Lấy danh sách tất cả Scope Group.
-    /// </summary>
     [HttpGet]
     [Authorize(Policy = "Permission:Scope.View")]
     public async Task<IActionResult> GetAll()
     {
-        var scopeGroups =
+        var groupScopes =
             await _groupScopeService.GetAllAsync();
 
-        return Ok(scopeGroups);
+        return Ok(groupScopes);
     }
 
-    // =====================================================
-    // GET SCOPE GROUP BY ID
-    // =====================================================
+    [HttpPost]
+    [Authorize(Policy = "Permission:Scope.Assign")]
+    public async Task<IActionResult> Create(
+        [FromBody] CreateGroupScopeRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return BadRequest(new
+            {
+                message = "Tên Group Scope không được để trống."
+            });
+        }
 
-    /// <summary>
-    /// Lấy chi tiết một Scope Group.
-    /// </summary>
+        if (request.Name.Trim().Length > 100)
+        {
+            return BadRequest(new
+            {
+                message = "Tên Group Scope không được vượt quá 100 ký tự."
+            });
+        }
+
+        if (request.Description?.Length > 500)
+        {
+            return BadRequest(new
+            {
+                message = "Mô tả không được vượt quá 500 ký tự."
+            });
+        }
+
+        var groupScope =
+            await _groupScopeService.CreateAsync(
+                request.Name,
+                request.Description);
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new
+            {
+                scopeGroupId = groupScope.Id
+            },
+            groupScope);
+    }
+
     [HttpGet("{scopeGroupId:int}")]
     [Authorize(Policy = "Permission:Scope.View")]
     public async Task<IActionResult> GetById(
         int scopeGroupId)
     {
-        var scopeGroup =
+        var groupScope =
             await _groupScopeService.GetByIdAsync(
                 scopeGroupId);
 
-        if (scopeGroup == null)
+        if (groupScope == null)
         {
             return NotFound(new
             {
@@ -58,89 +91,89 @@ public class GroupScopeController : ControllerBase
             });
         }
 
-        return Ok(scopeGroup);
+        return Ok(groupScope);
     }
 
-    // =====================================================
-    // CREATE SCOPE GROUP
-    // =====================================================
-
-    /// <summary>
-    /// Tạo Scope Group mới.
-    /// </summary>
-    [HttpPost]
-    [Authorize(Policy = "Permission:Scope.Assign")]
-    public async Task<IActionResult> Create(
-        [FromBody] CreateScopeGroupRequest request)
-    {
-        if (request == null)
-        {
-            return BadRequest(new
-            {
-                message = "Dữ liệu không hợp lệ."
-            });
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            return BadRequest(new
-            {
-                message = "Tên Scope Group không được để trống."
-            });
-        }
-
-        var scopeGroup =
-            await _groupScopeService.CreateAsync(
-                request.Name,
-                request.Description);
-
-        if (scopeGroup == null)
-        {
-            return Conflict(new
-            {
-                message =
-                    "Không thể tạo Scope Group. Tên có thể đã tồn tại."
-            });
-        }
-
-        return CreatedAtAction(
-            nameof(GetById),
-            new
-            {
-                scopeGroupId = scopeGroup.Id
-            },
-            scopeGroup);
-    }
-
-    // =====================================================
-    // UPDATE SCOPE GROUP
-    // =====================================================
-
-    /// <summary>
-    /// Cập nhật thông tin Scope Group.
-    /// </summary>
     [HttpPut("{scopeGroupId:int}")]
     [Authorize(Policy = "Permission:Scope.Assign")]
     public async Task<IActionResult> Update(
         int scopeGroupId,
-        [FromBody] UpdateScopeGroupRequest request)
+        [FromBody] UpdateGroupScopeRequest request)
     {
-        if (request == null)
-        {
-            return BadRequest(new
-            {
-                message = "Dữ liệu không hợp lệ."
-            });
-        }
-
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             return BadRequest(new
             {
-                message = "Tên Scope Group không được để trống."
+                message = "Tên Group Scope không được để trống."
             });
         }
 
+        if (request.Name.Trim().Length > 100)
+        {
+            return BadRequest(new
+            {
+                message = "Tên Group Scope không được vượt quá 100 ký tự."
+            });
+        }
+
+        if (request.Description?.Length > 500)
+        {
+            return BadRequest(new
+            {
+                message = "Mô tả không được vượt quá 500 ký tự."
+            });
+        }
+
+        var updated =
+            await _groupScopeService.UpdateAsync(
+                scopeGroupId,
+                request.Name,
+                request.Description);
+
+        if (!updated)
+        {
+            return NotFound(new
+            {
+                message = "Scope Group không tồn tại."
+            });
+        }
+
+        var groupScope =
+            await _groupScopeService.GetByIdAsync(
+                scopeGroupId);
+
+        return Ok(groupScope);
+    }
+
+    [HttpDelete("{scopeGroupId:int}")]
+    [Authorize(Policy = "Permission:Scope.Assign")]
+    public async Task<IActionResult> Delete(
+        int scopeGroupId)
+    {
+        var deleted =
+            await _groupScopeService.DeleteAsync(
+                scopeGroupId);
+
+        if (!deleted)
+        {
+            return NotFound(new
+            {
+                message = "Scope Group không tồn tại."
+            });
+        }
+
+        return NoContent();
+    }
+
+    // =====================================================
+    // DIRECT USERS
+    // =====================================================
+
+    [HttpGet("{scopeGroupId:int}/users")]
+    [Authorize(Policy = "Permission:Scope.View")]
+    public async Task<IActionResult> GetDirectUsers(
+        int scopeGroupId)
+    {
         var exists =
             await _groupScopeService.ExistsAsync(
                 scopeGroupId);
@@ -153,65 +186,13 @@ public class GroupScopeController : ControllerBase
             });
         }
 
-        var success =
-            await _groupScopeService.UpdateAsync(
-                scopeGroupId,
-                request.Name,
-                request.Description);
-
-        if (!success)
-        {
-            return Conflict(new
-            {
-                message =
-                    "Không thể cập nhật Scope Group. Tên có thể đã tồn tại."
-            });
-        }
-
-        var updated =
-            await _groupScopeService.GetByIdAsync(
+        var users =
+            await _groupScopeService.GetDirectUsersAsync(
                 scopeGroupId);
 
-        return Ok(updated);
+        return Ok(users);
     }
 
-    // =====================================================
-    // DELETE SCOPE GROUP
-    // =====================================================
-
-    /// <summary>
-    /// Xóa Scope Group.
-    /// </summary>
-    [HttpDelete("{scopeGroupId:int}")]
-    [Authorize(Policy = "Permission:Scope.Assign")]
-    public async Task<IActionResult> Delete(
-        int scopeGroupId)
-    {
-        var success =
-            await _groupScopeService.DeleteAsync(
-                scopeGroupId);
-
-        if (!success)
-        {
-            return NotFound(new
-            {
-                message = "Scope Group không tồn tại."
-            });
-        }
-
-        return Ok(new
-        {
-            message = "Xóa Scope Group thành công."
-        });
-    }
-
-    // =====================================================
-    // DIRECT USER SCOPE
-    // =====================================================
-
-    /// <summary>
-    /// Kiểm tra User đã có Direct Scope hay chưa.
-    /// </summary>
     [HttpGet("{scopeGroupId:int}/users/{userId:int}")]
     [Authorize(Policy = "Permission:Scope.View")]
     public async Task<IActionResult> HasUserScope(
@@ -243,9 +224,6 @@ public class GroupScopeController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Cấp Direct Scope cho User.
-    /// </summary>
     [HttpPost("{scopeGroupId:int}/users/{userId:int}")]
     [Authorize(Policy = "Permission:Scope.Assign")]
     public async Task<IActionResult> AssignUser(
@@ -264,67 +242,96 @@ public class GroupScopeController : ControllerBase
             });
         }
 
-        var success =
+        var assigned =
             await _groupScopeService.AssignUserAsync(
                 scopeGroupId,
                 userId);
 
-        if (!success)
+        if (!assigned)
         {
             return BadRequest(new
             {
                 message =
-                    "Không thể cấp Scope cho User. " +
-                    "User không tồn tại, không active hoặc dữ liệu không hợp lệ."
+                    "Không thể gán User. User không tồn tại, không hoạt động hoặc đã bị xóa."
             });
         }
 
         return Ok(new
         {
-            message = "Cấp Direct Scope cho User thành công.",
+            message = "Gán User vào Group Scope thành công.",
             scopeGroupId,
             userId
         });
     }
 
-    /// <summary>
-    /// Xóa Direct Scope của User.
-    /// </summary>
     [HttpDelete("{scopeGroupId:int}/users/{userId:int}")]
     [Authorize(Policy = "Permission:Scope.Assign")]
     public async Task<IActionResult> RemoveUser(
         int scopeGroupId,
         int userId)
     {
-        var success =
+        var scopeGroupExists =
+            await _groupScopeService.ExistsAsync(
+                scopeGroupId);
+
+        if (!scopeGroupExists)
+        {
+            return NotFound(new
+            {
+                message = "Scope Group không tồn tại."
+            });
+        }
+
+        var removed =
             await _groupScopeService.RemoveUserAsync(
                 scopeGroupId,
                 userId);
 
-        if (!success)
+        if (!removed)
         {
             return NotFound(new
             {
                 message =
-                    "Direct Scope của User không tồn tại."
+                    "User chưa được gán vào Group Scope."
             });
         }
 
         return Ok(new
         {
-            message = "Xóa Direct Scope của User thành công.",
+            message = "Xóa User khỏi Group Scope thành công.",
             scopeGroupId,
             userId
         });
     }
 
     // =====================================================
-    // DEPARTMENT SCOPE
+    // DEPARTMENTS
     // =====================================================
 
-    /// <summary>
-    /// Kiểm tra Department đã có Scope hay chưa.
-    /// </summary>
+    [HttpGet("{scopeGroupId:int}/departments")]
+    [Authorize(Policy = "Permission:Scope.View")]
+    public async Task<IActionResult> GetDepartments(
+        int scopeGroupId)
+    {
+        var exists =
+            await _groupScopeService.ExistsAsync(
+                scopeGroupId);
+
+        if (!exists)
+        {
+            return NotFound(new
+            {
+                message = "Scope Group không tồn tại."
+            });
+        }
+
+        var departments =
+            await _groupScopeService.GetDepartmentsAsync(
+                scopeGroupId);
+
+        return Ok(departments);
+    }
+
     [HttpGet("{scopeGroupId:int}/departments/{departmentId:int}")]
     [Authorize(Policy = "Permission:Scope.View")]
     public async Task<IActionResult> HasDepartmentScope(
@@ -356,9 +363,6 @@ public class GroupScopeController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Cấp Scope cho Department.
-    /// </summary>
     [HttpPost("{scopeGroupId:int}/departments/{departmentId:int}")]
     [Authorize(Policy = "Permission:Scope.Assign")]
     public async Task<IActionResult> AssignDepartment(
@@ -377,73 +381,77 @@ public class GroupScopeController : ControllerBase
             });
         }
 
-        var success =
+        var assigned =
             await _groupScopeService.AssignDepartmentAsync(
                 scopeGroupId,
                 departmentId);
 
-        if (!success)
+        if (!assigned)
         {
             return BadRequest(new
             {
                 message =
-                    "Không thể cấp Scope cho Department. " +
-                    "Department không tồn tại hoặc dữ liệu không hợp lệ."
+                    "Không thể gán Department. Department không tồn tại."
             });
         }
 
         return Ok(new
         {
             message =
-                "Cấp Department Scope thành công.",
+                "Gán Department vào Group Scope thành công.",
             scopeGroupId,
             departmentId
         });
     }
 
-    /// <summary>
-    /// Xóa Scope của Department.
-    /// </summary>
     [HttpDelete("{scopeGroupId:int}/departments/{departmentId:int}")]
     [Authorize(Policy = "Permission:Scope.Assign")]
     public async Task<IActionResult> RemoveDepartment(
         int scopeGroupId,
         int departmentId)
     {
-        var success =
+        var scopeGroupExists =
+            await _groupScopeService.ExistsAsync(
+                scopeGroupId);
+
+        if (!scopeGroupExists)
+        {
+            return NotFound(new
+            {
+                message = "Scope Group không tồn tại."
+            });
+        }
+
+        var removed =
             await _groupScopeService.RemoveDepartmentAsync(
                 scopeGroupId,
                 departmentId);
 
-        if (!success)
+        if (!removed)
         {
             return NotFound(new
             {
                 message =
-                    "Department Scope không tồn tại."
+                    "Department chưa được gán vào Group Scope."
             });
         }
 
         return Ok(new
         {
             message =
-                "Xóa Department Scope thành công.",
+                "Xóa Department khỏi Group Scope thành công.",
             scopeGroupId,
             departmentId
         });
     }
 
     // =====================================================
-    // EFFECTIVE SCOPE
+    // EFFECTIVE USER
     // =====================================================
 
-    /// <summary>
-    /// Kiểm tra User có Effective Scope trong ScopeGroup hay không.
-    /// </summary>
-    [HttpGet(
-        "{scopeGroupId:int}/users/{userId:int}/effective")]
+    [HttpGet("{scopeGroupId:int}/users/{userId:int}/effective")]
     [Authorize(Policy = "Permission:Scope.View")]
-    public async Task<IActionResult> HasEffectiveScope(
+    public async Task<IActionResult> HasEffectiveUserScope(
         int scopeGroupId,
         int userId)
     {
@@ -459,27 +467,19 @@ public class GroupScopeController : ControllerBase
             });
         }
 
-        var hasScope =
+        var hasEffectiveScope =
             await _groupScopeService.HasEffectiveScopeAsync(
-                userId,
-                scopeGroupId);
+                scopeGroupId,
+                userId);
 
         return Ok(new
         {
             scopeGroupId,
             userId,
-            hasEffectiveScope = hasScope
+            hasEffectiveScope
         });
     }
 
-    // =====================================================
-    // EFFECTIVE USERS
-    // =====================================================
-
-    /// <summary>
-    /// Lấy tất cả User có Effective Scope
-    /// trong ScopeGroup.
-    /// </summary>
     [HttpGet("{scopeGroupId:int}/effective-users")]
     [Authorize(Policy = "Permission:Scope.View")]
     public async Task<IActionResult> GetEffectiveUsers(
@@ -507,86 +507,22 @@ public class GroupScopeController : ControllerBase
             userIds
         });
     }
-
-    // =====================================================
-    // DIRECT USERS
-    // =====================================================
-
-    /// <summary>
-    /// Lấy danh sách User được cấp Direct Scope.
-    /// </summary>
-    [HttpGet("{scopeGroupId:int}/users")]
-    [Authorize(Policy = "Permission:Scope.View")]
-    public async Task<IActionResult> GetDirectUsers(
-        int scopeGroupId)
-    {
-        var scopeGroupExists =
-            await _groupScopeService.ExistsAsync(
-                scopeGroupId);
-
-        if (!scopeGroupExists)
-        {
-            return NotFound(new
-            {
-                message = "Scope Group không tồn tại."
-            });
-        }
-
-        var userIds =
-            await _groupScopeService.GetDirectUserIdsAsync(
-                scopeGroupId);
-
-        return Ok(new
-        {
-            scopeGroupId,
-            userIds
-        });
-    }
-
-    // =====================================================
-    // SCOPED DEPARTMENTS
-    // =====================================================
-
-    /// <summary>
-    /// Lấy danh sách Department được cấp Scope.
-    /// </summary>
-    [HttpGet("{scopeGroupId:int}/departments")]
-    [Authorize(Policy = "Permission:Scope.View")]
-    public async Task<IActionResult> GetDepartments(
-        int scopeGroupId)
-    {
-        var scopeGroupExists =
-            await _groupScopeService.ExistsAsync(
-                scopeGroupId);
-
-        if (!scopeGroupExists)
-        {
-            return NotFound(new
-            {
-                message = "Scope Group không tồn tại."
-            });
-        }
-
-        var departmentIds =
-            await _groupScopeService.GetDepartmentIdsAsync(
-                scopeGroupId);
-
-        return Ok(new
-        {
-            scopeGroupId,
-            departmentIds
-        });
-    }
 }
 
 // =========================================================
 // REQUEST MODELS
 // =========================================================
 
-public record CreateScopeGroupRequest(
-    string Name,
-    string? Description);
+public class CreateGroupScopeRequest
+{
+    public string Name { get; set; } = "";
 
-public record UpdateScopeGroupRequest(
-    string Name,
-    string? Description);
+    public string? Description { get; set; }
+}
+
+public class UpdateGroupScopeRequest
+{
+    public string Name { get; set; } = "";
+
+    public string? Description { get; set; }
+}
